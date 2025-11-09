@@ -1,0 +1,809 @@
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
+export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "13.0.5"
+  }
+  public: {
+    Tables: {
+      action_assignments: {
+        Row: {
+          action_id: string
+          assigned_by: string
+          assigned_to_email: string
+          created_at: string
+          id: string
+          notes: string | null
+        }
+        Insert: {
+          action_id: string
+          assigned_by: string
+          assigned_to_email: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+        }
+        Update: {
+          action_id?: string
+          assigned_by?: string
+          assigned_to_email?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "action_assignments_action_id_fkey"
+            columns: ["action_id"]
+            isOneToOne: false
+            referencedRelation: "next_actions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      activities: {
+        Row: {
+          action: string
+          created_at: string
+          icon: string
+          id: string
+          item: string
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          icon: string
+          id?: string
+          item: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          icon?: string
+          id?: string
+          item?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      analyses: {
+        Row: {
+          created_at: string
+          dataset_id: string | null
+          id: string
+          question: string
+          response: string
+          result_data: Json | null
+          result_type: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          dataset_id?: string | null
+          id?: string
+          question: string
+          response: string
+          result_data?: Json | null
+          result_type?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          dataset_id?: string | null
+          id?: string
+          question?: string
+          response?: string
+          result_data?: Json | null
+          result_type?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analyses_dataset_id_fkey"
+            columns: ["dataset_id"]
+            isOneToOne: false
+            referencedRelation: "datasets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bottleneck_comments: {
+        Row: {
+          bottleneck_id: string
+          comment: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          bottleneck_id: string
+          comment: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          bottleneck_id?: string
+          comment?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bottleneck_comments_bottleneck_id_fkey"
+            columns: ["bottleneck_id"]
+            isOneToOne: false
+            referencedRelation: "bottlenecks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bottlenecks: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          impact_score: number
+          resolved_at: string | null
+          suggested_action: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          id?: string
+          impact_score: number
+          resolved_at?: string | null
+          suggested_action?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          impact_score?: number
+          resolved_at?: string | null
+          suggested_action?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      dataset_metadata: {
+        Row: {
+          created_at: string
+          data_quality_score: number | null
+          dataset_id: string
+          feature_tags: Json | null
+          id: string
+          lineage_info: Json | null
+          missingness_percentage: number | null
+          pii_classification: string | null
+          schema_info: Json
+          source_origin: string | null
+          uploaded_by: string | null
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          data_quality_score?: number | null
+          dataset_id: string
+          feature_tags?: Json | null
+          id?: string
+          lineage_info?: Json | null
+          missingness_percentage?: number | null
+          pii_classification?: string | null
+          schema_info?: Json
+          source_origin?: string | null
+          uploaded_by?: string | null
+          version?: number
+        }
+        Update: {
+          created_at?: string
+          data_quality_score?: number | null
+          dataset_id?: string
+          feature_tags?: Json | null
+          id?: string
+          lineage_info?: Json | null
+          missingness_percentage?: number | null
+          pii_classification?: string | null
+          schema_info?: Json
+          source_origin?: string | null
+          uploaded_by?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dataset_metadata_dataset_id_fkey"
+            columns: ["dataset_id"]
+            isOneToOne: false
+            referencedRelation: "datasets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      datasets: {
+        Row: {
+          columns_info: Json | null
+          created_at: string
+          file_size_mb: number | null
+          file_url: string | null
+          id: string
+          name: string
+          row_count: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          columns_info?: Json | null
+          created_at?: string
+          file_size_mb?: number | null
+          file_url?: string | null
+          id?: string
+          name: string
+          row_count?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          columns_info?: Json | null
+          created_at?: string
+          file_size_mb?: number | null
+          file_url?: string | null
+          id?: string
+          name?: string
+          row_count?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      device_streams: {
+        Row: {
+          config: Json
+          created_at: string
+          id: string
+          last_data_received: string | null
+          name: string
+          status: string
+          stream_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          config?: Json
+          created_at?: string
+          id?: string
+          last_data_received?: string | null
+          name: string
+          status?: string
+          stream_type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          id?: string
+          last_data_received?: string | null
+          name?: string
+          status?: string
+          stream_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      lab_profiles: {
+        Row: {
+          created_at: string
+          id: string
+          profile_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          profile_type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          profile_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      models: {
+        Row: {
+          algorithm: string | null
+          created_at: string
+          dataset_id: string | null
+          feature_importance: Json | null
+          id: string
+          metrics: Json | null
+          model_type: string
+          name: string
+          status: string
+          training_summary: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          algorithm?: string | null
+          created_at?: string
+          dataset_id?: string | null
+          feature_importance?: Json | null
+          id?: string
+          metrics?: Json | null
+          model_type: string
+          name: string
+          status?: string
+          training_summary?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          algorithm?: string | null
+          created_at?: string
+          dataset_id?: string | null
+          feature_importance?: Json | null
+          id?: string
+          metrics?: Json | null
+          model_type?: string
+          name?: string
+          status?: string
+          training_summary?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "models_dataset_id_fkey"
+            columns: ["dataset_id"]
+            isOneToOne: false
+            referencedRelation: "datasets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      next_actions: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          description: string
+          icon: string
+          id: string
+          impact_percentage: number
+          priority: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          description: string
+          icon?: string
+          id?: string
+          impact_percentage: number
+          priority: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          description?: string
+          icon?: string
+          id?: string
+          impact_percentage?: number
+          priority?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notification_preferences: {
+        Row: {
+          bottleneck_threshold: number
+          created_at: string
+          data_quality_threshold: number
+          email_on_action_assignment: boolean
+          email_on_bottleneck_detection: boolean
+          email_on_data_quality_issues: boolean
+          email_on_experiment_complete: boolean
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bottleneck_threshold?: number
+          created_at?: string
+          data_quality_threshold?: number
+          email_on_action_assignment?: boolean
+          email_on_bottleneck_detection?: boolean
+          email_on_data_quality_issues?: boolean
+          email_on_experiment_complete?: boolean
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bottleneck_threshold?: number
+          created_at?: string
+          data_quality_threshold?: number
+          email_on_action_assignment?: boolean
+          email_on_bottleneck_detection?: boolean
+          email_on_data_quality_issues?: boolean
+          email_on_experiment_complete?: boolean
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          link: string | null
+          message: string
+          read: boolean
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          link?: string | null
+          message: string
+          read?: boolean
+          title: string
+          type?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          link?: string | null
+          message?: string
+          read?: boolean
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      pinned_insights: {
+        Row: {
+          analysis_id: string | null
+          created_at: string
+          dashboard_position: number | null
+          id: string
+          model_id: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          analysis_id?: string | null
+          created_at?: string
+          dashboard_position?: number | null
+          id?: string
+          model_id?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          analysis_id?: string | null
+          created_at?: string
+          dashboard_position?: number | null
+          id?: string
+          model_id?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pinned_insights_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: false
+            referencedRelation: "analyses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pinned_insights_model_id_fkey"
+            columns: ["model_id"]
+            isOneToOne: false
+            referencedRelation: "models"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      predictive_insights: {
+        Row: {
+          active_experiments_count: number
+          confidence_interval: number
+          created_at: string
+          estimated_days: number
+          id: string
+          pipeline_flow_score: number
+          user_id: string
+          velocity_score: number
+        }
+        Insert: {
+          active_experiments_count: number
+          confidence_interval: number
+          created_at?: string
+          estimated_days: number
+          id?: string
+          pipeline_flow_score: number
+          user_id: string
+          velocity_score: number
+        }
+        Update: {
+          active_experiments_count?: number
+          confidence_interval?: number
+          created_at?: string
+          estimated_days?: number
+          id?: string
+          pipeline_flow_score?: number
+          user_id?: string
+          velocity_score?: number
+        }
+        Relationships: []
+      }
+      subscriptions: {
+        Row: {
+          ai_requests_per_month: number
+          created_at: string
+          id: string
+          max_automations: number
+          max_collaborators: number
+          max_datasets: number
+          max_experiments: number
+          storage_limit_mb: number
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          student_verified: boolean | null
+          subscription_ends_at: string | null
+          tier: Database["public"]["Enums"]["subscription_tier"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ai_requests_per_month?: number
+          created_at?: string
+          id?: string
+          max_automations?: number
+          max_collaborators?: number
+          max_datasets?: number
+          max_experiments?: number
+          storage_limit_mb?: number
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          student_verified?: boolean | null
+          subscription_ends_at?: string | null
+          tier?: Database["public"]["Enums"]["subscription_tier"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ai_requests_per_month?: number
+          created_at?: string
+          id?: string
+          max_automations?: number
+          max_collaborators?: number
+          max_datasets?: number
+          max_experiments?: number
+          storage_limit_mb?: number
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          student_verified?: boolean | null
+          subscription_ends_at?: string | null
+          tier?: Database["public"]["Enums"]["subscription_tier"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      usage_stats: {
+        Row: {
+          ai_requests_used: number | null
+          automations_count: number | null
+          created_at: string
+          datasets_count: number | null
+          experiments_count: number | null
+          id: string
+          month: string
+          storage_used_mb: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ai_requests_used?: number | null
+          automations_count?: number | null
+          created_at?: string
+          datasets_count?: number | null
+          experiments_count?: number | null
+          id?: string
+          month: string
+          storage_used_mb?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ai_requests_used?: number | null
+          automations_count?: number | null
+          created_at?: string
+          datasets_count?: number | null
+          experiments_count?: number | null
+          id?: string
+          month?: string
+          storage_used_mb?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      get_user_tier: {
+        Args: { user_id_param: string }
+        Returns: Database["public"]["Enums"]["subscription_tier"]
+      }
+      has_pro_access: { Args: { user_id_param: string }; Returns: boolean }
+    }
+    Enums: {
+      subscription_tier: "free" | "pro" | "student"
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
+}
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {
+      subscription_tier: ["free", "pro", "student"],
+    },
+  },
+} as const
