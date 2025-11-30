@@ -1,0 +1,371 @@
+import { useState } from "react";
+import Sidebar from "@/components/Sidebar";
+import TopBar from "@/components/TopBar";
+import MobileNav from "@/components/MobileNav";
+import { AuthGuard } from "@/components/auth/AuthGuard";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Plus, Users, Mail, Search, MoreVertical, FileText, MessageSquare, Activity } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { ChatPanel } from "@/components/collaboration/ChatPanel";
+import { useSubscription } from "@/hooks/useSubscription";
+import { UpgradeDialog } from "@/components/UpgradeDialog";
+
+const Collaboration = () => {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const { toast } = useToast();
+  const { subscription, loading } = useSubscription();
+
+  const teamMembers = [
+    {
+      id: 1,
+      name: "Dr. Sarah Chen",
+      email: "sarah.chen@labiq.com",
+      role: "Principal Investigator",
+      avatar: "/placeholder.svg",
+      status: "online",
+      projects: 8,
+      lastActive: "Active now"
+    },
+    {
+      id: 2,
+      name: "John Smith",
+      email: "john.smith@labiq.com",
+      role: "Senior Researcher",
+      avatar: "/placeholder.svg",
+      status: "online",
+      projects: 5,
+      lastActive: "Active now"
+    },
+    {
+      id: 3,
+      name: "Dr. Mike Ross",
+      email: "mike.ross@labiq.com",
+      role: "Research Scientist",
+      avatar: "/placeholder.svg",
+      status: "away",
+      projects: 6,
+      lastActive: "2 hours ago"
+    },
+    {
+      id: 4,
+      name: "Emma Wilson",
+      email: "emma.wilson@labiq.com",
+      role: "Lab Technician",
+      avatar: "/placeholder.svg",
+      status: "online",
+      projects: 4,
+      lastActive: "Active now"
+    },
+    {
+      id: 5,
+      name: "Alex Turner",
+      email: "alex.turner@labiq.com",
+      role: "Data Analyst",
+      avatar: "/placeholder.svg",
+      status: "offline",
+      projects: 3,
+      lastActive: "Yesterday"
+    },
+  ];
+
+  const sharedProjects = [
+    {
+      id: 1,
+      name: "Protein Structure Analysis",
+      owner: "Dr. Sarah Chen",
+      members: 4,
+      lastUpdate: "2 hours ago",
+      status: "active"
+    },
+    {
+      id: 2,
+      name: "Chemical Compound Screening",
+      owner: "John Smith",
+      members: 3,
+      lastUpdate: "1 day ago",
+      status: "active"
+    },
+    {
+      id: 3,
+      name: "Climate Data Analysis",
+      owner: "Emma Wilson",
+      members: 5,
+      lastUpdate: "3 days ago",
+      status: "archived"
+    },
+  ];
+
+  const recentActivity = [
+    {
+      id: 1,
+      user: "Dr. Sarah Chen",
+      action: "shared",
+      target: "Protein Analysis Report",
+      time: "10 minutes ago"
+    },
+    {
+      id: 2,
+      user: "John Smith",
+      action: "commented on",
+      target: "Chemical Screening Dataset",
+      time: "1 hour ago"
+    },
+    {
+      id: 3,
+      user: "Emma Wilson",
+      action: "uploaded",
+      target: "Climate Data v2.csv",
+      time: "2 hours ago"
+    },
+    {
+      id: 4,
+      user: "Dr. Mike Ross",
+      action: "invited",
+      target: "Alex Turner to Material Testing",
+      time: "5 hours ago"
+    },
+  ];
+
+  const handleInviteMember = () => {
+    toast({
+      title: "Invitation Sent",
+      description: "An invitation email has been sent to the new team member.",
+    });
+    setIsInviteDialogOpen(false);
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "online": return "bg-green-500";
+      case "away": return "bg-orange-500";
+      case "offline": return "bg-gray-500";
+      default: return "bg-gray-500";
+    }
+  };
+
+  const filteredMembers = teamMembers.filter(member =>
+    member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    member.email.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  return (
+    <AuthGuard>
+      <div className="flex min-h-screen bg-background">
+        <Sidebar />
+        
+        <div className="flex-1 md:ml-64 pb-16 md:pb-0">
+          <TopBar />
+          
+          <main className="p-4 md:p-8">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h1 className="text-3xl font-bold text-foreground mb-2">Collaboration</h1>
+                <p className="text-muted-foreground">Work together with your team members</p>
+              </div>
+              <Dialog open={isInviteDialogOpen} onOpenChange={setIsInviteDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button className="gap-2">
+                    <Plus className="w-4 h-4" />
+                    Invite Member
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Invite Team Member</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email Address</Label>
+                      <Input id="email" type="email" placeholder="colleague@example.com" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="role">Role</Label>
+                      <Select>
+                        <SelectTrigger id="role">
+                          <SelectValue placeholder="Select role" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="admin">Administrator</SelectItem>
+                          <SelectItem value="researcher">Researcher</SelectItem>
+                          <SelectItem value="analyst">Data Analyst</SelectItem>
+                          <SelectItem value="viewer">Viewer</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Button onClick={handleInviteMember} className="w-full gap-2">
+                      <Mail className="w-4 h-4" />
+                      Send Invitation
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+
+            {/* Search */}
+            <div className="relative mb-6">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search team members..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+
+            <Tabs defaultValue="team" className="space-y-6">
+              <TabsList>
+                <TabsTrigger value="team">Team Members</TabsTrigger>
+                <TabsTrigger value="projects">Shared Projects</TabsTrigger>
+                <TabsTrigger value="chat">
+                  Real-Time Chat
+                  {subscription?.tier === "free" && <Badge variant="secondary" className="ml-2 text-xs">Pro</Badge>}
+                </TabsTrigger>
+                <TabsTrigger value="activity">Activity Feed</TabsTrigger>
+              </TabsList>
+
+              {/* Team Members Tab */}
+              <TabsContent value="team">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {filteredMembers.map((member) => (
+                    <Card key={member.id} className="p-6">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start gap-4 flex-1">
+                          <div className="relative">
+                            <Avatar className="w-12 h-12">
+                              <AvatarImage src={member.avatar} alt={member.name} />
+                              <AvatarFallback>{member.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                            </Avatar>
+                            <div className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-background ${getStatusColor(member.status)}`} />
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="font-semibold mb-1">{member.name}</h3>
+                            <p className="text-sm text-muted-foreground mb-2">{member.role}</p>
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
+                              <span>{member.projects} projects</span>
+                              <span>{member.lastActive}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button size="sm" variant="outline" className="gap-2">
+                                <MessageSquare className="w-3 h-3" />
+                                Message
+                              </Button>
+                              <Button size="sm" variant="outline" className="gap-2">
+                                <FileText className="w-3 h-3" />
+                                View Work
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                        <Button variant="ghost" size="icon">
+                          <MoreVertical className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </TabsContent>
+
+              {/* Shared Projects Tab */}
+              <TabsContent value="projects">
+                <div className="space-y-4">
+                  {sharedProjects.map((project) => (
+                    <Card key={project.id} className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4 flex-1">
+                          <div className="p-3 rounded-lg bg-primary/10">
+                            <FileText className="w-6 h-6 text-primary" />
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <h3 className="text-lg font-semibold">{project.name}</h3>
+                              <Badge variant={project.status === "active" ? "default" : "secondary"}>
+                                {project.status}
+                              </Badge>
+                            </div>
+                            <div className="flex items-center gap-6 text-sm text-muted-foreground">
+                              <span>Owner: {project.owner}</span>
+                              <div className="flex items-center gap-2">
+                                <Users className="w-4 h-4" />
+                                {project.members} members
+                              </div>
+                              <span>Updated {project.lastUpdate}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <Button>View Project</Button>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </TabsContent>
+
+              {/* Real-Time Chat Tab */}
+              <TabsContent value="chat">
+                {subscription?.tier === "free" ? (
+                  <Card className="p-8 text-center">
+                    <MessageSquare className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+                    <h3 className="text-xl font-semibold mb-2">Real-Time Chat</h3>
+                    <p className="text-muted-foreground mb-4">
+                      Collaborate in real-time with your team members using our integrated chat feature.
+                    </p>
+                    <Button onClick={() => setUpgradeOpen(true)}>
+                      Upgrade to Pro
+                    </Button>
+                  </Card>
+                ) : (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <ChatPanel projectName="Protein Analysis Discussion" />
+                    <ChatPanel projectName="General Lab Updates" />
+                  </div>
+                )}
+              </TabsContent>
+
+              {/* Activity Feed Tab */}
+              <TabsContent value="activity">
+                <Card className="p-6">
+                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <Activity className="w-5 h-5" />
+                    Recent Activity
+                  </h3>
+                  <div className="space-y-4">
+                    {recentActivity.map((activity) => (
+                      <div key={activity.id} className="flex items-start gap-4 py-3 border-b border-border last:border-0">
+                        <Avatar className="w-10 h-10">
+                          <AvatarFallback>{activity.user.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                          <p className="text-sm">
+                            <span className="font-medium">{activity.user}</span>
+                            {" "}{activity.action}{" "}
+                            <span className="font-medium">{activity.target}</span>
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">{activity.time}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              </TabsContent>
+            </Tabs>
+
+            <UpgradeDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} />
+          </main>
+        </div>
+        <MobileNav />
+      </div>
+    </AuthGuard>
+  );
+};
+
+export default Collaboration;

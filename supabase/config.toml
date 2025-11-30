@@ -1,0 +1,16 @@
+project_id = "nbhfisrrnrlaljmxzaay"
+
+[functions.ai-data-assistant]
+verify_jwt = false
+
+[functions.analyze-bottlenecks]
+verify_jwt = true
+
+[functions.scheduled-analysis]
+verify_jwt = false
+
+[functions.export-analytics]
+verify_jwt = true
+
+[functions.send-notification-email]
+verify_jwt = false

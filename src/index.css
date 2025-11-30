@@ -1,0 +1,148 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 183 90% 45%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 280 65% 60%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 220 13% 91%;
+    --muted-foreground: 220 9% 46%;
+
+    --accent: 280 65% 60%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 183 90% 45%;
+
+    --radius: 0.75rem;
+    
+    /* Gradients */
+    --gradient-cyan: linear-gradient(135deg, hsl(190 80% 45%) 0%, hsl(195 75% 55%) 100%);
+    --gradient-purple: linear-gradient(135deg, hsl(280 60% 55%) 0%, hsl(285 65% 65%) 100%);
+    --gradient-teal: linear-gradient(135deg, hsl(175 70% 45%) 0%, hsl(180 65% 55%) 100%);
+    --gradient-orange: linear-gradient(135deg, hsl(30 70% 50%) 0%, hsl(35 75% 60%) 100%);
+    
+    /* Shadows */
+    --shadow-soft: 0 2px 20px -2px hsl(220 13% 46% / 0.1);
+    --shadow-glow: 0 0 40px hsl(183 90% 45% / 0.1);
+    
+    /* Animations */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-primary: 183 90% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 13% 96%;
+    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 183 90% 45%;
+  }
+
+  /* Mobile safe area support */
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Touch-friendly spacing */
+  @media (max-width: 768px) {
+    .touch-target {
+      min-height: 44px;
+      min-width: 44px;
+    }
+  }
+
+  /* Smooth scrolling for mobile */
+  @supports (-webkit-overflow-scrolling: touch) {
+    * {
+      -webkit-overflow-scrolling: touch;
+    }
+  }
+
+  .dark {
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
+
+    --card: 220 25% 15%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 220 25% 15%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 183 90% 45%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 280 65% 60%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 220 20% 20%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 280 65% 60%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 62.8% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 20% 20%;
+    --input: 220 20% 18%;
+    --ring: 183 90% 45%;
+    
+    --gradient-cyan: linear-gradient(135deg, hsl(190 80% 35%) 0%, hsl(195 75% 45%) 100%);
+    --gradient-purple: linear-gradient(135deg, hsl(280 60% 45%) 0%, hsl(285 65% 55%) 100%);
+    --gradient-teal: linear-gradient(135deg, hsl(175 70% 35%) 0%, hsl(180 65% 45%) 100%);
+    --gradient-orange: linear-gradient(135deg, hsl(30 60% 35%) 0%, hsl(35 65% 45%) 100%);
+    
+    --shadow-soft: 0 4px 24px -2px hsl(220 25% 5% / 0.4);
+    --shadow-glow: 0 0 40px hsl(183 90% 45% / 0.15);
+    --sidebar-background: 220 30% 10%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 183 90% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 25% 15%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 220 20% 18%;
+    --sidebar-ring: 183 90% 45%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Enable dark mode by default */
+:root {
+  color-scheme: dark;
+}
+
+html {
+  @apply dark;
+}
