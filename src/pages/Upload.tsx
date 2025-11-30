@@ -73,7 +73,7 @@ export default function Upload() {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    
+
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       handleFile(e.dataTransfer.files[0]);
     }
@@ -86,10 +86,15 @@ export default function Upload() {
     }
   };
 
-  const handleFile = (file: File) => {
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [progressMessage, setProgressMessage] = useState("");
+  const [parsedData, setParsedData] = useState<any>(null);
+
+  const handleFile = async (file: File) => {
     const allowedTypes = ['.csv', '.xlsx', '.xls', '.json'];
     const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
-    
+
     if (!allowedTypes.includes(fileExtension)) {
       toast({
         title: "Invalid file type",
@@ -98,26 +103,87 @@ export default function Upload() {
       });
       return;
     }
-    
-    const fileSizeMB = file.size / (1024 * 1024);
-    const storageLimit = subscription?.storage_limit_mb || 200;
-    
-    if (fileSizeMB > storageLimit) {
+
+    setUploadedFile(file);
+
+    // Parse immediately for preview
+    setIsProcessing(true);
+    setProgressMessage("Parsing file...");
+
+    try {
+      let result;
+
+      if (fileExtension === '.csv') {
+        const { csvParser } = await import("@/lib/parsers/csvParser");
+        result = await csvParser.parse(file);
+      } else if (fileExtension === '.xlsx' || fileExtension === '.xls') {
+        const { excelParser } = await import("@/lib/parsers/excelParser");
+        result = await excelParser.parse(file);
+      } else if (fileExtension === '.json') {
+        const { jsonParser } = await import("@/lib/parsers/jsonParser");
+        result = await jsonParser.parse(file);
+      }
+
+      if (result && result.success && result.data) {
+        setParsedData(result.data);
+        toast({
+          title: "File parsed successfully",
+          description: `Found ${result.data.rowCount} rows and ${result.data.columnCount} columns`
+        });
+      } else {
+        throw new Error(result?.error || "Parsing failed or format not supported");
+      }
+    } catch (error) {
+      console.error("Parse error:", error);
       toast({
-        title: "File too large",
-        description: `File size exceeds your ${storageLimit}MB limit. Upgrade for more storage!`,
+        title: "Error parsing file",
+        description: error instanceof Error ? error.message : "Could not parse the file. Please check the format.",
         variant: "destructive"
       });
-      setUpgradeOpen(true);
-      return;
+    } finally {
+      setIsProcessing(false);
+      setProgressMessage("");
     }
-    
-    setUploadedFile(file);
-    trackActivity("Dataset uploaded", file.name, "Database");
-    toast({
-      title: "File uploaded successfully",
-      description: `${file.name} is ready for processing`
-    });
+  };
+
+  const handleProcess = async () => {
+    if (!uploadedFile || !parsedData) return;
+
+    try {
+      setIsProcessing(true);
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        toast({ title: "Authentication required", variant: "destructive" });
+        return;
+      }
+
+      const { datasetService } = await import("@/lib/services/datasetService");
+
+      const datasetId = await datasetService.saveDataset(user.id, parsedData, (progress, message) => {
+        setUploadProgress(progress);
+        setProgressMessage(message);
+      });
+
+      toast({
+        title: "Success!",
+        description: "Dataset uploaded and processed successfully."
+      });
+
+      // Navigate to the new detail view
+      // We need to import useNavigate first
+      window.location.href = `/dashboard/datasets/${datasetId}`;
+
+    } catch (error) {
+      console.error("Processing error:", error);
+      toast({
+        title: "Error processing dataset",
+        description: error instanceof Error ? error.message : "An unknown error occurred",
+        variant: "destructive"
+      });
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
@@ -154,7 +220,7 @@ export default function Upload() {
                   </Badge>
                 </div>
               </div>
-              
+
               {/* Sample Dataset CTA */}
               <SampleDatasetCTA />
             </div>
@@ -248,11 +314,10 @@ export default function Upload() {
                   </CardHeader>
                   <CardContent>
                     <div
-                      className={`border-2 border-dashed rounded-lg p-12 text-center transition-colors ${
-                        dragActive
-                          ? "border-primary bg-primary/5"
-                          : "border-border hover:border-primary/50"
-                      }`}
+                      className={`border-2 border-dashed rounded-lg p-12 text-center transition-colors ${dragActive
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-primary/50"
+                        }`}
                       onDragEnter={handleDrag}
                       onDragLeave={handleDrag}
                       onDragOver={handleDrag}
@@ -275,16 +340,18 @@ export default function Upload() {
                                 {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB
                               </p>
                             </div>
-                            <div className="flex items-center justify-center gap-4 pt-2">
-                              <Badge variant="outline" className="gap-1">
-                                <Shield className="h-3 w-3" />
-                                PII Scanning
-                              </Badge>
-                              <Badge variant="outline" className="gap-1">
-                                <Database className="h-3 w-3" />
-                                Schema Detection
-                              </Badge>
-                            </div>
+                            {parsedData && (
+                              <div className="flex items-center justify-center gap-4 pt-2">
+                                <Badge variant="secondary" className="gap-1">
+                                  <Database className="h-3 w-3" />
+                                  {parsedData.rowCount.toLocaleString()} Rows
+                                </Badge>
+                                <Badge variant="secondary" className="gap-1">
+                                  <Boxes className="h-3 w-3" />
+                                  {parsedData.columnCount} Columns
+                                </Badge>
+                              </div>
+                            )}
                           </div>
                         ) : (
                           <div className="text-center">
@@ -305,8 +372,6 @@ export default function Upload() {
                                 <Database className="h-3 w-3" />
                                 Schema Registry
                               </span>
-                              <span>•</span>
-                              <span>Data Quality Scoring</span>
                             </div>
                           </div>
                         )}
@@ -315,14 +380,29 @@ export default function Upload() {
                   </CardContent>
                 </Card>
 
-                  {uploadedFile && (
-                    <div className="space-y-4">
-                      <Card className="border-primary/20 bg-primary/5">
-                        <CardContent className="p-4">
-                          <h4 className="font-medium mb-3 flex items-center gap-2">
-                            <FileText className="h-4 w-4 text-primary" />
-                            File Preview & Processing
-                          </h4>
+                {uploadedFile && (
+                  <div className="space-y-4">
+                    <Card className="border-primary/20 bg-primary/5">
+                      <CardContent className="p-4">
+                        <h4 className="font-medium mb-3 flex items-center gap-2">
+                          <FileText className="h-4 w-4 text-primary" />
+                          File Preview & Processing
+                        </h4>
+
+                        {isProcessing && uploadProgress > 0 ? (
+                          <div className="space-y-2">
+                            <div className="flex justify-between text-sm">
+                              <span>{progressMessage}</span>
+                              <span>{Math.round(uploadProgress)}%</span>
+                            </div>
+                            <div className="h-2 bg-secondary/20 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-primary transition-all duration-300"
+                                style={{ width: `${uploadProgress}%` }}
+                              />
+                            </div>
+                          </div>
+                        ) : (
                           <div className="text-sm space-y-2 text-muted-foreground">
                             <div className="flex justify-between">
                               <span>Name:</span>
@@ -341,26 +421,33 @@ export default function Upload() {
                               </span>
                             </div>
                           </div>
-                          <div className="mt-4 pt-4 border-t border-border/50 space-y-2">
-                            <p className="text-xs font-medium">Auto-processing will include:</p>
-                            <div className="grid grid-cols-2 gap-2 text-xs">
-                              <span className="flex items-center gap-1 text-muted-foreground">
-                                <Shield className="h-3 w-3" /> PII Classification
-                              </span>
-                              <span className="flex items-center gap-1 text-muted-foreground">
-                                <Database className="h-3 w-3" /> Schema Registry
-                              </span>
-                              <span className="text-muted-foreground">Data Quality Score</span>
-                              <span className="text-muted-foreground">Missingness Analysis</span>
-                            </div>
+                        )}
+
+                        <div className="mt-4 pt-4 border-t border-border/50 space-y-2">
+                          <p className="text-xs font-medium">Auto-processing will include:</p>
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            <span className="flex items-center gap-1 text-muted-foreground">
+                              <Shield className="h-3 w-3" /> PII Classification
+                            </span>
+                            <span className="flex items-center gap-1 text-muted-foreground">
+                              <Database className="h-3 w-3" /> Schema Registry
+                            </span>
+                            <span className="text-muted-foreground">Data Quality Score</span>
+                            <span className="text-muted-foreground">Missingness Analysis</span>
                           </div>
-                        </CardContent>
-                      </Card>
-                      <Button className="w-full" size="lg" disabled={!projectName}>
-                        Process & Analyze Dataset
-                      </Button>
-                    </div>
-                  )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Button
+                      className="w-full"
+                      size="lg"
+                      disabled={!projectName || isProcessing || !parsedData}
+                      onClick={handleProcess}
+                    >
+                      {isProcessing ? "Processing..." : "Process & Analyze Dataset"}
+                    </Button>
+                  </div>
+                )}
 
                 <Card className="border-border/50 shadow-sm bg-muted/30">
                   <CardHeader>
@@ -452,11 +539,11 @@ export default function Upload() {
                 </div>
               </TabsContent>
             </Tabs>
-          </main>
+          </main >
           <MobileNav />
-        </div>
-      </div>
+        </div >
+      </div >
       <UpgradeDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} />
-    </AuthGuard>
+    </AuthGuard >
   );
 }

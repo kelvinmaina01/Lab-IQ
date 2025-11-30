@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import Upload from "./pages/Upload";
+import DatasetDetail from "./pages/DatasetDetail";
 import Insights from "./pages/Insights";
 import Analytics from "./pages/Analytics";
 import Experiments from "./pages/Experiments";
@@ -26,22 +27,23 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Index />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/upload" element={<Upload />} />
-        <Route path="/insights" element={<Insights />} />
-        <Route path="/analytics" element={<Analytics />} />
-        <Route path="/experiments" element={<Experiments />} />
-        <Route path="/automation" element={<Automation />} />
-        <Route path="/collaboration" element={<Collaboration />} />
-        <Route path="/reports" element={<Reports />} />
-        <Route path="/settings/notifications" element={<NotificationPreferences />} />
-        <Route path="/device-streams" element={<DeviceStreams />} />
-        <Route path="/data-anonymization" element={<DataAnonymization />} />
-        {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+        <Routes>
+          <Route path="/" element={<Index />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/dashboard/datasets/:id" element={<DatasetDetail />} />
+          <Route path="/upload" element={<Upload />} />
+          <Route path="/insights" element={<Insights />} />
+          <Route path="/analytics" element={<Analytics />} />
+          <Route path="/experiments" element={<Experiments />} />
+          <Route path="/automation" element={<Automation />} />
+          <Route path="/collaboration" element={<Collaboration />} />
+          <Route path="/reports" element={<Reports />} />
+          <Route path="/settings/notifications" element={<NotificationPreferences />} />
+          <Route path="/device-streams" element={<DeviceStreams />} />
+          <Route path="/data-anonymization" element={<DataAnonymization />} />
+          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
