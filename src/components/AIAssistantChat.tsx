@@ -1,14 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { 
+import { supabase } from '@/integrations/supabase/client';
+import {
   ArrowUp,
-  Sparkles, 
-  Brain, 
+  Sparkles,
+  Brain,
   TrendingUp,
   Loader2,
   Paperclip,
-  ChevronDown
+  ChevronDown,
+  FlaskConical,
+  GraduationCap,
+  BarChart
 } from 'lucide-react';
 import { AIResponseRenderer } from './assistant/AIResponseRenderer';
 import { UserQuery } from './assistant/UserQuery';
@@ -57,6 +61,72 @@ export const AIAssistantChat = ({ mode = 'analysis', onModeChange, onImmersiveCh
   const [selectedDataset, setSelectedDataset] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isImmersive, setIsImmersive] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+
+  // Get user ID on mount
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) setUserId(data.user.id);
+    });
+  }, []);
+
+  // Load chat history when dataset or mode changes
+  useEffect(() => {
+    if (selectedDataset && userId) {
+      loadChatHistory();
+    } else {
+      setMessages([]);
+    }
+  }, [selectedDataset, mode, userId]);
+
+  const loadChatHistory = async () => {
+    if (!selectedDataset || !userId) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('chat_history')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('dataset_id', selectedDataset)
+        .eq('mode', mode)
+        .order('timestamp', { ascending: true });
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        const loadedMessages = data.map(msg => ({
+          role: msg.role as 'user' | 'assistant',
+          content: msg.content,
+          sections: msg.sections,
+          timestamp: msg.timestamp
+        }));
+        setMessages(loadedMessages);
+      } else {
+        setMessages([]);
+      }
+    } catch (error) {
+      console.error('Error loading chat history:', error);
+      setMessages([]);
+    }
+  };
+
+  const saveChatMessage = async (message: Message) => {
+    if (!selectedDataset || !userId) return;
+
+    try {
+      await supabase.from('chat_history').insert({
+        user_id: userId,
+        dataset_id: selectedDataset,
+        mode,
+        role: message.role,
+        content: message.content,
+        sections: message.sections || null,
+        timestamp: message.timestamp
+      });
+    } catch (error) {
+      console.error('Error saving chat message:', error);
+    }
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -68,38 +138,43 @@ export const AIAssistantChat = ({ mode = 'analysis', onModeChange, onImmersiveCh
 
   const suggestions = {
     analysis: [
-      "Show me the correlation between temperature and yield",
-      "Summarize the top variables in my dataset",
-      "Find outliers in the absorption spectrum data",
-      "What are the trends in this time series?"
+      "What are the main variables in this dataset?",
+      "Show me correlations between variables",
+      "Find outliers in the data",
+      "Summarize the key statistics"
     ],
     automl: [
-      "Build a model to predict yield based on soil moisture",
-      "Which algorithm works best for this classification task?",
-      "Explain the feature importance in my model",
+      "Build a predictive model for this data",
+      "Which algorithm works best here?",
+      "Show me feature importance",
       "How can I improve model accuracy?"
     ],
     educator: [
-      "What is the difference between R² and RMSE?",
-      "Explain random forest in simple terms",
-      "When should I use classification vs regression?",
-      "What is feature engineering?"
+      "Explain correlation analysis",
+      "What is machine learning?",
+      "When should I use regression vs classification?",
+      "What are outliers and why do they matter?"
     ]
   };
 
   const handleSend = async (text: string = input) => {
     if (!text.trim() || isLoading) return;
+    if (!selectedDataset) {
+      alert('Please select a dataset first!');
+      return;
+    }
 
-    const userMessage: Message = { 
-      role: 'user', 
+    const userMessage: Message = {
+      role: 'user',
       content: text,
       timestamp: new Date().toISOString()
     };
     setMessages(prev => [...prev, userMessage]);
+    await saveChatMessage(userMessage);
     setInput('');
     setIsLoading(true);
     setIsImmersive(true);
-    onImmersiveChange?.(true); // Enter immersive mode
+    onImmersiveChange?.(true);
     setThinking('Analyzing your data...');
 
     try {
@@ -109,10 +184,10 @@ export const AIAssistantChat = ({ mode = 'analysis', onModeChange, onImmersiveCh
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
           },
           body: JSON.stringify({
-            messages: [...messages, userMessage],
+            messages: [...messages, userMessage].map(m => ({ role: m.role, content: m.content })),
             mode,
             datasetId: selectedDataset
           }),
@@ -125,16 +200,14 @@ export const AIAssistantChat = ({ mode = 'analysis', onModeChange, onImmersiveCh
       }
 
       setThinking('');
-      
-      // Stream processing
+
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let assistantContent = '';
       let textBuffer = '';
 
-      // Add assistant message placeholder
-      setMessages(prev => [...prev, { 
-        role: 'assistant', 
+      setMessages(prev => [...prev, {
+        role: 'assistant',
         content: '',
         timestamp: new Date().toISOString()
       }]);
@@ -144,7 +217,7 @@ export const AIAssistantChat = ({ mode = 'analysis', onModeChange, onImmersiveCh
         if (done) break;
 
         textBuffer += decoder.decode(value, { stream: true });
-        
+
         let newlineIndex: number;
         while ((newlineIndex = textBuffer.indexOf('\n')) !== -1) {
           let line = textBuffer.slice(0, newlineIndex);
@@ -160,7 +233,7 @@ export const AIAssistantChat = ({ mode = 'analysis', onModeChange, onImmersiveCh
           try {
             const parsed = JSON.parse(jsonStr);
             const content = parsed.choices?.[0]?.delta?.content;
-            
+
             if (content) {
               assistantContent += content;
               setMessages(prev => {
@@ -173,62 +246,102 @@ export const AIAssistantChat = ({ mode = 'analysis', onModeChange, onImmersiveCh
               });
             }
           } catch (e) {
-            // Partial JSON, put it back
             textBuffer = line + '\n' + textBuffer;
             break;
           }
         }
       }
 
-      // Parse final accumulated JSON response
+      // Parse final JSON response
+      let sections: Section[] | undefined;
       try {
         const jsonResponse = JSON.parse(assistantContent);
         if (jsonResponse.sections) {
-          setMessages(prev => {
-            const newMessages = [...prev];
-            newMessages[newMessages.length - 1] = {
-              role: 'assistant',
-              content: assistantContent,
-              sections: jsonResponse.sections,
-              timestamp: new Date().toISOString()
-            };
-            return newMessages;
-          });
+          sections = jsonResponse.sections;
         }
       } catch (e) {
-        // Not valid JSON, keep as plain text
-        console.log('Response is not structured JSON, displaying as text');
+        console.log('Response is not structured JSON');
       }
+
+      const finalMessage: Message = {
+        role: 'assistant',
+        content: assistantContent,
+        sections,
+        timestamp: new Date().toISOString()
+      };
+
+      setMessages(prev => prev.map((msg, idx) =>
+        idx === prev.length - 1 ? finalMessage : msg
+      ));
+      await saveChatMessage(finalMessage);
 
     } catch (error) {
       console.error('Chat error:', error);
-      setMessages(prev => [
-        ...prev,
-        {
-          role: 'assistant',
-          content: `I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`
-        }
-      ]);
+      const errorMessage: Message = {
+        role: 'assistant',
+        content: `I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`,
+        timestamp: new Date().toISOString()
+      };
+      setMessages(prev => [...prev.slice(0, -1), errorMessage]);
+      await saveChatMessage(errorMessage);
     } finally {
       setIsLoading(false);
       setThinking('');
-      // Stay in immersive mode permanently
     }
   };
 
   const modeConfig = {
-    analysis: { icon: TrendingUp, color: 'text-accent', label: 'Flash', description: 'Data Analysis' },
-    automl: { icon: Brain, color: 'text-secondary', label: 'Flash', description: 'AutoML' },
-    educator: { icon: Sparkles, color: 'text-primary', label: 'Flash', description: 'Educator' }
+    analysis: { icon: BarChart, color: 'text-blue-500', label: 'Analysis', description: 'Data Analysis' },
+    automl: { icon: FlaskConical, color: 'text-purple-500', label: 'AutoML', description: 'AutoML' },
+    educator: { icon: GraduationCap, color: 'text-green-500', label: 'Educator', description: 'Learn' }
   };
 
   const currentMode = modeConfig[mode];
+  const ModeIcon = currentMode.icon;
 
   return (
     <div className="flex flex-col h-full relative">
-      {/* Dataset Selector - Compact, hidden in immersive mode */}
+      {/* Header with Mode Selector */}
+      <div className="flex items-center justify-between p-4 border-b border-border/40 bg-card/50">
+        <div className="flex items-center gap-3">
+          <div className={`p-2 rounded-lg bg-gradient-to-br ${currentMode.color} from-current/10 to-current/5`}>
+            <ModeIcon className={`w-5 h-5 ${currentMode.color}`} />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold">AI Assistant</h2>
+            <p className="text-sm text-muted-foreground">{currentMode.description} Mode</p>
+          </div>
+        </div>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-2">
+              <ModeIcon className="w-4 h-4" />
+              {currentMode.label}
+              <ChevronDown className="w-3 h-3" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            {Object.entries(modeConfig).map(([key, config]) => {
+              const Icon = config.icon;
+              return (
+                <DropdownMenuItem
+                  key={key}
+                  onClick={() => onModeChange?.(key as AssistantMode)}
+                  className="gap-2"
+                >
+                  <Icon className={`w-4 h-4 ${config.color}`} />
+                  {config.description}
+                </DropdownMenuItem>
+              );
+            })}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      {/* Dataset Selector */}
       {!isImmersive && (
-        <div className="mb-4 animate-fade-in">
+        <div className="p-4 animate-fade-in">
           <DatasetSelector
             selectedDataset={selectedDataset}
             onSelectDataset={setSelectedDataset}
@@ -248,72 +361,47 @@ export const AIAssistantChat = ({ mode = 'analysis', onModeChange, onImmersiveCh
                 AI Data Analysis Assistant
               </h3>
               <p className="text-muted-foreground mb-8 max-w-md mx-auto">
-                Upload your dataset and ask questions. I'll analyze, visualize, and explain your data in real-time.
+                {selectedDataset ? `Ask me anything about your data!` : `Select a dataset to begin analyzing.`}
               </p>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 max-w-3xl mx-auto">
-                {suggestions[mode].slice(0, 3).map((suggestion, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => handleSend(suggestion)}
-                    className="px-4 py-3 bg-muted/30 hover:bg-muted/50 rounded-xl transition-all text-sm text-left hover:shadow-md"
-                  >
-                    {suggestion}
-                  </button>
-                ))}
-              </div>
+              {selectedDataset && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-3xl mx-auto">
+                  {suggestions[mode].slice(0, 4).map((suggestion, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => handleSend(suggestion)}
+                      className="px-4 py-3 bg-muted/30 hover:bg-muted/50 rounded-xl transition-all text-sm text-left hover:shadow-md"
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
-          {messages.map((message, i) => {
-            const isLastMessage = i === messages.length - 1;
-            
-            return (
-              <div key={i} className="space-y-6">
-                {/* User Query Card */}
-                {message.role === 'user' && (
-                  <UserQuery 
-                    content={message.content}
-                    timestamp={message.timestamp}
-                  />
-                )}
+          {messages.map((message, i) => (
+            <div key={i} className="space-y-6">
+              {message.role === 'user' && (
+                <UserQuery
+                  content={message.content}
+                  timestamp={message.timestamp}
+                />
+              )}
 
-                {/* Assistant Response */}
-                {message.role === 'assistant' && message.content && (
-                  <>
-                    {message.sections ? (
-                      <AIResponseRenderer sections={message.sections} />
-                    ) : (
-                      <div className="p-6 bg-card rounded-lg border border-border/40">
-                        <p className="text-foreground/90 leading-relaxed">{message.content}</p>
-                      </div>
-                    )}
+              {message.role === 'assistant' && message.content && (
+                <>
+                  {message.sections ? (
+                    <AIResponseRenderer sections={message.sections} />
+                  ) : (
+                    <div className="p-6 bg-card rounded-lg border border-border/40">
+                      <p className="text-foreground/90 leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          ))}
 
-                    {/* Suggested Follow-ups - Only after last assistant message and not in immersive mode */}
-                    {isLastMessage && !isLoading && !isImmersive && (
-                      <div className="space-y-2 animate-fade-in">
-                        <p className="text-xs font-medium text-muted-foreground px-2">
-                          Suggested follow-ups:
-                        </p>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                          {suggestions[mode].slice(0, 3).map((suggestion, idx) => (
-                            <button
-                              key={idx}
-                              onClick={() => handleSend(suggestion)}
-                              className="px-4 py-2.5 bg-muted/20 hover:bg-muted/40 rounded-lg transition-all text-sm text-left border border-border/30 hover:border-border/60"
-                            >
-                              {suggestion}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            );
-          })}
-          
-          {/* Loading indicator with typing animation */}
           {isLoading && (
             <div className="flex items-center gap-3 px-6 py-4 animate-fade-in">
               <div className="flex gap-1.5">
@@ -324,7 +412,7 @@ export const AIAssistantChat = ({ mode = 'analysis', onModeChange, onImmersiveCh
               <span className="text-sm text-muted-foreground">{thinking}</span>
             </div>
           )}
-          
+
           <div ref={messagesEndRef} />
         </div>
       </div>
@@ -333,65 +421,23 @@ export const AIAssistantChat = ({ mode = 'analysis', onModeChange, onImmersiveCh
       <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-background via-background to-transparent pt-8 pb-6 px-4">
         <div className="max-w-5xl mx-auto">
           <div className="relative flex items-center gap-3 bg-card border border-border/40 rounded-2xl shadow-lg px-5 py-3.5 transition-shadow hover:shadow-xl">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-9 w-9 text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <Paperclip className="w-5 h-5" />
-            </Button>
-
             <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSend();
-                }
-              }}
-              placeholder="Ask a question about your data..."
-              className="flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-base placeholder:text-muted-foreground/60"
-              disabled={isLoading}
+              onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
+              placeholder={selectedDataset ? "Ask about your data..." : "Select a dataset first..."}
+              disabled={!selectedDataset || isLoading}
+              className="flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-base"
             />
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="gap-2 rounded-xl border-border/40 hover:bg-muted/50"
-                  disabled={isLoading}
-                >
-                  <Sparkles className="w-4 h-4" />
-                  <span className="text-sm font-medium">{currentMode.label}</span>
-                  <ChevronDown className="w-3.5 h-3.5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                {Object.entries(modeConfig).map(([key, config]) => {
-                  const Icon = config.icon;
-                  return (
-                    <DropdownMenuItem
-                      key={key}
-                      onClick={() => onModeChange?.(key as AssistantMode)}
-                      className="gap-2"
-                    >
-                      <Icon className="w-4 h-4" />
-                      {config.description}
-                    </DropdownMenuItem>
-                  );
-                })}
-              </DropdownMenuContent>
-            </DropdownMenu>
 
             <Button
               onClick={() => handleSend()}
-              disabled={!input.trim() || isLoading}
+              disabled={!input.trim() || isLoading || !selectedDataset}
               size="icon"
-              className="h-10 w-10 rounded-full bg-primary hover:bg-primary/90 transition-all hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
+              className="h-10 w-10 rounded-xl shrink-0 bg-primary hover:bg-primary/90"
             >
               {isLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="w-5 h-5 animate-spin" />
               ) : (
                 <ArrowUp className="w-5 h-5" />
               )}

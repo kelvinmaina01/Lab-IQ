@@ -18,6 +18,7 @@ import NotFound from "./pages/NotFound";
 import NotificationPreferences from "./pages/NotificationPreferences";
 import DeviceStreams from "./pages/DeviceStreams";
 import DataAnonymization from "./pages/DataAnonymization";
+import Models from "./pages/Models";
 
 const queryClient = new QueryClient();
 
@@ -41,6 +42,7 @@ const App = () => (
           <Route path="/settings/notifications" element={<NotificationPreferences />} />
           <Route path="/device-streams" element={<DeviceStreams />} />
           <Route path="/data-anonymization" element={<DataAnonymization />} />
+          <Route path="/models" element={<Models />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

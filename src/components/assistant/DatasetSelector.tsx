@@ -41,15 +41,52 @@ export const DatasetSelector = ({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data, error } = await supabase
+      // Fetch REAL datasets only - exclude samples
+      const { data: datasetsData, error: datasetsError } = await supabase
         .from('datasets')
-        .select('id, name, row_count, column_count, status, created_at')
+        .select('id, name, row_count, created_at')
         .eq('user_id', user.id)
+        .not('name', 'ilike', '%Sample%') // Exclude any dataset with "Sample" in the name
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setDatasets(data || []);
+      if (datasetsError) {
+        console.error('Error fetching datasets:', datasetsError);
+        throw datasetsError;
+      }
+
+      console.log('Loaded real datasets:', datasetsData);
+
+      if (!datasetsData || datasetsData.length === 0) {
+        setDatasets([]);
+        return;
+      }
+
+      // Fetch column counts
+      const datasetIds = datasetsData.map(d => d.id);
+      const { data: columnsData } = await supabase
+        .from('dataset_columns')
+        .select('dataset_id')
+        .in('dataset_id', datasetIds);
+
+      // Count columns per dataset
+      const columnCounts = columnsData?.reduce((acc: Record<string, number>, col) => {
+        acc[col.dataset_id] = (acc[col.dataset_id] || 0) + 1;
+        return acc;
+      }, {}) || {};
+
+      // Transform data
+      const transformedData = datasetsData.map(d => ({
+        id: d.id,
+        name: d.name,
+        row_count: d.row_count,
+        column_count: columnCounts[d.id] || 0,
+        status: 'ready',
+        created_at: d.created_at
+      }));
+
+      setDatasets(transformedData);
     } catch (error: any) {
+      console.error('Fetch error:', error);
       toast({
         title: 'Error loading datasets',
         description: error.message,
@@ -63,15 +100,12 @@ export const DatasetSelector = ({
   useEffect(() => {
     fetchDatasets();
 
-    // Subscribe to real-time changes
+    // Real-time updates
     const channel = supabase
       .channel('datasets-changes')
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'datasets' },
-        (payload) => {
-          console.log('Dataset change detected:', payload);
-          fetchDatasets();
-        }
+        () => fetchDatasets()
       )
       .subscribe();
 
@@ -81,25 +115,6 @@ export const DatasetSelector = ({
   }, []);
 
   const selectedDatasetInfo = datasets.find((d) => d.id === selectedDataset);
-  const readyDatasets = datasets.filter(d => d.status === 'ready');
-
-  const getStatusBadge = (status: string | null) => {
-    if (!status) return null;
-
-    const statusConfig = {
-      processing: { label: 'Processing', variant: 'secondary' as const, className: 'bg-blue-500/10 text-blue-500' },
-      ready: { label: 'Ready', variant: 'default' as const, className: 'bg-green-500/10 text-green-500' },
-      error: { label: 'Error', variant: 'destructive' as const, className: 'bg-red-500/10 text-red-500' }
-    };
-
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.processing;
-
-    return (
-      <Badge variant={config.variant} className={`text-xs ${config.className}`}>
-        {config.label}
-      </Badge>
-    );
-  };
 
   return (
     <Card className="p-4 mb-4 bg-muted/30 border-border/40">
@@ -107,18 +122,13 @@ export const DatasetSelector = ({
         <div className="flex items-center gap-2">
           <Database className="w-4 h-4 text-primary" />
           <span className="text-sm font-semibold">Active Dataset</span>
-          {readyDatasets.length > 0 && (
+          {datasets.length > 0 && (
             <Badge variant="outline" className="text-xs">
-              {readyDatasets.length} ready
+              {datasets.length} available
             </Badge>
           )}
         </div>
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={fetchDatasets}
-          disabled={loading}
-        >
+        <Button size="sm" variant="ghost" onClick={fetchDatasets} disabled={loading}>
           <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
         </Button>
       </div>
@@ -134,11 +144,7 @@ export const DatasetSelector = ({
             </div>
           ) : (
             datasets.map((dataset) => (
-              <SelectItem
-                key={dataset.id}
-                value={dataset.id}
-                disabled={dataset.status !== 'ready'}
-              >
+              <SelectItem key={dataset.id} value={dataset.id}>
                 <div className="flex items-center gap-2 justify-between w-full">
                   <span className="truncate">{dataset.name}</span>
                   <div className="flex items-center gap-1">
@@ -147,7 +153,9 @@ export const DatasetSelector = ({
                         {dataset.row_count.toLocaleString()} rows
                       </Badge>
                     )}
-                    {getStatusBadge(dataset.status)}
+                    <Badge variant="default" className="text-xs bg-green-500/10 text-green-500">
+                      Ready
+                    </Badge>
                   </div>
                 </div>
               </SelectItem>
@@ -160,17 +168,11 @@ export const DatasetSelector = ({
         <div className="mt-3 p-3 bg-background/50 rounded-lg text-xs space-y-1">
           <div className="flex items-center justify-between">
             <span className="text-muted-foreground">Columns:</span>
-            <span className="font-mono">
-              {selectedDatasetInfo.column_count || 0}
-            </span>
+            <span className="font-mono">{selectedDatasetInfo.column_count || 0}</span>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-muted-foreground">Rows:</span>
             <span className="font-mono">{selectedDatasetInfo.row_count?.toLocaleString() || 0}</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-muted-foreground">Status:</span>
-            {getStatusBadge(selectedDatasetInfo.status)}
           </div>
         </div>
       )}
