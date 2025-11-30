@@ -1,90 +1,73 @@
-# 🧪 Lab-IQ
+# Welcome to your Lovable project
 
-**Lab-IQ** is an AI-powered laboratory insights platform designed to help research and diagnostic labs manage data, automate analysis, and uncover actionable insights in real time.  
-It combines **data integration**, **AI-driven analytics**, and **collaboration tools** to streamline scientific workflows and decision-making.
+## Project info
 
----
+**URL**: https://lovable.dev/projects/272a771f-12c6-4405-8782-525c8d51d297
 
-## 🚀 Features
+## How can I edit this code?
 
-- **AI Assistant** – Get intelligent insights and explanations for lab data.  
-- **Smart Dashboard** – Monitor performance metrics, experiment results, and trends in real time.  
-- **Automation Tools** – Automate experiment setup, data collection, and reporting.  
-- **Collaboration Hub** – Share updates and communicate with your lab team seamlessly.  
-- **Predictive Analytics** – Detect bottlenecks, optimize workflows, and forecast experimental outcomes.  
-- **Supabase Integration** – Secure and scalable backend for authentication, data storage, and analytics.
+There are several ways of editing your application.
 
----
+**Use Lovable**
 
-## 🧰 Tech Stack
+Simply visit the [Lovable Project](https://lovable.dev/projects/272a771f-12c6-4405-8782-525c8d51d297) and start prompting.
 
-| Layer | Technology |
-|-------|-------------|
-| Frontend | React + TypeScript + Vite |
-| Styling | Tailwind CSS + ShadCN UI |
-| Backend | Supabase (Edge Functions) |
-| State Management | React Hooks |
-| Analytics | AI/ML-assisted data processing |
-| Deployment | Vercel / Netlify (recommended) |
+Changes made via Lovable will be committed automatically to this repo.
 
----
+**Use your preferred IDE**
 
-## ⚙️ Getting Started
+If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
 
-### 1. Clone the repository
-```bash
-git clone https://github.com/kelvinmaina01/Lab-IQ.git
-cd Lab-IQ
-2. Install dependencies
-npm install
-# or
-bun install
+The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
 
-3. Configure environment variables
+Follow these steps:
 
-Create a .env file in the project root and add your Supabase credentials:
+```sh
+# Step 1: Clone the repository using the project's Git URL.
+git clone <YOUR_GIT_URL>
 
-VITE_SUPABASE_URL=your-supabase-url
-VITE_SUPABASE_ANON_KEY=your-anon-key
+# Step 2: Navigate to the project directory.
+cd <YOUR_PROJECT_NAME>
 
-4. Run the development server
+# Step 3: Install the necessary dependencies.
+npm i
+
+# Step 4: Start the development server with auto-reloading and an instant preview.
 npm run dev
+```
 
+**Edit a file directly in GitHub**
 
-Then open http://localhost:5173
- in your browser.
+- Navigate to the desired file(s).
+- Click the "Edit" button (pencil icon) at the top right of the file view.
+- Make your changes and commit the changes.
 
-🧠 Project Structure
-Lab-IQ/
-│
-├── src/
-│   ├── components/     # Reusable UI components
-│   ├── pages/          # App pages (Dashboard, Assistant, Upload, etc.)
-│   ├── hooks/          # Custom React hooks
-│   ├── integrations/   # Supabase and API clients
-│   └── lib/            # Utility functions
-│
-├── public/             # Static assets
-├── supabase/           # Edge functions & migrations
-├── package.json
-└── vite.config.ts
+**Use GitHub Codespaces**
 
-📈 Future Improvements
+- Navigate to the main page of your repository.
+- Click on the "Code" button (green button) near the top right.
+- Select the "Codespaces" tab.
+- Click on "New codespace" to launch a new Codespace environment.
+- Edit files directly within the Codespace and commit and push your changes once you're done.
 
-Integrate digital twin models for lab simulations
+## What technologies are used for this project?
 
-Add bioinformatics and genomics data analysis support
+This project is built with:
 
-Build an API layer for external integrations
+- Vite
+- TypeScript
+- React
+- shadcn-ui
+- Tailwind CSS
 
-👨‍💻 Author
+## How can I deploy this project?
 
-Kelvin Maina
-AI & Bioinformatics Developer
-🔗 GitHub
- • LinkedIn
+Simply open [Lovable](https://lovable.dev/projects/272a771f-12c6-4405-8782-525c8d51d297) and click on Share -> Publish.
 
-🪪 License
+## Can I connect a custom domain to my Lovable project?
 
-This project is licensed under the MIT License — see the LICENSE
- file for details.
+Yes, you can!
+
+To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+
+Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)

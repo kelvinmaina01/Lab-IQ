@@ -8,8 +8,8 @@ const Sidebar = () => {
   const navItems = [
     { path: "/dashboard", label: "Overview", icon: Home },
     { path: "/upload", label: "Data Ingestion", icon: Upload },
-    { path: "/insights", label: "Interactive AI Agent", icon: Brain },
-    { path: "/assistant", label: "Analytics", icon: BarChart3 },
+    { path: "/insights", label: "AI Assistant", icon: Brain },
+    { path: "/analytics", label: "Analytics", icon: BarChart3 },
     { path: "/experiments", label: "Experiments", icon: FlaskConicalIcon },
     { path: "/automation", label: "Automation", icon: Boxes },
     { path: "/collaboration", label: "Collaboration", icon: Users },

@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
-import { Database, Brain, FlaskConical, Award, Activity, BarChart3, Zap, Info } from "lucide-react";
+import { Database, Brain, FlaskConical, Award, Activity, BarChart3, Zap, Info, Wifi, Shield, ArrowRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { Link } from "react-router-dom";
 import MetricCard from "@/components/MetricCard";
 import Sidebar from "@/components/Sidebar";
 import TopBar from "@/components/TopBar";
@@ -193,6 +194,45 @@ const Dashboard = () => {
                 onUpgrade={() => setUpgradeOpen(true)}
                 isPro={isPro}
               />
+            </div>
+
+            {/* Quick Access - Device Streams & Data Anonymization */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <Link to="/device-streams">
+                <Card className="p-6 hover:shadow-lg transition-all cursor-pointer border-primary/20 hover:border-primary/40 bg-gradient-to-br from-background to-primary/5">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="p-3 rounded-lg bg-primary/10">
+                      <Wifi className="w-6 h-6 text-primary" />
+                    </div>
+                    <ArrowRight className="w-5 h-5 text-muted-foreground" />
+                  </div>
+                  <h3 className="text-lg font-semibold mb-2">Live Device Streams</h3>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Real-time monitoring of connected IoT laboratory devices with live metrics and alerts
+                  </p>
+                  <Badge variant="secondary" className="text-xs">
+                    {isPro ? "Pro Feature" : "1 stream on free"}
+                  </Badge>
+                </Card>
+              </Link>
+
+              <Link to="/data-anonymization">
+                <Card className="p-6 hover:shadow-lg transition-all cursor-pointer border-accent/20 hover:border-accent/40 bg-gradient-to-br from-background to-accent/5">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="p-3 rounded-lg bg-accent/10">
+                      <Shield className="w-6 h-6 text-accent" />
+                    </div>
+                    <ArrowRight className="w-5 h-5 text-muted-foreground" />
+                  </div>
+                  <h3 className="text-lg font-semibold mb-2">Data Anonymization</h3>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Automated PII/PHI detection and GDPR-compliant data processing pipelines
+                  </p>
+                  <Badge variant="secondary" className="text-xs">
+                    {isPro ? "Enterprise Ready" : "Pro Feature"}
+                  </Badge>
+                </Card>
+              </Link>
             </div>
 
             {/* Recent Activity & Performance */}
