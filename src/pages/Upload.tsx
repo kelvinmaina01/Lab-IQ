@@ -19,6 +19,8 @@ import { DeviceStreamsSection } from "@/components/upload/DeviceStreamsSection";
 import { DatasetMetadataCard } from "@/components/upload/DatasetMetadataCard";
 import { SampleDatasetCTA } from "@/components/upload/SampleDatasetCTA";
 import { supabase } from "@/integrations/supabase/client";
+import { TemplateSuggestions } from "@/components/upload/TemplateSuggestions";
+import { suggestTemplates } from "@/lib/utils/templateSuggestions";
 
 export default function Upload() {
   const { toast } = useToast();
@@ -446,6 +448,12 @@ export default function Upload() {
                     >
                       {isProcessing ? "Processing..." : "Process & Analyze Dataset"}
                     </Button>
+
+                    {parsedData && uploadedFile && (
+                      <TemplateSuggestions
+                        suggestedTemplateIds={suggestTemplates(uploadedFile.name, parsedData.headers || [])}
+                      />
+                    )}
                   </div>
                 )}
 

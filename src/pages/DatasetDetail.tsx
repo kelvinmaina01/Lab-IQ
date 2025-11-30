@@ -13,7 +13,8 @@ import {
     AlertTriangle,
     CheckCircle2,
     BarChart3,
-    Table as TableIcon
+    Table as TableIcon,
+    Brain
 } from "lucide-react";
 import { toast } from "sonner";
 import { DataExplorer } from "@/components/data/DataExplorer";
@@ -178,6 +179,10 @@ const DatasetDetail = () => {
                         </Button>
                         <Button variant="outline" onClick={handleDownload}>
                             Download CSV
+                        </Button>
+                        <Button onClick={() => navigate('/models')} variant="secondary" className="gap-2">
+                            <Brain className="h-4 w-4" />
+                            Predict
                         </Button>
                         <Button>Analyze with AI</Button>
                     </div>

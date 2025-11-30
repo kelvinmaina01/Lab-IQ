@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
-import { Activity, Wifi, WifiOff, AlertCircle, RefreshCw, Zap } from "lucide-react";
+import { Activity, Wifi, WifiOff, AlertCircle, RefreshCw, Zap, Brain } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -34,7 +34,7 @@ export const DeviceStreamDashboard = () => {
 
   useEffect(() => {
     fetchDeviceStreams();
-    
+
     // Subscribe to real-time updates
     const channel = supabase
       .channel('device-streams')
@@ -76,7 +76,7 @@ export const DeviceStreamDashboard = () => {
         .eq('user_id', user.id);
 
       if (error) throw error;
-      
+
       setStreams(data || []);
       if (data && data.length > 0 && !selectedStream) {
         setSelectedStream(data[0].id);
@@ -164,10 +164,16 @@ export const DeviceStreamDashboard = () => {
           <h2 className="text-2xl font-bold">Live Device Streams</h2>
           <p className="text-muted-foreground">Real-time monitoring of connected IoT devices</p>
         </div>
-        <Button variant="outline" size="sm" onClick={fetchDeviceStreams}>
-          <RefreshCw className="w-4 h-4 mr-2" />
-          Refresh
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => window.location.href = '/models'}>
+            <Brain className="w-4 h-4 mr-2" />
+            Attach AI Model
+          </Button>
+          <Button variant="outline" size="sm" onClick={fetchDeviceStreams}>
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Stream Selector */}
@@ -175,11 +181,10 @@ export const DeviceStreamDashboard = () => {
         {streams.map((stream) => (
           <Card
             key={stream.id}
-            className={`p-4 cursor-pointer transition-all ${
-              selectedStream === stream.id
-                ? 'ring-2 ring-primary shadow-lg'
-                : 'hover:shadow-md'
-            }`}
+            className={`p-4 cursor-pointer transition-all ${selectedStream === stream.id
+              ? 'ring-2 ring-primary shadow-lg'
+              : 'hover:shadow-md'
+              }`}
             onClick={() => setSelectedStream(stream.id)}
           >
             <div className="flex items-start justify-between mb-2">

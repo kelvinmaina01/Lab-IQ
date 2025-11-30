@@ -17,6 +17,7 @@ import { BottleneckCard } from "@/components/dashboard/BottleneckCard";
 import { LabProfileSelector } from "@/components/dashboard/LabProfileSelector";
 import { NextActionsPanel } from "@/components/dashboard/NextActionsPanel";
 import { ProUnlocksDrawer } from "@/components/dashboard/ProUnlocksDrawer";
+import { ModelPerformanceWidget } from "@/components/dashboard/ModelPerformanceWidget";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const Dashboard = () => {
@@ -112,7 +113,7 @@ const Dashboard = () => {
         <Sidebar />
         <div className="md:ml-64 pb-16 md:pb-0">
           <TopBar />
-          
+
           <div className="p-4 md:p-8 max-w-[1600px] mx-auto">
             {/* Header */}
             <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
@@ -130,6 +131,11 @@ const Dashboard = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
               <PredictiveInsightCard isPro={isPro} onUpgrade={() => setUpgradeOpen(true)} />
               <BottleneckCard />
+            </div>
+
+            {/* Model Performance Widget (New) */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+              <ModelPerformanceWidget />
             </div>
 
             {/* Core Metrics Grid */}

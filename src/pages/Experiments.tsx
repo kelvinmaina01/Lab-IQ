@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import Sidebar from "@/components/Sidebar";
 import TopBar from "@/components/TopBar";
 import MobileNav from "@/components/MobileNav";
@@ -12,7 +13,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, FlaskConical, Calendar, User, MoreVertical, Play, Pause, CheckCircle, AlertCircle } from "lucide-react";
+import { Plus, Search, FlaskConical, Calendar, User, MoreVertical, Play, Pause, CheckCircle, AlertCircle, Brain } from "lucide-react";
+import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { ExperimentTemplates } from "@/components/experiments/ExperimentTemplates";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -27,63 +29,37 @@ const Experiments = () => {
   const { subscription, loading } = useSubscription();
   const { trackActivity } = useActivityTracker();
 
-  const experiments = [
-    {
-      id: 1,
-      title: "Protein Structure Analysis",
-      description: "Analyzing protein folding patterns using AI-powered prediction models",
-      status: "running",
-      progress: 67,
-      dataset: "proteins_batch_5.csv",
-      created: "2025-01-15",
-      researcher: "Dr. Sarah Chen",
-      type: "Biological"
-    },
-    {
-      id: 2,
-      title: "Chemical Compound Screening",
-      description: "High-throughput screening of potential drug candidates",
-      status: "completed",
-      progress: 100,
-      dataset: "compounds_library.csv",
-      created: "2025-01-12",
-      researcher: "John Smith",
-      type: "Chemical"
-    },
-    {
-      id: 3,
-      title: "Material Strength Testing",
-      description: "Testing tensile strength of new polymer composites",
-      status: "pending",
-      progress: 0,
-      dataset: "materials_test_data.csv",
-      created: "2025-01-10",
-      researcher: "Dr. Mike Ross",
-      type: "Material"
-    },
-    {
-      id: 4,
-      title: "Climate Data Correlation",
-      description: "Identifying correlations between temperature and crop yield",
-      status: "running",
-      progress: 42,
-      dataset: "climate_agricultural_data.csv",
-      created: "2025-01-08",
-      researcher: "Emma Wilson",
-      type: "Environmental"
-    },
-    {
-      id: 5,
-      title: "Quality Control Analysis",
-      description: "Automated defect detection in manufacturing process",
-      status: "failed",
-      progress: 28,
-      dataset: "qc_images_batch3.csv",
-      created: "2025-01-05",
-      researcher: "Alex Turner",
-      type: "Quality Control"
-    },
-  ];
+  const [experiments, setExperiments] = useState<any[]>([]);
+  const [loadingExperiments, setLoadingExperiments] = useState(true);
+
+  useEffect(() => {
+    fetchExperiments();
+  }, []);
+
+  const fetchExperiments = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('experiments')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setExperiments(data || []);
+    } catch (error) {
+      console.error('Error fetching experiments:', error);
+      toast({
+        title: "Error loading experiments",
+        description: "Could not load your experiments.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoadingExperiments(false);
+    }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -123,10 +99,10 @@ const Experiments = () => {
     <AuthGuard>
       <div className="flex min-h-screen bg-background">
         <Sidebar />
-        
+
         <div className="flex-1 md:ml-64 pb-16 md:pb-0">
           <TopBar />
-          
+
           <main className="p-4 md:p-8">
             {/* Header */}
             <div className="flex items-center justify-between mb-8">
@@ -256,7 +232,7 @@ const Experiments = () => {
                           <span className="font-medium">{exp.progress}%</span>
                         </div>
                         <div className="h-2 bg-muted rounded-full overflow-hidden">
-                          <div 
+                          <div
                             className="h-full bg-primary transition-all duration-300"
                             style={{ width: `${exp.progress}%` }}
                           />
@@ -283,7 +259,15 @@ const Experiments = () => {
                 {filteredExperiments.filter(e => e.status === "completed").map((exp) => (
                   <Card key={exp.id} className="p-6">
                     <h3 className="font-semibold mb-2">{exp.title}</h3>
-                    <p className="text-sm text-muted-foreground">{exp.description}</p>
+                    <p className="text-sm text-muted-foreground mb-4">{exp.description}</p>
+                    <div className="flex justify-end">
+                      <Link to="/models">
+                        <Button size="sm" className="gap-2" variant="outline">
+                          <Brain className="w-4 h-4" />
+                          Train AI Model
+                        </Button>
+                      </Link>
+                    </div>
                   </Card>
                 ))}
               </TabsContent>
@@ -298,7 +282,7 @@ const Experiments = () => {
               </TabsContent>
 
               <TabsContent value="templates" className="mt-6">
-                <ExperimentTemplates 
+                <ExperimentTemplates
                   onSelectTemplate={(template) => {
                     toast({
                       title: "Template Loaded",

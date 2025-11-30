@@ -21,7 +21,8 @@ import {
   AlertTriangle,
   CheckCircle2,
   FileText,
-  Trash2
+  Trash2,
+  Brain
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -216,6 +217,12 @@ export const DataAnonymizationPipeline = () => {
             <FileText className="w-4 h-4 mr-2" />
             Export Report
           </Button>
+          {gdprCompliant && (
+            <Button onClick={() => window.location.href = '/models'} className="gap-2">
+              <Brain className="w-4 h-4" />
+              Train AI Model
+            </Button>
+          )}
         </div>
       </div>
 

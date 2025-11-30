@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, FileText, Download, Eye, MoreVertical, Calendar, User, Search, History, RotateCcw, Clock } from "lucide-react";
+import { Plus, FileText, Download, Eye, MoreVertical, Calendar, User, Search, History, RotateCcw, Clock, Brain } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useSubscription } from "@/hooks/useSubscription";
 import { UpgradeDialog } from "@/components/UpgradeDialog";
@@ -113,6 +113,7 @@ const Reports = () => {
     { id: 2, name: "Monthly Progress", description: "Monthly team and project updates" },
     { id: 3, name: "Quarterly Review", description: "Comprehensive quarterly performance review" },
     { id: 4, name: "Data Analysis", description: "In-depth data analysis and insights" },
+    { id: 5, name: "AI Model Performance", description: "Accuracy metrics, confusion matrix, and feature importance" },
   ];
 
   const handleGenerateReport = () => {
@@ -172,10 +173,10 @@ const Reports = () => {
     <AuthGuard>
       <div className="flex min-h-screen bg-background">
         <Sidebar />
-        
+
         <div className="flex-1 md:ml-64 pb-16 md:pb-0">
           <TopBar />
-          
+
           <main className="p-4 md:p-8">
             {/* Header */}
             <div className="flex items-center justify-between mb-8">
@@ -306,10 +307,10 @@ const Reports = () => {
                             </div>
                           </div>
                         </div>
-                         <div className="flex items-center gap-2">
-                          <Button 
-                            size="sm" 
-                            variant="outline" 
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
                             className="gap-2"
                             onClick={() => handleViewVersionHistory(report)}
                           >
@@ -321,8 +322,8 @@ const Reports = () => {
                             <Eye className="w-4 h-4" />
                             View
                           </Button>
-                          <Button 
-                            size="sm" 
+                          <Button
+                            size="sm"
                             className="gap-2"
                             onClick={() => handleDownloadReport(report.title)}
                           >
@@ -383,8 +384,12 @@ const Reports = () => {
                   {templates.map((template) => (
                     <Card key={template.id} className="p-6 hover:shadow-lg transition-shadow cursor-pointer">
                       <div className="flex items-start gap-4">
-                        <div className="p-3 rounded-lg bg-accent/10">
-                          <FileText className="w-6 h-6 text-accent" />
+                        <div className={`p-3 rounded-lg ${template.name.includes("AI") ? "bg-purple-500/10" : "bg-accent/10"}`}>
+                          {template.name.includes("AI") ? (
+                            <Brain className="w-6 h-6 text-purple-500" />
+                          ) : (
+                            <FileText className="w-6 h-6 text-accent" />
+                          )}
                         </div>
                         <div className="flex-1">
                           <h3 className="font-semibold mb-1">{template.name}</h3>
@@ -437,8 +442,8 @@ const Reports = () => {
                               View
                             </Button>
                             {index !== 0 && (
-                              <Button 
-                                size="sm" 
+                              <Button
+                                size="sm"
                                 onClick={() => handleRollback(version.version)}
                                 className="gap-1"
                               >
