@@ -174,7 +174,7 @@ const DatasetDetail = () => {
                         </div>
                     </div>
                     <div className="flex gap-2">
-                        <Button variant="destructive" variant="outline" onClick={handleDelete} className="text-destructive hover:bg-destructive/10 border-destructive/50">
+                        <Button variant="outline" onClick={handleDelete} className="text-destructive hover:bg-destructive/10 border-destructive/50">
                             Delete
                         </Button>
                         <Button variant="outline" onClick={handleDownload}>

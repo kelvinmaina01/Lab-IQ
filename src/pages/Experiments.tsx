@@ -48,7 +48,15 @@ const Experiments = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setExperiments(data || []);
+      if (error) throw error;
+
+      const formattedExperiments = (data || []).map(exp => ({
+        ...exp,
+        created: new Date(exp.created_at).toLocaleDateString(),
+        researcher: user.email
+      }));
+
+      setExperiments(formattedExperiments);
     } catch (error) {
       console.error('Error fetching experiments:', error);
       toast({
