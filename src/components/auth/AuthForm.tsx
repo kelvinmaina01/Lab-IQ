@@ -85,7 +85,7 @@ export const AuthForm = ({ onSuccess }: AuthFormProps) => {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
+            placeholder="•••••••"
             required
             disabled={loading}
             minLength={6}

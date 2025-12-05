@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import Sidebar from "@/components/Sidebar";
 import TopBar from "@/components/TopBar";
 import MobileNav from "@/components/MobileNav";
@@ -14,10 +15,25 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Zap, Clock, PlayCircle, PauseCircle, Settings, TrendingUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { WorkflowBuilder } from "@/components/workflows/WorkflowBuilder";
+import { supabase } from "@/integrations/supabase/client";
 
 const Automation = () => {
+  const location = useLocation();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [useBuilder, setUseBuilder] = useState(false);
   const { toast } = useToast();
+  const [initialDatasetId, setInitialDatasetId] = useState<string>();
+
+  useEffect(() => {
+    // Check if coming from QuickActions
+    const state = location.state as any;
+    if (state?.createNew && state?.datasetId) {
+      setIsCreateDialogOpen(true);
+      setUseBuilder(true);
+      setInitialDatasetId(state.datasetId);
+    }
+  }, [location.state]);
 
   const workflows = [
     {
@@ -84,22 +100,49 @@ const Automation = () => {
     });
   };
 
-  const handleCreateWorkflow = () => {
-    toast({
-      title: "Workflow Created",
-      description: "Your automation workflow has been created successfully.",
-    });
-    setIsCreateDialogOpen(false);
+  const handleCreateWorkflow = async (workflow: any) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { error } = await supabase
+        .from('workflows')
+        .insert({
+          user_id: user.id,
+          name: workflow.name,
+          description: workflow.description,
+          trigger_type: workflow.trigger_type,
+          trigger_config: workflow.trigger_config || {},
+          steps: workflow.steps,
+          status: workflow.status || 'active'
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Workflow Created",
+        description: "Your automation workflow has been created successfully.",
+      });
+      setIsCreateDialogOpen(false);
+      setUseBuilder(false);
+    } catch (error) {
+      console.error('Error creating workflow:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create workflow",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
     <AuthGuard>
       <div className="flex min-h-screen bg-background">
         <Sidebar />
-        
+
         <div className="flex-1 md:ml-64 pb-16 md:pb-0">
           <TopBar />
-          
+
           <main className="p-4 md:p-8">
             {/* Header */}
             <div className="flex items-center justify-between mb-8">
@@ -114,53 +157,29 @@ const Automation = () => {
                     Create Workflow
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-2xl">
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>Create Automation Workflow</DialogTitle>
                   </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="workflow-name">Workflow Name</Label>
-                      <Input id="workflow-name" placeholder="e.g., Daily Data Backup" />
+                  {useBuilder ? (
+                    <WorkflowBuilder
+                      onSave={handleCreateWorkflow}
+                      onCancel={() => {
+                        setIsCreateDialogOpen(false);
+                        setUseBuilder(false);
+                      }}
+                      initialDatasetId={initialDatasetId}
+                    />
+                  ) : (
+                    <div className="text-center py-8">
+                      <Button
+                        onClick={() => setUseBuilder(true)}
+                        size="lg"
+                      >
+                        Open Workflow Builder
+                      </Button>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="workflow-description">Description</Label>
-                      <Textarea id="workflow-description" placeholder="Describe what this workflow does..." rows={3} />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="trigger">Trigger Type</Label>
-                        <Select>
-                          <SelectTrigger id="trigger">
-                            <SelectValue placeholder="Select trigger" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="schedule">Schedule</SelectItem>
-                            <SelectItem value="upload">Data Upload</SelectItem>
-                            <SelectItem value="event">Event</SelectItem>
-                            <SelectItem value="threshold">Threshold</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="action">Action</Label>
-                        <Select>
-                          <SelectTrigger id="action">
-                            <SelectValue placeholder="Select action" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="backup">Backup Data</SelectItem>
-                            <SelectItem value="analyze">Run Analysis</SelectItem>
-                            <SelectItem value="notify">Send Notification</SelectItem>
-                            <SelectItem value="report">Generate Report</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <Button onClick={handleCreateWorkflow} className="w-full">
-                      Create Workflow
-                    </Button>
-                  </div>
+                  )}
                 </DialogContent>
               </Dialog>
             </div>
@@ -271,7 +290,7 @@ const Automation = () => {
                 <div>
                   <h3 className="font-semibold mb-2">Automation Benefits</h3>
                   <p className="text-sm text-muted-foreground">
-                    Automation workflows help you save time by handling repetitive tasks automatically. 
+                    Automation workflows help you save time by handling repetitive tasks automatically.
                     Set up triggers based on schedules, events, or thresholds, and let LabIQ handle the rest.
                   </p>
                 </div>

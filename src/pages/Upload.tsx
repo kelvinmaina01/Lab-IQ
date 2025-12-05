@@ -108,6 +108,12 @@ export default function Upload() {
 
     setUploadedFile(file);
 
+    // Auto-fill project name from filename if empty
+    if (!projectName) {
+      const baseName = file.name.split('.')[0];
+      setProjectName(baseName);
+    }
+
     // Parse immediately for preview
     setIsProcessing(true);
     setProgressMessage("Parsing file...");
@@ -142,6 +148,7 @@ export default function Upload() {
         description: error instanceof Error ? error.message : "Could not parse the file. Please check the format.",
         variant: "destructive"
       });
+      setParsedData(null);
     } finally {
       setIsProcessing(false);
       setProgressMessage("");
@@ -149,38 +156,96 @@ export default function Upload() {
   };
 
   const handleProcess = async () => {
-    if (!uploadedFile || !parsedData) return;
+    if (!uploadedFile || !parsedData) {
+      toast({
+        title: "Missing data",
+        description: "Please upload and parse a file first",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!projectName || projectName.trim() === '') {
+      toast({
+        title: "Missing dataset name",
+        description: "Please enter a dataset name",
+        variant: "destructive"
+      });
+      return;
+    }
 
     try {
       setIsProcessing(true);
+      setUploadProgress(0);
+      setProgressMessage("Starting upload...");
+
       const { data: { user } } = await supabase.auth.getUser();
 
       if (!user) {
-        toast({ title: "Authentication required", variant: "destructive" });
+        toast({
+          title: "Authentication required",
+          description: "Please sign in to upload datasets",
+          variant: "destructive"
+        });
         return;
       }
 
       const { datasetService } = await import("@/lib/services/datasetService");
 
-      const datasetId = await datasetService.saveDataset(user.id, parsedData, (progress, message) => {
-        setUploadProgress(progress);
-        setProgressMessage(message);
-      });
+      // Update parsedData with the user's chosen name
+      const datasetWithName = {
+        ...parsedData,
+        fileName: projectName + '.' + uploadedFile.name.split('.').pop()
+      };
+
+      console.log('Starting upload for:', projectName);
+      console.log('User ID:', user.id);
+      console.log('Parsed data:', datasetWithName);
+
+      const datasetId = await datasetService.saveDataset(
+        user.id,
+        datasetWithName,
+        (progress, message) => {
+          console.log(`Progress: ${progress}% - ${message}`);
+          setUploadProgress(progress);
+          setProgressMessage(message);
+        }
+      );
+
+      console.log('Dataset saved with ID:', datasetId);
 
       toast({
         title: "Success!",
         description: "Dataset uploaded and processed successfully."
       });
 
-      // Navigate to the new detail view
-      // We need to import useNavigate first
-      window.location.href = `/dashboard/datasets/${datasetId}`;
+      // Track activity
+      await trackActivity('Dataset uploaded', projectName);
 
-    } catch (error) {
+      // Refresh dataset list
+      await fetchDatasets();
+
+      // Clear form
+      setUploadedFile(null);
+      setParsedData(null);
+      setProjectName("");
+      setUploadProgress(0);
+      setProgressMessage("");
+
+      // Navigate to dataset detail page
+      setTimeout(() => {
+        window.location.href = `/dashboard/datasets/${datasetId}`;
+      }, 1000);
+
+    } catch (error: any) {
       console.error("Processing error:", error);
+
+      // Show detailed error
+      const errorMessage = error?.message || error?.toString() || "An unknown error occurred";
+
       toast({
         title: "Error processing dataset",
-        description: error instanceof Error ? error.message : "An unknown error occurred",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
@@ -422,6 +487,28 @@ export default function Upload() {
                                 {uploadedFile.type || "Unknown"}
                               </span>
                             </div>
+                            <div className="flex justify-between">
+                              <span>Parse Status:</span>
+                              <span className={`font-medium ${parsedData ? 'text-green-600' : 'text-orange-600'}`}>
+                                {parsedData ? '✓ Parsed Successfully' : '⚠ Parsing...'}
+                              </span>
+                            </div>
+                            {parsedData && (
+                              <>
+                                <div className="flex justify-between">
+                                  <span>Rows Found:</span>
+                                  <span className="font-medium text-foreground">
+                                    {parsedData.rowCount.toLocaleString()}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>Columns Found:</span>
+                                  <span className="font-medium text-foreground">
+                                    {parsedData.columnCount}
+                                  </span>
+                                </div>
+                              </>
+                            )}
                           </div>
                         )}
 
@@ -440,6 +527,35 @@ export default function Upload() {
                         </div>
                       </CardContent>
                     </Card>
+
+                    {/* Button Status Card */}
+                    {(!projectName || !parsedData) && (
+                      <Card className="border-orange-500/20 bg-orange-500/5">
+                        <CardContent className="p-4">
+                          <div className="flex items-start gap-3">
+                            <AlertCircle className="h-5 w-5 text-orange-500 mt-0.5" />
+                            <div className="flex-1">
+                              <p className="font-medium text-sm mb-1">Action Required:</p>
+                              <ul className="text-sm text-muted-foreground space-y-1">
+                                {!projectName && (
+                                  <li className="flex items-center gap-2">
+                                    <X className="h-4 w-4 text-red-500" />
+                                    Enter a dataset name above
+                                  </li>
+                                )}
+                                {!parsedData && (
+                                  <li className="flex items-center gap-2">
+                                    <X className="h-4 w-4 text-red-500" />
+                                    Wait for file to finish parsing
+                                  </li>
+                                )}
+                              </ul>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+
                     <Button
                       className="w-full"
                       size="lg"

@@ -489,87 +489,141 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Subscription Tiers */}
-      <section className="py-24 px-4">
+      {/* Call-to-Action Section - Professional & Confident */}
+      <section className="py-24 px-4 bg-gradient-to-br from-primary/5 via-background to-secondary/5">
         <div className="container mx-auto max-w-7xl">
-          <div className="text-center space-y-4 mb-16 animate-fade-in-up">
+          <div className="text-center space-y-6 mb-16 animate-fade-in-up">
             <h2 className="text-4xl md:text-5xl font-bold">
-              Choose Your Plan
+              Experience Lab-IQ in Action
             </h2>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              Start free and upgrade as your research grows
+              See how leading research teams are transforming their data analysis workflow.
+              Choose the best way to get started.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-            {/* Free Tier */}
-            <Card className="p-8 border-border/50 hover:shadow-xl transition-all duration-300 animate-fade-in-up">
+          <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            {/* Book a Demo */}
+            <Card className="p-8 border-primary/50 hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 group animate-fade-in-up bg-gradient-to-br from-primary/5 to-background">
               <div className="space-y-6">
-                <div>
-                  <h3 className="text-2xl font-bold mb-2">Free</h3>
-                  <p className="text-muted-foreground">Perfect for getting started</p>
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <MessageSquare className="w-8 h-8 text-white" />
                 </div>
-                <div className="text-4xl font-bold">$0<span className="text-lg text-muted-foreground font-normal">/month</span></div>
-                <ul className="space-y-3">
-                  {[
-                    "Basic AI analysis",
-                    "Up to 5 projects",
-                    "1GB storage",
-                    "Community support",
-                    "Standard charts"
-                  ].map((feature) => (
-                    <li key={feature} className="flex items-center gap-3">
-                      <CheckCircle2 className="w-5 h-5 text-primary flex-shrink-0" />
-                      <span>{feature}</span>
-                    </li>
-                  ))}
+                <div>
+                  <h3 className="text-2xl font-bold mb-2">Book a Demo</h3>
+                  <p className="text-muted-foreground">
+                    See Lab-IQ's full capabilities in a personalized walkthrough with our team.
+                  </p>
+                </div>
+                <ul className="space-y-3 text-sm">
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-primary" />
+                    <span>30-minute personalized demo</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-primary" />
+                    <span>Q&A with product experts</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-primary" />
+                    <span>Custom use-case discussion</span>
+                  </li>
                 </ul>
-                <Link to="/dashboard">
-                  <Button variant="outline" size="lg" className="w-full hover:scale-105 transition-all">
-                    Get Started Free
-                  </Button>
-                </Link>
+                <Button size="lg" className="w-full gap-2 group-hover:scale-105 transition-all">
+                  <MessageSquare className="w-5 h-5" />
+                  Schedule Demo
+                </Button>
               </div>
             </Card>
 
-            {/* Pro Tier */}
-            <Card className="p-8 border-primary shadow-xl relative overflow-hidden hover:shadow-2xl transition-all duration-300 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
-              <div className="absolute top-4 right-4">
-                <div className="px-3 py-1 rounded-full bg-gradient-to-r from-primary to-secondary text-white text-xs font-bold animate-pulse">
-                  POPULAR
-                </div>
-              </div>
+            {/* Watch Demo Video */}
+            <Card className="p-8 border-border/50 hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 group animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
               <div className="space-y-6">
-                <div>
-                  <h3 className="text-2xl font-bold mb-2">Pro</h3>
-                  <p className="text-muted-foreground">For serious researchers</p>
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Play className="w-8 h-8 text-white" />
                 </div>
-                <div className="text-4xl font-bold">$49<span className="text-lg text-muted-foreground font-normal">/month</span></div>
-                <ul className="space-y-3">
-                  {[
-                    "Advanced AI with all modes",
-                    "Unlimited projects",
-                    "100GB storage",
-                    "10 device streams",
-                    "Real-time collaboration",
-                    "Version history",
-                    "Priority support",
-                    "Custom reports",
-                    "Experiment templates"
-                  ].map((feature) => (
-                    <li key={feature} className="flex items-center gap-3">
-                      <CheckCircle2 className="w-5 h-5 text-primary flex-shrink-0" />
-                      <span>{feature}</span>
-                    </li>
-                  ))}
+                <div>
+                  <h3 className="text-2xl font-bold mb-2">Watch Demo</h3>
+                  <p className="text-muted-foreground">
+                    See a quick walkthrough of how Lab-IQ transforms research data into insights.
+                  </p>
+                </div>
+                <ul className="space-y-3 text-sm">
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-primary" />
+                    <span>5-minute overview video</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-primary" />
+                    <span>Real use-case examples</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-primary" />
+                    <span>Key features showcase</span>
+                  </li>
+                </ul>
+                <Button size="lg" variant="outline" className="w-full gap-2 group-hover:scale-105 transition-all">
+                  <Play className="w-5 h-5" />
+                  Watch Now
+                </Button>
+              </div>
+            </Card>
+
+            {/* Start Free */}
+            <Card className="p-8 border-border/50 hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 group animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+              <div className="space-y-6">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Rocket className="w-8 h-8 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-bold mb-2">Start Free</h3>
+                  <p className="text-muted-foreground">
+                    Jump right in and explore Lab-IQ with your own data. No credit card required.
+                  </p>
+                </div>
+                <ul className="space-y-3 text-sm">
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-primary" />
+                    <span>Instant access</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-primary" />
+                    <span>Upload your data immediately</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-primary" />
+                    <span>Upgrade anytime</span>
+                  </li>
                 </ul>
                 <Link to="/dashboard">
-                  <Button size="lg" className="w-full hover:scale-105 transition-all">
-                    Start Pro Trial
+                  <Button size="lg" className="w-full gap-2 group-hover:scale-105 transition-all">
+                    <Rocket className="w-5 h-5" />
+                    Get Started
                   </Button>
                 </Link>
               </div>
             </Card>
+          </div>
+
+          {/* Contact Options */}
+          <div className="mt-16 text-center animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
+            <p className="text-muted-foreground mb-4">Questions? We're here to help.</p>
+            <div className="flex flex-wrap gap-4 justify-center">
+              <Button variant="ghost" className="gap-2">
+                <MessageSquare className="w-4 h-4" />
+                Chat with Sales
+              </Button>
+              <Button variant="ghost" className="gap-2">
+                <FileText className="w-4 h-4" />
+                View Documentation
+              </Button>
+              <Link to="/pricing">
+                <Button variant="ghost" className="gap-2">
+                  <TrendingUp className="w-4 h-4" />
+                  See Pricing
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
       </section>

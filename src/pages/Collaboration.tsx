@@ -12,9 +12,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Users, Mail, Search, MoreVertical, FileText, MessageSquare, Activity } from "lucide-react";
+import { Plus, Users, Mail, Search, MoreVertical, FileText, MessageSquare, Activity, Upload, MessageCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ChatPanel } from "@/components/collaboration/ChatPanel";
+import { CommentsSystem } from "@/components/collaboration/CommentsSystem";
+import { FileSharing } from "@/components/collaboration/FileSharing";
+import { ActivityTimeline } from "@/components/collaboration/ActivityTimeline";
 import { useSubscription } from "@/hooks/useSubscription";
 import { UpgradeDialog } from "@/components/UpgradeDialog";
 
@@ -162,10 +165,10 @@ const Collaboration = () => {
     <AuthGuard>
       <div className="flex min-h-screen bg-background">
         <Sidebar />
-        
+
         <div className="flex-1 md:ml-64 pb-16 md:pb-0">
           <TopBar />
-          
+
           <main className="p-4 md:p-8">
             {/* Header */}
             <div className="flex items-center justify-between mb-8">
@@ -224,14 +227,32 @@ const Collaboration = () => {
             </div>
 
             <Tabs defaultValue="team" className="space-y-6">
-              <TabsList>
-                <TabsTrigger value="team">Team Members</TabsTrigger>
-                <TabsTrigger value="projects">Shared Projects</TabsTrigger>
-                <TabsTrigger value="chat">
-                  Real-Time Chat
-                  {subscription?.tier === "free" && <Badge variant="secondary" className="ml-2 text-xs">Pro</Badge>}
+              <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6">
+                <TabsTrigger value="team">
+                  <Users className="w-4 h-4 mr-2" />
+                  <span className="hidden sm:inline">Team</span>
                 </TabsTrigger>
-                <TabsTrigger value="activity">Activity Feed</TabsTrigger>
+                <TabsTrigger value="projects">
+                  <FileText className="w-4 h-4 mr-2" />
+                  <span className="hidden sm:inline">Projects</span>
+                </TabsTrigger>
+                <TabsTrigger value="chat">
+                  <MessageSquare className="w-4 h-4 mr-2" />
+                  <span className="hidden sm:inline">Chat</span>
+                  {subscription?.tier === "free" && <Badge variant="secondary" className="ml-2 text-xs hidden lg:inline">Pro</Badge>}
+                </TabsTrigger>
+                <TabsTrigger value="comments">
+                  <MessageCircle className="w-4 h-4 mr-2" />
+                  <span className="hidden sm:inline">Comments</span>
+                </TabsTrigger>
+                <TabsTrigger value="files">
+                  <Upload className="w-4 h-4 mr-2" />
+                  <span className="hidden sm:inline">Files</span>
+                </TabsTrigger>
+                <TabsTrigger value="activity">
+                  <Activity className="w-4 h-4 mr-2" />
+                  <span className="hidden sm:inline">Activity</span>
+                </TabsTrigger>
               </TabsList>
 
               {/* Team Members Tab */}
@@ -331,31 +352,26 @@ const Collaboration = () => {
                 )}
               </TabsContent>
 
+              {/* Comments Tab */}
+              <TabsContent value="comments">
+                <CommentsSystem
+                  entityId="project-1"
+                  entityType="experiment"
+                  entityName="Protein Structure Analysis"
+                />
+              </TabsContent>
+
+              {/* File Sharing Tab */}
+              <TabsContent value="files">
+                <FileSharing
+                  projectId="project-1"
+                  projectName="Protein Structure Analysis"
+                />
+              </TabsContent>
+
               {/* Activity Feed Tab */}
               <TabsContent value="activity">
-                <Card className="p-6">
-                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                    <Activity className="w-5 h-5" />
-                    Recent Activity
-                  </h3>
-                  <div className="space-y-4">
-                    {recentActivity.map((activity) => (
-                      <div key={activity.id} className="flex items-start gap-4 py-3 border-b border-border last:border-0">
-                        <Avatar className="w-10 h-10">
-                          <AvatarFallback>{activity.user.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                          <p className="text-sm">
-                            <span className="font-medium">{activity.user}</span>
-                            {" "}{activity.action}{" "}
-                            <span className="font-medium">{activity.target}</span>
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-1">{activity.time}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </Card>
+                <ActivityTimeline />
               </TabsContent>
             </Tabs>
 

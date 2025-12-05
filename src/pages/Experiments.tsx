@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useLocation } from "react-router-dom";
 import Sidebar from "@/components/Sidebar";
 import TopBar from "@/components/TopBar";
 import MobileNav from "@/components/MobileNav";
@@ -22,6 +23,7 @@ import { UpgradeDialog } from "@/components/UpgradeDialog";
 import { useActivityTracker } from "@/hooks/useActivityTracker";
 
 const Experiments = () => {
+  const location = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
@@ -31,10 +33,29 @@ const Experiments = () => {
 
   const [experiments, setExperiments] = useState<any[]>([]);
   const [loadingExperiments, setLoadingExperiments] = useState(true);
+  const [datasets, setDatasets] = useState<any[]>([]);
+
+  // Form state
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [experimentType, setExperimentType] = useState("");
+  const [selectedDatasetId, setSelectedDatasetId] = useState("");
 
   useEffect(() => {
     fetchExperiments();
-  }, []);
+    fetchDatasets();
+
+    // Check if we're coming from QuickActions
+    const state = location.state as any;
+    if (state?.createNew && state?.datasetId) {
+      setIsCreateDialogOpen(true);
+      setSelectedDatasetId(state.datasetId);
+      if (state.datasetName) {
+        setTitle(`Experiment: ${state.datasetName}`);
+        setDescription(`Experiment protocol for ${state.datasetName}`);
+      }
+    }
+  }, [location.state]);
 
   const fetchExperiments = async () => {
     try {
@@ -69,6 +90,24 @@ const Experiments = () => {
     }
   };
 
+  const fetchDatasets = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('datasets')
+        .select('id, name, file_name')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setDatasets(data || []);
+    } catch (error) {
+      console.error('Error fetching datasets:', error);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "running": return "bg-blue-500/10 text-blue-500 border-blue-500/20";
@@ -89,13 +128,67 @@ const Experiments = () => {
     }
   };
 
-  const handleCreateExperiment = () => {
-    trackActivity("Experiment created", "New experiment queued", "FlaskConical");
-    toast({
-      title: "Experiment Created",
-      description: "Your new experiment has been queued for processing.",
-    });
-    setIsCreateDialogOpen(false);
+  const handleCreateExperiment = async () => {
+    if (!title || !experimentType) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in title and experiment type.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('experiments')
+        .insert({
+          user_id: user.id,
+          title,
+          description,
+          type: experimentType,
+          dataset_id: selectedDatasetId || null,
+          auto_created: !!selectedDatasetId,
+          status: 'pending',
+          protocol: {
+            steps: [
+              'Prepare materials and equipment',
+              'Set up experimental conditions',
+              'Execute protocol',
+              'Collect and record data',
+              'Analyze results'
+            ]
+          }
+        })
+        .select();
+
+      if (error) throw error;
+
+      trackActivity("Experiment created", title, "FlaskConical");
+      toast({
+        title: "Experiment Created",
+        description: "Your experiment has been created successfully.",
+      });
+
+      // Reset form
+      setTitle("");
+      setDescription("");
+      setExperimentType("");
+      setSelectedDatasetId("");
+      setIsCreateDialogOpen(false);
+
+      // Refresh experiments list
+      fetchExperiments();
+    } catch (error) {
+      console.error('Error creating experiment:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create experiment. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   const filteredExperiments = experiments.filter(exp =>
@@ -132,16 +225,27 @@ const Experiments = () => {
                   <div className="space-y-4 py-4">
                     <div className="space-y-2">
                       <Label htmlFor="title">Experiment Title</Label>
-                      <Input id="title" placeholder="e.g., Protein Structure Analysis" />
+                      <Input
+                        id="title"
+                        placeholder="e.g., Protein Structure Analysis"
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="description">Description</Label>
-                      <Textarea id="description" placeholder="Describe your experiment objectives..." rows={3} />
+                      <Textarea
+                        id="description"
+                        placeholder="Describe your experiment objectives..."
+                        rows={3}
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                      />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="type">Experiment Type</Label>
-                        <Select>
+                        <Select value={experimentType} onValueChange={setExperimentType}>
                           <SelectTrigger id="type">
                             <SelectValue placeholder="Select type" />
                           </SelectTrigger>
@@ -155,20 +259,26 @@ const Experiments = () => {
                         </Select>
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="dataset">Dataset</Label>
-                        <Select>
+                        <Label htmlFor="dataset">Dataset (Optional)</Label>
+                        <Select value={selectedDatasetId} onValueChange={setSelectedDatasetId}>
                           <SelectTrigger id="dataset">
                             <SelectValue placeholder="Select dataset" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="ds1">proteins_batch_5.csv</SelectItem>
-                            <SelectItem value="ds2">compounds_library.csv</SelectItem>
-                            <SelectItem value="ds3">materials_test_data.csv</SelectItem>
+                            {datasets.length === 0 ? (
+                              <SelectItem value="none" disabled>No datasets available</SelectItem>
+                            ) : (
+                              datasets.map((ds) => (
+                                <SelectItem key={ds.id} value={ds.id}>
+                                  {ds.name || ds.file_name}
+                                </SelectItem>
+                              ))
+                            )}
                           </SelectContent>
                         </Select>
                       </div>
                     </div>
-                    <Button onClick={handleCreateExperiment} className="w-full">
+                    <Button onClick={handleCreateExperiment} className="w-full" disabled={!title || !experimentType}>
                       Create Experiment
                     </Button>
                   </div>

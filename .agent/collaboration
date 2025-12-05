@@ -1,0 +1,1277 @@
+═══════════════════════════════════════════════════════════════════════════════
+🤝 LAB-IQ COLLABORATION SYSTEM - COMPLETE BUILD GUIDE
+═══════════════════════════════════════════════════════════════════════════════
+
+DATE: December 5, 2025
+STATUS: Ready to Build (Phase 1 planned)
+PRIORITY: High Value Feature
+ESTIMATED TIME: 4-6 weeks part-time
+COST: $0 (Supabase Free Tier)
+
+═══════════════════════════════════════════════════════════════════════════════
+📋 TABLE OF CONTENTS
+═══════════════════════════════════════════════════════════════════════════════
+
+PART 1: REQUIREMENTS & SETUP
+  1.1 - System Requirements
+  1.2 - Dependencies
+  1.3 - Environment Setup
+
+PART 2: DATABASE SCHEMA
+  2.1 - Migration Files (SQL)
+  2.2 - Row-Level Security Policies
+  2.3 - Indexes & Triggers
+
+PART 3: BACKEND IMPLEMENTATION
+  3.1 - Supabase Realtime Setup
+  3.2 - File Storage Configuration
+  3.3 - Edge Functions (if needed)
+  3.4 - API Endpoints
+
+PART 4: FRONTEND IMPLEMENTATION
+  4.1 - Real-time Chat Integration
+  4.2 - Team Management
+  4.3 - File Sharing
+  4.4 - Activity Timeline
+
+PART 5: TESTING & DEPLOYMENT
+  5.1 - Unit Tests
+  5.2 - Integration Tests
+  5.3 - E2E Tests
+  5.4 - Deployment Checklist
+
+PART 6: CODE SNIPPETS & EXAMPLES
+  6.1 - TypeScript Interfaces
+  6.2 - React Hooks
+  6.3 - Supabase Helpers
+
+═══════════════════════════════════════════════════════════════════════════════
+PART 1: REQUIREMENTS & SETUP
+═══════════════════════════════════════════════════════════════════════════════
+
+1.1 - SYSTEM REQUIREMENTS
+─────────────────────────────────────────────────────────────────────────────
+
+✅ Node.js 18+ (already installed)
+✅ Supabase CLI (optional but recommended)
+✅ PostgreSQL (via Supabase)
+✅ React 18+ (already installed)
+✅ TypeScript 5+ (already installed)
+
+─────────────────────────────────────────────────────────────────────────────
+1.2 - DEPENDENCIES (to install)
+─────────────────────────────────────────────────────────────────────────────
+
+npm install --save:
+  - @supabase/realtime-js (for WebSocket)
+  - react-dropzone (for file uploads)
+  - date-fns (for better date formatting)
+  - react-intersection-observer (for infinite scroll)
+  - emoji-picker-react (for emoji reactions)
+
+Optional:
+  - @tiptap/react (rich text editor for chat)
+  - linkify-react (auto-link URLs in messages)
+
+─────────────────────────────────────────────────────────────────────────────
+1.3 - ENVIRONMENT VARIABLES
+─────────────────────────────────────────────────────────────────────────────
+
+Add to .env:
+
+VITE_SUPABASE_STORAGE_BUCKET=lab-iq-files
+VITE_MAX_FILE_SIZE=52428800  # 50MB
+VITE_REALTIME_ENABLED=true
+
+
+═══════════════════════════════════════════════════════════════════════════════
+PART 2: DATABASE SCHEMA
+═══════════════════════════════════════════════════════════════════════════════
+
+2.1 - MIGRATION FILES (Copy these to supabase/migrations/)
+─────────────────────────────────────────────────────────────────────────────
+
+────────────────────────────────────────────────────────────────────────────
+FILE: 20251205_collaboration_team_members.sql
+────────────────────────────────────────────────────────────────────────────
+
+-- Team Members Table
+CREATE TABLE IF NOT EXISTS team_members (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  lab_id UUID NOT NULL, -- Group members by lab/organization
+  role TEXT NOT NULL CHECK (role IN ('admin', 'researcher', 'analyst', 'viewer')),
+  status TEXT DEFAULT 'offline' CHECK (status IN ('online', 'away', 'offline', 'busy')),
+  display_name TEXT,
+  avatar_url TEXT,
+  last_active TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  settings JSONB DEFAULT '{"notifications": true, "email_digest": true}'::jsonb,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(user_id, lab_id)
+);
+
+-- Team Invitations
+CREATE TABLE IF NOT EXISTS team_invitations (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  email TEXT NOT NULL,
+  role TEXT NOT NULL CHECK (role IN ('admin', 'researcher', 'analyst', 'viewer')),
+  invited_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  lab_id UUID NOT NULL,
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'declined', 'expired')),
+  token TEXT UNIQUE NOT NULL,
+  expires_at TIMESTAMP WITH TIME ZONE DEFAULT (NOW() + INTERVAL '7 days'),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  accepted_at TIMESTAMP WITH TIME ZONE,
+  metadata JSONB DEFAULT '{}'::jsonb
+);
+
+-- Indexes for performance
+CREATE INDEX idx_team_members_lab ON team_members(lab_id);
+CREATE INDEX idx_team_members_user ON team_members(user_id);
+CREATE INDEX idx_team_members_status ON team_members(status);
+CREATE INDEX idx_team_invitations_email ON team_invitations(email);
+CREATE INDEX idx_team_invitations_token ON team_invitations(token);
+
+-- Updated timestamp trigger
+CREATE OR REPLACE FUNCTION update_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER team_members_updated_at
+  BEFORE UPDATE ON team_members
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at();
+
+
+────────────────────────────────────────────────────────────────────────────
+FILE: 20251205_collaboration_chat.sql
+────────────────────────────────────────────────────────────────────────────
+
+-- Chat Channels (project-based or general)
+CREATE TABLE IF NOT EXISTS chat_channels (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name TEXT NOT NULL,
+  description TEXT,
+  lab_id UUID NOT NULL,
+  type TEXT DEFAULT 'project' CHECK (type IN ('project', 'general', 'private', 'direct')),
+  project_id UUID, -- NULL for general channels
+  created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  metadata JSONB DEFAULT '{}'::jsonb
+);
+
+-- Chat Messages
+CREATE TABLE IF NOT EXISTS chat_messages (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  channel_id UUID REFERENCES chat_channels(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  content TEXT NOT NULL,
+  parent_id UUID REFERENCES chat_messages(id) ON DELETE CASCADE, -- For threading
+  mentions UUID[], -- Array of user IDs mentioned
+  attachments JSONB DEFAULT '[]'::jsonb, -- [{name, url, size, type}]
+  reactions JSONB DEFAULT '{}'::jsonb, -- {emoji: [user_ids]}
+  edited_at TIMESTAMP WITH TIME ZONE,
+  deleted_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  metadata JSONB DEFAULT '{}'::jsonb
+);
+
+-- Typing Indicators (ephemeral, can be in-memory or short-lived table)
+CREATE TABLE IF NOT EXISTS chat_typing (
+  channel_id UUID REFERENCES chat_channels(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  started_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  PRIMARY KEY (channel_id, user_id)
+);
+
+-- Read Receipts
+CREATE TABLE IF NOT EXISTS chat_read_receipts (
+  channel_id UUID REFERENCES chat_channels(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  last_read_message_id UUID REFERENCES chat_messages(id) ON DELETE CASCADE,
+  read_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  PRIMARY KEY (channel_id, user_id)
+);
+
+-- Indexes
+CREATE INDEX idx_chat_channels_lab ON chat_channels(lab_id);
+CREATE INDEX idx_chat_channels_project ON chat_channels(project_id);
+CREATE INDEX idx_chat_messages_channel ON chat_messages(channel_id);
+CREATE INDEX idx_chat_messages_user ON chat_messages(user_id);
+CREATE INDEX idx_chat_messages_parent ON chat_messages(parent_id);
+CREATE INDEX idx_chat_messages_created ON chat_messages(created_at DESC);
+CREATE INDEX idx_chat_typing_channel ON chat_typing(channel_id);
+
+
+────────────────────────────────────────────────────────────────────────────
+FILE: 20251205_collaboration_projects.sql
+────────────────────────────────────────────────────────────────────────────
+
+-- Shared Projects
+CREATE TABLE IF NOT EXISTS shared_projects (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name TEXT NOT NULL,
+  description TEXT,
+  owner_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  lab_id UUID NOT NULL,
+  status TEXT DEFAULT 'active' CHECK (status IN ('active', 'archived', 'completed')),
+  visibility TEXT DEFAULT 'team' CHECK (visibility IN ('private', 'team', 'public')),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  archived_at TIMESTAMP WITH TIME ZONE,
+  metadata JSONB DEFAULT '{}'::jsonb
+);
+
+-- Project Members (who can access what)
+CREATE TABLE IF NOT EXISTS project_members (
+  project_id UUID REFERENCES shared_projects(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  role TEXT DEFAULT 'member' CHECK (role IN ('owner', 'admin', 'member', 'viewer')),
+  permissions JSONB DEFAULT '{"read": true, "write": false, "delete": false}'::jsonb,
+  added_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  added_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  PRIMARY KEY (project_id, user_id)
+);
+
+-- Indexes
+CREATE INDEX idx_shared_projects_lab ON shared_projects(lab_id);
+CREATE INDEX idx_shared_projects_owner ON shared_projects(owner_id);
+CREATE INDEX idx_shared_projects_status ON shared_projects(status);
+CREATE INDEX idx_project_members_project ON project_members(project_id);
+CREATE INDEX idx_project_members_user ON project_members(user_id);
+
+
+────────────────────────────────────────────────────────────────────────────
+FILE: 20251205_collaboration_files.sql
+────────────────────────────────────────────────────────────────────────────
+
+-- Shared Files (metadata - actual files in Supabase Storage)
+CREATE TABLE IF NOT EXISTS shared_files (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name TEXT NOT NULL,
+  storage_path TEXT NOT NULL, -- Path in Supabase Storage
+  size_bytes BIGINT NOT NULL,
+  mime_type TEXT,
+  category TEXT DEFAULT 'other' CHECK (category IN ('dataset', 'report', 'code', 'image', 'document', 'other')),
+  uploaded_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  project_id UUID REFERENCES shared_projects(id) ON DELETE CASCADE,
+  lab_id UUID NOT NULL,
+  version INTEGER DEFAULT 1,
+  parent_id UUID REFERENCES shared_files(id) ON DELETE SET NULL, -- For versioning
+  description TEXT,
+  tags TEXT[],
+  downloads INTEGER DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  deleted_at TIMESTAMP WITH TIME ZONE,
+  metadata JSONB DEFAULT '{}'::jsonb
+);
+
+-- File Access Log (for audit)
+CREATE TABLE IF NOT EXISTS file_access_log (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  file_id UUID REFERENCES shared_files(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  action TEXT CHECK (action IN ('view', 'download', 'edit', 'delete')),
+  ip_address INET,
+  user_agent TEXT,
+  accessed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Indexes
+CREATE INDEX idx_shared_files_project ON shared_files(project_id);
+CREATE INDEX idx_shared_files_lab ON shared_files(lab_id);
+CREATE INDEX idx_shared_files_uploaded_by ON shared_files(uploaded_by);
+CREATE INDEX idx_shared_files_category ON shared_files(category);
+CREATE INDEX idx_file_access_log_file ON file_access_log(file_id);
+CREATE INDEX idx_file_access_log_user ON file_access_log(user_id);
+
+
+────────────────────────────────────────────────────────────────────────────
+FILE: 20251205_collaboration_activity.sql
+────────────────────────────────────────────────────────────────────────────
+
+-- Activity Feed (consolidated from existing activities table if needed)
+CREATE TABLE IF NOT EXISTS collaboration_activity (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  lab_id UUID NOT NULL,
+  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  type TEXT NOT NULL CHECK (type IN ('message', 'file_upload', 'file_download', 'member_invite', 'member_join', 'project_create', 'project_update', 'task_assign', 'comment')),
+  entity_type TEXT, -- 'project', 'file', 'message', etc.
+  entity_id UUID,
+  metadata JSONB DEFAULT '{}'::jsonb, -- {project_name, file_name, message, etc.}
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Indexes
+CREATE INDEX idx_collaboration_activity_lab ON collaboration_activity(lab_id);
+CREATE INDEX idx_collaboration_activity_user ON collaboration_activity(user_id);
+CREATE INDEX idx_collaboration_activity_type ON collaboration_activity(type);
+CREATE INDEX idx_collaboration_activity_created ON collaboration_activity(created_at DESC);
+
+
+─────────────────────────────────────────────────────────────────────────────
+2.2 - ROW-LEVEL SECURITY (RLS) POLICIES
+─────────────────────────────────────────────────────────────────────────────
+
+────────────────────────────────────────────────────────────────────────────
+FILE: 20251205_collaboration_rls.sql
+────────────────────────────────────────────────────────────────────────────
+
+-- Enable RLS on all tables
+ALTER TABLE team_members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE team_invitations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE chat_channels ENABLE ROW LEVEL SECURITY;
+ALTER TABLE chat_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE shared_projects ENABLE ROW LEVEL SECURITY;
+ALTER TABLE project_members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE shared_files ENABLE ROW LEVEL SECURITY;
+ALTER TABLE collaboration_activity ENABLE ROW LEVEL SECURITY;
+
+-- Team Members Policies
+CREATE POLICY "Users can view team members in their lab"
+  ON team_members FOR SELECT
+  USING (
+    lab_id IN (
+      SELECT lab_id FROM team_members WHERE user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Users can update their own team member record"
+  ON team_members FOR UPDATE
+  USING (user_id = auth.uid());
+
+-- Chat Messages Policies
+CREATE POLICY "Users can view messages in channels they have access to"
+  ON chat_messages FOR SELECT
+  USING (
+    channel_id IN (
+      SELECT id FROM chat_channels WHERE lab_id IN (
+        SELECT lab_id FROM team_members WHERE user_id = auth.uid()
+      )
+    )
+  );
+
+CREATE POLICY "Users can send messages to channels in their lab"
+  ON chat_messages FOR INSERT
+  WITH CHECK (
+    channel_id IN (
+      SELECT id FROM chat_channels WHERE lab_id IN (
+        SELECT lab_id FROM team_members WHERE user_id = auth.uid()
+      )
+    )
+  );
+
+CREATE POLICY "Users can update their own messages"
+  ON chat_messages FOR UPDATE
+  USING (user_id = auth.uid());
+
+CREATE POLICY "Users can delete their own messages"
+  ON chat_messages FOR DELETE
+  USING (user_id = auth.uid());
+
+-- Project Members Policies
+CREATE POLICY "Users can view projects they are members of"
+  ON shared_projects FOR SELECT
+  USING (
+    id IN (
+      SELECT project_id FROM project_members WHERE user_id = auth.uid()
+    ) OR owner_id = auth.uid()
+  );
+
+-- Shared Files Policies
+CREATE POLICY "Users can view files in projects they have access to"
+  ON shared_files FOR SELECT
+  USING (
+    project_id IN (
+      SELECT project_id FROM project_members WHERE user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Users can upload files to projects they are members of"
+  ON shared_files FOR INSERT
+  WITH CHECK (
+    project_id IN (
+      SELECT project_id FROM project_members WHERE user_id = auth.uid()
+    )
+  );
+
+
+═══════════════════════════════════════════════════════════════════════════════
+PART 3: BACKEND IMPLEMENTATION
+═══════════════════════════════════════════════════════════════════════════════
+
+3.1 - SUPABASE REALTIME SETUP
+─────────────────────────────────────────────────────────────────────────────
+
+In Supabase Dashboard:
+
+1. Go to Database > Replication
+2. Enable replication for:
+   ✅ chat_messages
+   ✅ chat_typing
+   ✅ team_members (for status updates)
+   ✅ collaboration_activity
+
+OR via SQL:
+
+ALTER PUBLICATION supabase_realtime ADD TABLE chat_messages;
+ALTER PUBLICATION supabase_realtime ADD TABLE chat_typing;
+ALTER PUBLICATION supabase_realtime ADD TABLE team_members;
+
+
+─────────────────────────────────────────────────────────────────────────────
+3.2 - SUPABASE STORAGE SETUP
+─────────────────────────────────────────────────────────────────────────────
+
+1. Create Storage Bucket:
+
+In Supabase Dashboard > Storage:
+  - Create bucket: "lab-iq-files"
+  - Set to Private
+  - Max file size: 50MB
+
+OR via SQL/API:
+
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('lab-iq-files', 'lab-iq-files', false);
+
+
+2. Storage Policies:
+
+-- Allow authenticated users to upload
+CREATE POLICY "Authenticated users can upload files"
+ON storage.objects FOR INSERT
+WITH CHECK (
+  bucket_id = 'lab-iq-files' AND
+  auth.role() = 'authenticated'
+);
+
+-- Allow users to download files they have access to
+CREATE POLICY "Users can download files in their projects"
+ON storage.objects FOR SELECT
+USING (
+  bucket_id = 'lab-iq-files' AND
+  auth.role() = 'authenticated'
+);
+
+
+─────────────────────────────────────────────────────────────────────────────
+3.3 - HELPER FUNCTIONS (PostgreSQL)
+─────────────────────────────────────────────────────────────────────────────
+
+-- Function to get user's lab ID
+CREATE OR REPLACE FUNCTION get_user_lab_id(p_user_id UUID)
+RETURNS UUID AS $$
+BEGIN
+  RETURN (
+    SELECT lab_id FROM team_members 
+    WHERE user_id = p_user_id 
+    LIMIT 1
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function to check if user can access project
+CREATE OR REPLACE FUNCTION can_access_project(p_user_id UUID, p_project_id UUID)
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM project_members
+    WHERE user_id = p_user_id AND project_id = p_project_id
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function to log activity
+CREATE OR REPLACE FUNCTION log_collaboration_activity(
+  p_lab_id UUID,
+  p_user_id UUID,
+  p_type TEXT,
+  p_entity_type TEXT,
+  p_entity_id UUID,
+  p_metadata JSONB
+)
+RETURNS UUID AS $$
+DECLARE
+  v_activity_id UUID;
+BEGIN
+  INSERT INTO collaboration_activity (
+    lab_id, user_id, type, entity_type, entity_id, metadata
+  ) VALUES (
+    p_lab_id, p_user_id, p_type, p_entity_type, p_entity_id, p_metadata
+  ) RETURNING id INTO v_activity_id;
+  
+  RETURN v_activity_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+
+═══════════════════════════════════════════════════════════════════════════════
+PART 4: FRONTEND IMPLEMENTATION
+═══════════════════════════════════════════════════════════════════════════════
+
+4.1 - REAL-TIME CHAT INTEGRATION
+─────────────────────────────────────────────────────────────────────────────
+
+Create: src/hooks/useRealtimeChat.ts
+
+────────────────────────────────────────────────────────────────────────────
+
+import { useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { RealtimeChannel } from '@supabase/supabase-js';
+
+interface Message {
+  id: string;
+  content: string;
+  user_id: string;
+  channel_id: string;
+  created_at: string;
+  user?: {
+    display_name: string;
+    avatar_url: string;
+  };
+}
+
+export const useRealtimeChat = (channelId: string) => {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [channel, setChannel] = useState<RealtimeChannel | null>(null);
+
+  useEffect(() => {
+    if (!channelId) return;
+
+    // Fetch initial messages
+    const fetchMessages = async () => {
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .select(`
+          *,
+          user:auth.users(display_name, avatar_url)
+        `)
+        .eq('channel_id', channelId)
+        .order('created_at', { ascending: true })
+        .limit(100);
+
+      if (!error && data) {
+        setMessages(data);
+      }
+      setLoading(false);
+    };
+
+    fetchMessages();
+
+    // Subscribe to new messages
+    const realtimeChannel = supabase
+      .channel(`chat:${channelId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat_messages',
+          filter: `channel_id=eq.${channelId}`
+        },
+        (payload) => {
+          setMessages((prev) => [...prev, payload.new as Message]);
+        }
+      )
+      .subscribe();
+
+    setChannel(realtimeChannel);
+
+    return () => {
+      realtimeChannel.unsubscribe();
+    };
+  }, [channelId]);
+
+  const sendMessage = async (content: string) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { error } = await supabase
+      .from('chat_messages')
+      .insert({
+        channel_id: channelId,
+        user_id: user.id,
+        content
+      });
+
+    if (error) {
+      console.error('Error sending message:', error);
+    }
+  };
+
+  return { messages, loading, sendMessage };
+};
+
+
+─────────────────────────────────────────────────────────────────────────────
+
+Update: src/components/collaboration/ChatPanel.tsx
+
+Replace the static messages with:
+
+────────────────────────────────────────────────────────────────────────────
+
+import { useRealtimeChat } from '@/hooks/useRealtimeChat';
+
+export const ChatPanel = ({ channelId }: { channelId: string }) => {
+  const { messages, loading, sendMessage } = useRealtimeChat(channelId);
+  const [newMessage, setNewMessage] = useState('');
+
+  const handleSend = async () => {
+    if (!newMessage.trim()) return;
+    await sendMessage(newMessage);
+    setNewMessage('');
+  };
+
+  // Rest of the component...
+};
+
+
+─────────────────────────────────────────────────────────────────────────────
+4.2 - TEAM MANAGEMENT INTEGRATION
+─────────────────────────────────────────────────────────────────────────────
+
+Create: src/services/teamService.ts
+
+────────────────────────────────────────────────────────────────────────────
+
+import { supabase } from '@/integrations/supabase/client';
+
+export const teamService = {
+  // Get team members
+  async getTeamMembers(labId: string) {
+    const { data, error } = await supabase
+      .from('team_members')
+      .select('*')
+      .eq('lab_id', labId)
+      .order('display_name');
+
+    return { data, error };
+  },
+
+  // Invite team member
+  async inviteMember(email: string, role: string, labId: string) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const token = crypto.randomUUID();
+
+    const { data, error } = await supabase
+      .from('team_invitations')
+      .insert({
+        email,
+        role,
+        lab_id: labId,
+        invited_by: user.id,
+        token
+      })
+      .select()
+      .single();
+
+    if (!error && data) {
+      // Send invitation email (via Edge Function or external service)
+      await supabase.functions.invoke('send-team-invitation', {
+        body: { email, token, invitedBy: user.email }
+      });
+    }
+
+    return { data, error };
+  },
+
+  // Update member status (online/offline/away)
+  async updateStatus(status: string) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { error } = await supabase
+      .from('team_members')
+      .update({ status, last_active: new Date().toISOString() })
+      .eq('user_id', user.id);
+
+    return { error };
+  },
+
+  // Update member presence (heartbeat every 30s)
+  async updatePresence() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { error } = await supabase
+      .from('team_members')
+      .update({ last_active: new Date().toISOString() })
+      .eq('user_id', user.id);
+
+    return { error };
+  }
+};
+
+
+─────────────────────────────────────────────────────────────────────────────
+4.3 - FILE SHARING INTEGRATION
+─────────────────────────────────────────────────────────────────────────────
+
+Create: src/services/fileService.ts
+
+────────────────────────────────────────────────────────────────────────────
+
+import { supabase } from '@/integrations/supabase/client';
+
+export const fileService = {
+  // Upload file
+  async uploadFile(file: File, projectId: string, category: string) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    // Generate unique file path
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+    const filePath = `${projectId}/${fileName}`;
+
+    // Upload to Supabase Storage
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('lab-iq-files')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
+
+    if (uploadError) throw uploadError;
+
+    // Save metadata to database
+    const { data: fileData, error: dbError } = await supabase
+      .from('shared_files')
+      .insert({
+        name: file.name,
+        storage_path: filePath,
+        size_bytes: file.size,
+        mime_type: file.type,
+        category,
+        uploaded_by: user.id,
+        project_id: projectId,
+        lab_id: await this.getUserLabId(user.id)
+      })
+      .select()
+      .single();
+
+    if (dbError) throw dbError;
+
+    return { data: fileData };
+  },
+
+  // Download file
+  async downloadFile(fileId: string) {
+    // Get file metadata
+    const { data: fileData, error } = await supabase
+      .from('shared_files')
+      .select('*')
+      .eq('id', fileId)
+      .single();
+
+    if (error) throw error;
+
+    // Get signed URL
+    const { data: urlData } = await supabase.storage
+      .from('lab-iq-files')
+      .createSignedUrl(fileData.storage_path, 3600); // 1 hour
+
+    // Log download
+    await supabase.from('file_access_log').insert({
+      file_id: fileId,
+      user_id: (await supabase.auth.getUser()).data.user?.id,
+      action: 'download'
+    });
+
+    // Increment download count
+    await supabase
+      .from('shared_files')
+      .update({ downloads: fileData.downloads + 1 })
+      .eq('id', fileId);
+
+    return { url: urlData?.signedUrl, file: fileData };
+  },
+
+  // Delete file
+  async deleteFile(fileId: string) {
+    const { data: fileData } = await supabase
+      .from('shared_files')
+      .select('storage_path')
+      .eq('id', fileId)
+      .single();
+
+    if (!fileData) throw new Error('File not found');
+
+    // Delete from storage
+    await supabase.storage
+      .from('lab-iq-files')
+      .remove([fileData.storage_path]);
+
+    // Delete from database
+    const { error } = await supabase
+      .from('shared_files')
+      .delete()
+      .eq('id', fileId);
+
+    return { error };
+  },
+
+  // Helper: Get user's lab ID
+  async getUserLabId(userId: string): Promise<string> {
+    const { data } = await supabase
+      .from('team_members')
+      .select('lab_id')
+      .eq('user_id', userId)
+      .single();
+
+    return data?.lab_id || '';
+  }
+};
+
+
+═══════════════════════════════════════════════════════════════════════════════
+PART 5: TESTING & DEPLOYMENT
+═══════════════════════════════════════════════════════════════════════════════
+
+5.1 - UNIT TESTS (Create: src/__tests__/collaboration/)
+─────────────────────────────────────────────────────────────────────────────
+
+File: teamService.test.ts
+
+────────────────────────────────────────────────────────────────────────────
+
+import { teamService } from '@/services/teamService';
+
+describe('Team Service', () => {
+  it('should fetch team members', async () => {
+    const { data, error } = await teamService.getTeamMembers('lab-123');
+    expect(error).toBeNull();
+    expect(data).toBeDefined();
+  });
+
+  it('should invite team member', async () => {
+    const { data, error } = await teamService.inviteMember(
+      'test@example.com',
+      'researcher',
+      'lab-123'
+    );
+    expect(error).toBeNull();
+    expect(data?.email).toBe('test@example.com');
+  });
+});
+
+
+─────────────────────────────────────────────────────────────────────────────
+5.2 - INTEGRATION TESTS
+─────────────────────────────────────────────────────────────────────────────
+
+Test scenarios:
+1. ✅ User sends message → appears in other user's chat
+2. ✅ User uploads file → appears in shared files
+3. ✅ User goes offline → status updates for team
+4. ✅ User mentions @someone → notification sent
+5. ✅ User deletes message → removed for everyone
+
+
+─────────────────────────────────────────────────────────────────────────────
+5.3 - DEPLOYMENT CHECKLIST
+─────────────────────────────────────────────────────────────────────────────
+
+Before deploying:
+
+Database:
+  ✅ Run all migration files in order
+  ✅ Enable RLS on all tables
+  ✅ Create RLS policies
+  ✅ Enable Realtime replication
+  ✅ Create indexes
+
+Storage:
+  ✅ Create 'lab-iq-files' bucket
+  ✅ Set bucket to private
+  ✅ Create storage policies
+  ✅ Set max file size
+
+Frontend:
+  ✅ Install new dependencies
+  ✅ Update .env with storage bucket name
+  ✅ Test chat in dev mode
+  ✅ Test file upload/download
+  ✅ Build and test production bundle
+
+Backend:
+  ✅ Deploy edge functions (if any)
+  ✅ Test email invitations
+  ✅ Verify realtime works in production
+
+
+═══════════════════════════════════════════════════════════════════════════════
+PART 6: CODE SNIPPETS & EXAMPLES
+═══════════════════════════════════════════════════════════════════════════════
+
+6.1 - TYPESCRIPT INTERFACES
+─────────────────────────────────────────────────────────────────────────────
+
+Create: src/types/collaboration.ts
+
+────────────────────────────────────────────────────────────────────────────
+
+export interface TeamMember {
+  id: string;
+  user_id: string;
+  lab_id: string;
+  role: 'admin' | 'researcher' | 'analyst' | 'viewer';
+  status: 'online' | 'away' | 'offline' | 'busy';
+  display_name: string;
+  avatar_url?: string;
+  last_active: string;
+  settings: {
+    notifications: boolean;
+    email_digest: boolean;
+  };
+}
+
+export interface ChatMessage {
+  id: string;
+  channel_id: string;
+  user_id: string;
+  content: string;
+  parent_id?: string;
+  mentions?: string[];
+  attachments?: Array<{
+    name: string;
+    url: string;
+    size: number;
+    type: string;
+  }>;
+  reactions?: Record<string, string[]>; // { emoji: [user_ids] }
+  created_at: string;
+  edited_at?: string;
+  deleted_at?: string;
+}
+
+export interface ChatChannel {
+  id: string;
+  name: string;
+  description?: string;
+  lab_id: string;
+  type: 'project' | 'general' | 'private' | 'direct';
+  project_id?: string;
+  created_by: string;
+  created_at: string;
+}
+
+export interface SharedFile {
+  id: string;
+  name: string;
+  storage_path: string;
+  size_bytes: number;
+  mime_type?: string;
+  category: 'dataset' | 'report' | 'code' | 'image' | 'document' | 'other';
+  uploaded_by: string;
+  project_id: string;
+  lab_id: string;
+  version: number;
+  parent_id?: string;
+  downloads: number;
+  created_at: string;
+}
+
+export interface SharedProject {
+  id: string;
+  name: string;
+  description?: string;
+  owner_id: string;
+  lab_id: string;
+  status: 'active' | 'archived' | 'completed';
+  visibility: 'private' | 'team' | 'public';
+  created_at: string;
+  updated_at: string;
+}
+
+
+─────────────────────────────────────────────────────────────────────────────
+6.2 - REACT HOOKS
+─────────────────────────────────────────────────────────────────────────────
+
+Hook: usePresence (track online/offline status)
+
+────────────────────────────────────────────────────────────────────────────
+
+Create: src/hooks/usePresence.ts
+
+import { useEffect } from 'react';
+import { teamService } from '@/services/teamService';
+
+export const usePresence = () => {
+  useEffect(() => {
+    // Set online when component mounts
+    teamService.updateStatus('online');
+
+    // Heartbeat every 30 seconds
+    const interval = setInterval(() => {
+      teamService.updatePresence();
+    }, 30000);
+
+    // Set offline when component unmounts or window closes
+    const handleUnload = () => {
+      teamService.updateStatus('offline');
+    };
+
+    window.addEventListener('beforeunload', handleUnload);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('beforeunload', handleUnload);
+      teamService.updateStatus('offline');
+    };
+  }, []);
+};
+
+
+────────────────────────────────────────────────────────────────────────────
+
+Hook: useTypingIndicator
+
+────────────────────────────────────────────────────────────────────────────
+
+Create: src/hooks/useTypingIndicator.ts
+
+import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+
+export const useTypingIndicator = (channelId: string) => {
+  const [typingUsers, setTypingUsers] = useState<string[]>([]);
+  const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
+
+  // Subscribe to typing events
+  useEffect(() => {
+    const channel = supabase
+      .channel(`typing:${channelId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat_typing',
+          filter: `channel_id=eq.${channelId}`
+        },
+        (payload) => {
+          const userId = payload.new.user_id;
+          setTypingUsers((prev) => [...new Set([...prev, userId])]);
+
+          // Remove after 3 seconds
+          setTimeout(() => {
+            setTypingUsers((prev) => prev.filter((id) => id !== userId));
+          }, 3000);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
+  }, [channelId]);
+
+  // Emit typing event
+  const startTyping = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // Clear previous timeout
+    if (typingTimeout) {
+      clearTimeout(typingTimeout);
+    }
+
+    // Insert typing indicator
+    await supabase
+      .from('chat_typing')
+      .upsert({
+        channel_id: channelId,
+        user_id: user.id,
+        started_at: new Date().toISOString()
+      });
+
+    // Auto-remove after 3 seconds
+    const timeout = setTimeout(async () => {
+      await supabase
+        .from('chat_typing')
+        .delete()
+        .eq('channel_id', channelId)
+        .eq('user_id', user.id);
+    }, 3000);
+
+    setTypingTimeout(timeout);
+  }, [channelId, typingTimeout]);
+
+  return { typingUsers, startTyping };
+};
+
+
+═══════════════════════════════════════════════════════════════════════════════
+IMPLEMENTATION CHECKLIST (Copy this when ready to build!)
+═══════════════════════════════════════════════════════════════════════════════
+
+WEEK 1: DATABASE & BACKEND
+───────────────────────────────────────────────────────────────────────────
+
+Day 1:
+  ☐ Create migration files (copy from Part 2.1)
+  ☐ Run migrations: supabase db push
+  ☐ Verify tables created
+  ☐ Test with sample data
+
+Day 2:
+  ☐ Create RLS policies (Part 2.2)
+  ☐ Enable RLS on all tables
+  ☐ Test policies with different users
+  ☐ Fix any permission issues
+
+Day 3-4:
+  ☐ Setup Realtime (Part 3.1)
+  ☐ Enable replication for key tables
+  ☐ Test realtime subscriptions
+  ☐ Monitor for errors
+
+Day 5-7:
+  ☐ Setup Supabase Storage (Part 3.2)
+  ☐ Create 'lab-iq-files' bucket
+  ☐ Test file upload/download
+  ☐ Create storage policies
+  ☐ Test with large files
+
+
+WEEK 2: FRONTEND INTEGRATION
+───────────────────────────────────────────────────────────────────────────
+
+Day 1-2:
+  ☐ Install dependencies (Part 1.2)
+  ☐ Create useRealtimeChat hook (Part 4.1)
+  ☐ Update ChatPanel component
+  ☐ Test real-time messaging
+
+Day 3:
+  ☐ Create teamService (Part 4.2)
+  ☐ Update Collaboration page team tab
+  ☐ Test team member listing
+  ☐ Test invitations
+
+Day 4-5:
+  ☐ Create fileService (Part 4.3)
+  ☐ Update FileSharing component
+  ☐ Test file upload
+  ☐ Test file download/delete
+
+Day 6-7:
+  ☐ Integrate all components
+  ☐ Test end-to-end workflows
+  ☐ Fix bugs
+  ☐ Polish UI
+
+
+WEEK 3: ENHANCED FEATURES
+───────────────────────────────────────────────────────────────────────────
+
+  ☐ Add @mentions parsing
+  ☐ Create notification system
+  ☐ Add typing indicators (useTypingIndicator)
+  ☐ Add emoji reactions
+  ☐ Add file versioning
+  ☐ Add search functionality
+  ☐ Add keyboard shortcuts
+
+
+WEEK 4: POLISH & DEPLOY
+───────────────────────────────────────────────────────────────────────────
+
+  ☐ Write unit tests (Part 5.1)
+  ☐ Write integration tests (Part 5.2)
+  ☐ Fix all bugs
+  ☐ Optimize performance
+  ☐ Test on different devices
+  ☐ Deploy to production (Part 5.3)
+  ☐ Monitor for errors
+  ☐ Gather user feedback
+
+
+═══════════════════════════════════════════════════════════════════════════════
+NOTES & GOTCHAS
+═══════════════════════════════════════════════════════════════════════════════
+
+1. REALTIME SUBSCRIPTIONS
+   - Max 100 concurrent connections on free tier
+   - Use channel multiplexing for multiple features
+   - Clean up subscriptions on component unmount
+
+2. FILE STORAGE
+   - Supabase Storage has 1GB free, $0.021/GB after
+   - Implement file size limits per tier
+   - Clean up old files periodically
+   - Consider CDN for frequently accessed files
+
+3. RLS POLICIES
+   - Test policies thoroughly
+   - Use SECURITY DEFINER functions for complex checks
+   - Monitor for performance issues with complex policies
+   - Create indexes on columns used in WHERE clauses
+
+4. PRESENCE TRACKING
+   - Use heartbeat (30s interval) to update last_active
+   - Clean up stale "online" statuses with cron job
+   - Consider using Supabase Presence API for real-time status
+
+5. RATE LIMITING
+   - Implement rate limiting for chat messages (e.g., 10 msg/min)
+   - Limit file uploads (e.g., 100MB/day on free tier)
+   - Use Supabase Edge Functions for rate limiting logic
+
+6. NOTIFICATIONS
+   - Use Supabase Edge Functions to send emails
+   - Integrate with push notification service (e.g., OneSignal)
+   - Store notification preferences in team_members.settings
+
+7. PERFORMANCE
+   - Use cursor-based pagination for chat history
+   - Implement virtual scrolling for long message lists
+   - Cache frequently accessed data (team members, projects)
+   - Use Supabase Realtime filters to reduce payload size
+
+
+═══════════════════════════════════════════════════════════════════════════════
+RESOURCES & LINKS
+═══════════════════════════════════════════════════════════════════════════════
+
+Supabase Docs:
+  - Realtime: https://supabase.com/docs/guides/realtime
+  - Storage: https://supabase.com/docs/guides/storage
+  - RLS: https://supabase.com/docs/guides/auth/row-level-security
+  - Edge Functions: https://supabase.com/docs/guides/functions
+
+Libraries:
+  - React Dropzone: https://react-dropzone.js.org/
+  - TipTap (rich text): https://tiptap.dev/
+  - Emoji Picker: https://www.npmjs.com/package/emoji-picker-react
+
+ChatGPT Prompts (for help):
+  - "How do I optimize Supabase Realtime subscriptions?"
+  - "Best practices for file upload in React with Supabase Storage"
+  - "Implement typing indicators with Supabase"
+
+
+═══════════════════════════════════════════════════════════════════════════════
+END OF BUILD GUIDE
+═══════════════════════════════════════════════════════════════════════════════
+
+STATUS: Ready to implement
+NEXT STEP: Create migration files (Week 1, Day 1)
+QUESTIONS: Review plan, adjust priorities if needed
+
+Good luck! 🚀

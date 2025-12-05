@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Home, Upload, Brain, BarChart3, FlaskConicalIcon, Boxes, Users, FileText, Cpu } from "lucide-react";
+import { Home, Upload, Brain, BarChart3, FlaskConicalIcon, Boxes, Users, FileText, Cpu, Database } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const MobileNav = () => {
@@ -7,14 +7,10 @@ const MobileNav = () => {
 
   const navItems = [
     { path: "/dashboard", label: "Overview", icon: Home },
+    { path: "/datasets", label: "Datasets", icon: Database },
     { path: "/upload", label: "Upload", icon: Upload },
     { path: "/insights", label: "AI", icon: Brain },
     { path: "/models", label: "Models", icon: Cpu },
-    { path: "/analytics", label: "Analytics", icon: BarChart3 },
-    { path: "/experiments", label: "Experiments", icon: FlaskConicalIcon },
-    { path: "/automation", label: "Auto", icon: Boxes },
-    { path: "/collaboration", label: "Collab", icon: Users },
-    { path: "/reports", label: "Reports", icon: FileText },
   ];
 
   // We might want to show only a subset on mobile or use a scrollable container
