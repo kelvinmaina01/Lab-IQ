@@ -3,7 +3,7 @@
 ## 1. Test Experiment Creation Flow
 
 ### Steps:
-1. Navigate to http://localhost:8081/upload
+1. Navigate to http://localhost:8080/upload
 2. Upload a CSV file (use any sample data)
 3. Wait for processing to complete
 4. You should be redirected to `/dashboard/datasets/{id}`
@@ -72,7 +72,26 @@
 
 ---
 
-## 4. Test AI Assistant Integration
+## 4. Test Report Generation Flow (NEW)
+
+### Steps:
+1. Navigate to `/reports`
+2. Click "New Report" to open the Wizard
+3. **Step 1 - Configuration**: Enter title "My Lab Report", type "Executive"
+4. **Step 2 - Data Source**: Select a dataset from the list (if you have one)
+5. **Step 3 - Modules**: Toggle "Anomalies" and "Audit Log"
+6. **Step 4 - Distribution**: Click "Generate"
+7. ✅ Check the reports list
+
+### Expected Result:
+- Report appears immediately with status "Processing"
+- After ~5 seconds, status updates to "Published" automatically
+- Analytics cards at the top update
+- Clicking "Version History" shows the initial version
+
+---
+
+## 5. Test AI Assistant Integration
 
 ### Steps:
 1. From dataset detail page, click "Analyze with AI"
@@ -89,7 +108,7 @@
 
 ---
 
-## 5. Visual Verification Checklist
+## 6. Visual Verification Checklist
 
 ### QuickActionsPanel Display:
 - [ ] 4 cards displayed in grid
@@ -102,12 +121,14 @@
 - [ ] Experiment: `/experiments` with dialog open
 - [ ] ML Model: `/models` with wizard open
 - [ ] Workflow: `/automation` with builder open
+- [ ] Reports: `/reports` page loads
 - [ ] AI: `/insights` page loads
 
 ### Database Saves:
 - [ ] Experiments table has new row
 - [ ] ML_models table populates (when ML service runs)
 - [ ] Workflows table has new row
+- [ ] Reports table has new row
 - [ ] Dataset_id links are correct
 
 ---
@@ -151,6 +172,7 @@
 ✅ **Phase 3 Success**: Dialogs/wizards open automatically
 ✅ **Phase 4 Success**: Data saves to database correctly
 ✅ **Phase 5 Success**: ML training works (once service running)
+✅ **Phase 6 Success**: Enterprise Report generation works seamlessly
 
 ---
 
