@@ -18,6 +18,7 @@ import { ChatPanel } from "@/components/collaboration/ChatPanel";
 import { CommentsSystem } from "@/components/collaboration/CommentsSystem";
 import { FileSharing } from "@/components/collaboration/FileSharing";
 import { ActivityTimeline } from "@/components/collaboration/ActivityTimeline";
+import { TeamLeaderboard } from "@/components/collaboration/TeamLeaderboard";
 import { useSubscription } from "@/hooks/useSubscription";
 import { UpgradeDialog } from "@/components/UpgradeDialog";
 
@@ -256,44 +257,56 @@ const Collaboration = () => {
               </TabsList>
 
               {/* Team Members Tab */}
+              {/* Team Members Tab */}
               <TabsContent value="team">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {filteredMembers.map((member) => (
-                    <Card key={member.id} className="p-6">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-start gap-4 flex-1">
-                          <div className="relative">
-                            <Avatar className="w-12 h-12">
-                              <AvatarImage src={member.avatar} alt={member.name} />
-                              <AvatarFallback>{member.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                            </Avatar>
-                            <div className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-background ${getStatusColor(member.status)}`} />
-                          </div>
-                          <div className="flex-1">
-                            <h3 className="font-semibold mb-1">{member.name}</h3>
-                            <p className="text-sm text-muted-foreground mb-2">{member.role}</p>
-                            <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
-                              <span>{member.projects} projects</span>
-                              <span>{member.lastActive}</span>
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                  {/* Member List (2 cols wide) */}
+                  <div className="xl:col-span-2 space-y-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold">Team Members ({filteredMembers.length})</h3>
+                    </div>
+                    {filteredMembers.map((member) => (
+                      <Card key={member.id} className="p-6">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-start gap-4 flex-1">
+                            <div className="relative">
+                              <Avatar className="w-12 h-12">
+                                <AvatarImage src={member.avatar} alt={member.name} />
+                                <AvatarFallback>{member.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                              </Avatar>
+                              <div className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-background ${getStatusColor(member.status)}`} />
                             </div>
-                            <div className="flex items-center gap-2">
-                              <Button size="sm" variant="outline" className="gap-2">
-                                <MessageSquare className="w-3 h-3" />
-                                Message
-                              </Button>
-                              <Button size="sm" variant="outline" className="gap-2">
-                                <FileText className="w-3 h-3" />
-                                View Work
-                              </Button>
+                            <div className="flex-1">
+                              <h3 className="font-semibold mb-1">{member.name}</h3>
+                              <p className="text-sm text-muted-foreground mb-2">{member.role}</p>
+                              <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
+                                <span>{member.projects} projects</span>
+                                <span>{member.lastActive}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Button size="sm" variant="outline" className="gap-2">
+                                  <MessageSquare className="w-3 h-3" />
+                                  Message
+                                </Button>
+                                <Button size="sm" variant="outline" className="gap-2">
+                                  <FileText className="w-3 h-3" />
+                                  View Work
+                                </Button>
+                              </div>
                             </div>
                           </div>
+                          <Button variant="ghost" size="icon">
+                            <MoreVertical className="w-4 h-4" />
+                          </Button>
                         </div>
-                        <Button variant="ghost" size="icon">
-                          <MoreVertical className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </Card>
-                  ))}
+                      </Card>
+                    ))}
+                  </div>
+
+                  {/* Leaderboard (1 col wide) */}
+                  <div className="xl:col-span-1">
+                    <TeamLeaderboard />
+                  </div>
                 </div>
               </TabsContent>
 
