@@ -29,6 +29,7 @@ const DatasetDetail = () => {
     const [quality, setQuality] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [analysisResults, setAnalysisResults] = useState<any>(null);
+    const [analysisLoading, setAnalysisLoading] = useState(false);
     const [rows, setRows] = useState<any[]>([]);
     const [columns, setColumns] = useState<any[]>([]);
 
