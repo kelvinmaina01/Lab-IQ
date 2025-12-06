@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Users, Mail, Search, MoreVertical, FileText, MessageSquare, Activity, Upload, MessageCircle, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ChatPanel } from "@/components/collaboration/ChatPanel";
+import { ChannelSidebar } from "@/components/collaboration/ChannelSidebar";
 import { CommentsSystem } from "@/components/collaboration/CommentsSystem";
 import { FileSharing } from "@/components/collaboration/FileSharing";
 import { ActivityTimeline } from "@/components/collaboration/ActivityTimeline";
@@ -338,17 +339,32 @@ const Collaboration = () => {
                   </Button>
                 </Card>
               ) : (
-                <div className="space-y-6">
+                <div className="flex gap-0 h-[calc(100vh-280px)] border rounded-lg overflow-hidden">
                   {loadingData ? (
-                    <div className="flex items-center justify-center p-12">
+                    <div className="flex items-center justify-center p-12 flex-1">
                       <Loader2 className="w-8 h-8 animate-spin text-primary" />
                       <p className="ml-4 text-muted-foreground">Loading chat...</p>
                     </div>
                   ) : (
-                    <ChatPanel
-                      channelId={selectedChannelId}
-                      projectName={channels.find(c => c.id === selectedChannelId)?.name || "General"}
-                    />
+                    <>
+                      {/* Channel Sidebar */}
+                      {labId && (
+                        <ChannelSidebar
+                          labId={labId}
+                          selectedChannelId={selectedChannelId}
+                          onChannelSelect={setSelectedChannelId}
+                          className="w-64 flex-shrink-0"
+                        />
+                      )}
+
+                      {/* Chat Panel */}
+                      <div className="flex-1 min-w-0">
+                        <ChatPanel
+                          channelId={selectedChannelId}
+                          projectName={channels.find(c => c.id === selectedChannelId)?.display_name || channels.find(c => c.id === selectedChannelId)?.name || "General"}
+                        />
+                      </div>
+                    </>
                   )}
                 </div>
               )}

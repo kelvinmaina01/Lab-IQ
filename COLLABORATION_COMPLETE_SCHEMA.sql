@@ -9,7 +9,7 @@
 -- PART 1: TEAM MANAGEMENT TABLES
 -- =====================================================================
 
--- Team Members Table
+-- Team Members Table1
 CREATE TABLE IF NOT EXISTS team_members (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
