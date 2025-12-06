@@ -29,6 +29,8 @@ const DatasetDetail = () => {
     const [quality, setQuality] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [analysisResults, setAnalysisResults] = useState<any>(null);
+    const [rows, setRows] = useState<any[]>([]);
+    const [columns, setColumns] = useState<any[]>([]);
 
     useEffect(() => {
         if (id) {
@@ -59,6 +61,23 @@ const DatasetDetail = () => {
             // Fetch analysis results if available
             if (datasetData?.metadata?.analysis) {
                 setAnalysisResults(datasetData.metadata.analysis);
+            }
+
+            // Set preview data (rows and columns)
+            if (datasetData?.preview_data) {
+                setRows(datasetData.preview_data);
+            }
+
+            if (datasetData?.schema?.columns) {
+                setColumns(datasetData.schema.columns);
+            } else if (datasetData?.preview_data && datasetData.preview_data.length > 0) {
+                // Generate columns from first row if schema not available
+                const firstRow = datasetData.preview_data[0];
+                const generatedColumns = Object.keys(firstRow).map(key => ({
+                    name: key,
+                    type: typeof firstRow[key]
+                }));
+                setColumns(generatedColumns);
             }
         } catch (error) {
             console.error('Error fetching dataset:', error);

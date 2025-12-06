@@ -35,6 +35,7 @@ const Collaboration = () => {
   // Real data state
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
   const [channels, setChannels] = useState<any[]>([]);
+  const [sharedProjects, setSharedProjects] = useState<any[]>([]);
   const [labId, setLabId] = useState<string | null>(null);
   const [loadingData, setLoadingData] = useState(true);
 
