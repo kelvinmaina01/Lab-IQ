@@ -1,8 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import Sidebar from "@/components/Sidebar";
-import TopBar from "@/components/TopBar";
-import MobileNav from "@/components/MobileNav";
+import { MainLayout } from "@/components/layout/MainLayout";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -11,7 +9,7 @@ import { LineChart, Line, BarChart, Bar, AreaChart, Area, PieChart, Pie, Cell, X
 import { TrendingUp, TrendingDown, Activity, Target, Users, FileText, Clock, CheckCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
-const Assistant = () => {
+const Analytics = () => {
   const [timeRange, setTimeRange] = useState("30d");
   const [loading, setLoading] = useState(true);
   const [metrics, setMetrics] = useState<any[]>([]);
@@ -124,161 +122,154 @@ const Assistant = () => {
 
   return (
     <AuthGuard>
-      <div className="flex min-h-screen bg-background">
-        <Sidebar />
-
-        <div className="flex-1 md:ml-64 pb-16 md:pb-0">
-          <TopBar />
-
-          <main className="p-4 md:p-8">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-8">
-              <div>
-                <h1 className="text-3xl font-bold text-foreground mb-2">Analytics Dashboard</h1>
-                <p className="text-muted-foreground">Track performance, usage, and insights across your lab</p>
-              </div>
-              <Select value={timeRange} onValueChange={setTimeRange}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="7d">Last 7 days</SelectItem>
-                  <SelectItem value="30d">Last 30 days</SelectItem>
-                  <SelectItem value="90d">Last 90 days</SelectItem>
-                  <SelectItem value="1y">Last year</SelectItem>
-                </SelectContent>
-              </Select>
+      <MainLayout>
+        <div className="p-4 md:p-8">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h1 className="text-3xl font-bold text-foreground mb-2">Analytics Dashboard</h1>
+              <p className="text-muted-foreground">Track performance, usage, and insights across your lab</p>
             </div>
+            <Select value={timeRange} onValueChange={setTimeRange}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="7d">Last 7 days</SelectItem>
+                <SelectItem value="30d">Last 30 days</SelectItem>
+                <SelectItem value="90d">Last 90 days</SelectItem>
+                <SelectItem value="1y">Last year</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-            {loading ? (
-              <div className="flex items-center justify-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          {loading ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            </div>
+          ) : (
+            <>
+              {/* Key Metrics */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                {metrics.map((metric) => {
+                  const Icon = metric.icon;
+                  return (
+                    <Card key={metric.title} className="p-6">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className={`p-3 rounded-lg bg-muted ${metric.color}`}>
+                          <Icon className="w-5 h-5" />
+                        </div>
+                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                          <span>{metric.change}</span>
+                        </div>
+                      </div>
+                      <h3 className="text-2xl font-bold mb-1">{metric.value}</h3>
+                      <p className="text-sm text-muted-foreground">{metric.title}</p>
+                    </Card>
+                  );
+                })}
               </div>
-            ) : (
-              <>
-                {/* Key Metrics */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                  {metrics.map((metric) => {
-                    const Icon = metric.icon;
-                    return (
-                      <Card key={metric.title} className="p-6">
-                        <div className="flex items-start justify-between mb-4">
-                          <div className={`p-3 rounded-lg bg-muted ${metric.color}`}>
-                            <Icon className="w-5 h-5" />
-                          </div>
-                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                            <span>{metric.change}</span>
-                          </div>
-                        </div>
-                        <h3 className="text-2xl font-bold mb-1">{metric.value}</h3>
-                        <p className="text-sm text-muted-foreground">{metric.title}</p>
-                      </Card>
-                    );
-                  })}
-                </div>
 
-                {/* Charts */}
-                <Tabs defaultValue="distribution" className="mb-8">
-                  <TabsList className="mb-4">
-                    <TabsTrigger value="distribution">Distribution</TabsTrigger>
-                    <TabsTrigger value="performance">Performance</TabsTrigger>
-                  </TabsList>
+              {/* Charts */}
+              <Tabs defaultValue="distribution" className="mb-8">
+                <TabsList className="mb-4">
+                  <TabsTrigger value="distribution">Distribution</TabsTrigger>
+                  <TabsTrigger value="performance">Performance</TabsTrigger>
+                </TabsList>
 
-                  <TabsContent value="distribution">
-                    <Card className="p-6">
-                      <h3 className="text-lg font-semibold mb-4">Experiment Type Distribution</h3>
-                      <div className="h-[350px]">
-                        {experimentTypeData.length > 0 ? (
-                          <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                              <Pie
-                                data={experimentTypeData}
-                                cx="50%"
-                                cy="50%"
-                                labelLine={false}
-                                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                                outerRadius={120}
-                                fill="#8884d8"
-                                dataKey="value"
-                              >
-                                {experimentTypeData.map((entry, index) => (
-                                  <Cell key={`cell-${index}`} fill={entry.color} />
-                                ))}
-                              </Pie>
-                              <Tooltip />
-                            </PieChart>
-                          </ResponsiveContainer>
-                        ) : (
-                          <div className="flex items-center justify-center h-full text-muted-foreground">
-                            No data available
-                          </div>
-                        )}
-                      </div>
-                    </Card>
-                  </TabsContent>
-
-                  <TabsContent value="performance">
-                    <Card className="p-6">
-                      <h3 className="text-lg font-semibold mb-4">Experiment Status</h3>
-                      <div className="h-[350px]">
+                <TabsContent value="distribution">
+                  <Card className="p-6">
+                    <h3 className="text-lg font-semibold mb-4">Experiment Type Distribution</h3>
+                    <div className="h-[350px]">
+                      {experimentTypeData.length > 0 ? (
                         <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={performanceData}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="date" />
-                            <YAxis />
+                          <PieChart>
+                            <Pie
+                              data={experimentTypeData}
+                              cx="50%"
+                              cy="50%"
+                              labelLine={false}
+                              label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                              outerRadius={120}
+                              fill="#8884d8"
+                              dataKey="value"
+                            >
+                              {experimentTypeData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={entry.color} />
+                              ))}
+                            </Pie>
                             <Tooltip />
-                            <Legend />
-                            <Bar dataKey="success" fill="#10B981" name="Success" />
-                            <Bar dataKey="pending" fill="#F59E0B" name="Pending" />
-                            <Bar dataKey="failed" fill="#EF4444" name="Failed" />
-                          </BarChart>
+                          </PieChart>
                         </ResponsiveContainer>
-                      </div>
-                    </Card>
-                  </TabsContent>
-                </Tabs>
+                      ) : (
+                        <div className="flex items-center justify-center h-full text-muted-foreground">
+                          No data available
+                        </div>
+                      )}
+                    </div>
+                  </Card>
+                </TabsContent>
 
-                {/* Recent Activity */}
-                <Card className="p-6">
-                  <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
-                  <div className="space-y-4">
-                    {recentActivity.length > 0 ? (
-                      recentActivity.map((activity) => (
-                        <div key={activity.id} className="flex items-center justify-between py-3 border-b border-border last:border-0">
-                          <div className="flex items-center gap-4">
-                            {activity.status === "completed" ? (
-                              <CheckCircle className="w-5 h-5 text-green-500" />
-                            ) : (
-                              <Clock className="w-5 h-5 text-orange-500" />
-                            )}
-                            <div>
-                              <p className="font-medium">{activity.action}</p>
-                              <p className="text-sm text-muted-foreground">{activity.user}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <Badge variant={activity.status === "completed" ? "default" : "secondary"}>
-                              {activity.status}
-                            </Badge>
-                            <span className="text-sm text-muted-foreground">{activity.time}</span>
+                <TabsContent value="performance">
+                  <Card className="p-6">
+                    <h3 className="text-lg font-semibold mb-4">Experiment Status</h3>
+                    <div className="h-[350px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={performanceData}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="date" />
+                          <YAxis />
+                          <Tooltip />
+                          <Legend />
+                          <Bar dataKey="success" fill="#10B981" name="Success" />
+                          <Bar dataKey="pending" fill="#F59E0B" name="Pending" />
+                          <Bar dataKey="failed" fill="#EF4444" name="Failed" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </Card>
+                </TabsContent>
+              </Tabs>
+
+              {/* Recent Activity */}
+              <Card className="p-6">
+                <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
+                <div className="space-y-4">
+                  {recentActivity.length > 0 ? (
+                    recentActivity.map((activity) => (
+                      <div key={activity.id} className="flex items-center justify-between py-3 border-b border-border last:border-0">
+                        <div className="flex items-center gap-4">
+                          {activity.status === "completed" ? (
+                            <CheckCircle className="w-5 h-5 text-green-500" />
+                          ) : (
+                            <Clock className="w-5 h-5 text-orange-500" />
+                          )}
+                          <div>
+                            <p className="font-medium">{activity.action}</p>
+                            <p className="text-sm text-muted-foreground">{activity.user}</p>
                           </div>
                         </div>
-                      ))
-                    ) : (
-                      <div className="text-center py-8 text-muted-foreground">
-                        No recent activity found
+                        <div className="flex items-center gap-3">
+                          <Badge variant={activity.status === "completed" ? "default" : "secondary"}>
+                            {activity.status}
+                          </Badge>
+                          <span className="text-sm text-muted-foreground">{activity.time}</span>
+                        </div>
                       </div>
-                    )}
-                  </div>
-                </Card>
-              </>
-            )}
-          </main>
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No recent activity found
+                    </div>
+                  )}
+                </div>
+              </Card>
+            </>
+          )}
         </div>
-        <MobileNav />
-      </div>
+      </MainLayout>
     </AuthGuard>
   );
 };
 
-export default Assistant;
+export default Analytics;

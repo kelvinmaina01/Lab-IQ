@@ -1,7 +1,5 @@
 import { useState } from "react";
-import Sidebar from "@/components/Sidebar";
-import TopBar from "@/components/TopBar";
-import MobileNav from "@/components/MobileNav";
+import { MainLayout } from "@/components/layout/MainLayout";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -164,235 +162,228 @@ const Collaboration = () => {
 
   return (
     <AuthGuard>
-      <div className="flex min-h-screen bg-background">
-        <Sidebar />
-
-        <div className="flex-1 md:ml-64 pb-16 md:pb-0">
-          <TopBar />
-
-          <main className="p-4 md:p-8">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-8">
-              <div>
-                <h1 className="text-3xl font-bold text-foreground mb-2">Collaboration</h1>
-                <p className="text-muted-foreground">Work together with your team members</p>
-              </div>
-              <Dialog open={isInviteDialogOpen} onOpenChange={setIsInviteDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button className="gap-2">
-                    <Plus className="w-4 h-4" />
-                    Invite Member
+      <MainLayout>
+        <main className="p-4 md:p-8">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h1 className="text-3xl font-bold text-foreground mb-2">Collaboration</h1>
+              <p className="text-muted-foreground">Work together with your team members</p>
+            </div>
+            <Dialog open={isInviteDialogOpen} onOpenChange={setIsInviteDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="gap-2">
+                  <Plus className="w-4 h-4" />
+                  Invite Member
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Invite Team Member</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email Address</Label>
+                    <Input id="email" type="email" placeholder="colleague@example.com" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="role">Role</Label>
+                    <Select>
+                      <SelectTrigger id="role">
+                        <SelectValue placeholder="Select role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="admin">Administrator</SelectItem>
+                        <SelectItem value="researcher">Researcher</SelectItem>
+                        <SelectItem value="analyst">Data Analyst</SelectItem>
+                        <SelectItem value="viewer">Viewer</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button onClick={handleInviteMember} className="w-full gap-2">
+                    <Mail className="w-4 h-4" />
+                    Send Invitation
                   </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Invite Team Member</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email Address</Label>
-                      <Input id="email" type="email" placeholder="colleague@example.com" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="role">Role</Label>
-                      <Select>
-                        <SelectTrigger id="role">
-                          <SelectValue placeholder="Select role" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="admin">Administrator</SelectItem>
-                          <SelectItem value="researcher">Researcher</SelectItem>
-                          <SelectItem value="analyst">Data Analyst</SelectItem>
-                          <SelectItem value="viewer">Viewer</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <Button onClick={handleInviteMember} className="w-full gap-2">
-                      <Mail className="w-4 h-4" />
-                      Send Invitation
-                    </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </div>
-
-            {/* Search */}
-            <div className="relative mb-6">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Search team members..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-
-            <Tabs defaultValue="team" className="space-y-6">
-              <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6">
-                <TabsTrigger value="team">
-                  <Users className="w-4 h-4 mr-2" />
-                  <span className="hidden sm:inline">Team</span>
-                </TabsTrigger>
-                <TabsTrigger value="projects">
-                  <FileText className="w-4 h-4 mr-2" />
-                  <span className="hidden sm:inline">Projects</span>
-                </TabsTrigger>
-                <TabsTrigger value="chat">
-                  <MessageSquare className="w-4 h-4 mr-2" />
-                  <span className="hidden sm:inline">Chat</span>
-                  {subscription?.tier === "free" && <Badge variant="secondary" className="ml-2 text-xs hidden lg:inline">Pro</Badge>}
-                </TabsTrigger>
-                <TabsTrigger value="comments">
-                  <MessageCircle className="w-4 h-4 mr-2" />
-                  <span className="hidden sm:inline">Comments</span>
-                </TabsTrigger>
-                <TabsTrigger value="files">
-                  <Upload className="w-4 h-4 mr-2" />
-                  <span className="hidden sm:inline">Files</span>
-                </TabsTrigger>
-                <TabsTrigger value="activity">
-                  <Activity className="w-4 h-4 mr-2" />
-                  <span className="hidden sm:inline">Activity</span>
-                </TabsTrigger>
-              </TabsList>
-
-              {/* Team Members Tab */}
-              {/* Team Members Tab */}
-              <TabsContent value="team">
-                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                  {/* Member List (2 cols wide) */}
-                  <div className="xl:col-span-2 space-y-4">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-semibold">Team Members ({filteredMembers.length})</h3>
-                    </div>
-                    {filteredMembers.map((member) => (
-                      <Card key={member.id} className="p-6">
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-start gap-4 flex-1">
-                            <div className="relative">
-                              <Avatar className="w-12 h-12">
-                                <AvatarImage src={member.avatar} alt={member.name} />
-                                <AvatarFallback>{member.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                              </Avatar>
-                              <div className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-background ${getStatusColor(member.status)}`} />
-                            </div>
-                            <div className="flex-1">
-                              <h3 className="font-semibold mb-1">{member.name}</h3>
-                              <p className="text-sm text-muted-foreground mb-2">{member.role}</p>
-                              <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
-                                <span>{member.projects} projects</span>
-                                <span>{member.lastActive}</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Button size="sm" variant="outline" className="gap-2">
-                                  <MessageSquare className="w-3 h-3" />
-                                  Message
-                                </Button>
-                                <Button size="sm" variant="outline" className="gap-2">
-                                  <FileText className="w-3 h-3" />
-                                  View Work
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
-                          <Button variant="ghost" size="icon">
-                            <MoreVertical className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
-
-                  {/* Leaderboard (1 col wide) */}
-                  <div className="xl:col-span-1">
-                    <TeamLeaderboard />
-                  </div>
                 </div>
-              </TabsContent>
+              </DialogContent>
+            </Dialog>
+          </div>
 
-              {/* Shared Projects Tab */}
-              <TabsContent value="projects">
-                <div className="space-y-4">
-                  {sharedProjects.map((project) => (
-                    <Card key={project.id} className="p-6">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4 flex-1">
-                          <div className="p-3 rounded-lg bg-primary/10">
-                            <FileText className="w-6 h-6 text-primary" />
+          {/* Search */}
+          <div className="relative mb-6">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search team members..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+
+          <Tabs defaultValue="team" className="space-y-6">
+            <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6">
+              <TabsTrigger value="team">
+                <Users className="w-4 h-4 mr-2" />
+                <span className="hidden sm:inline">Team</span>
+              </TabsTrigger>
+              <TabsTrigger value="projects">
+                <FileText className="w-4 h-4 mr-2" />
+                <span className="hidden sm:inline">Projects</span>
+              </TabsTrigger>
+              <TabsTrigger value="chat">
+                <MessageSquare className="w-4 h-4 mr-2" />
+                <span className="hidden sm:inline">Chat</span>
+                {subscription?.tier === "free" && <Badge variant="secondary" className="ml-2 text-xs hidden lg:inline">Pro</Badge>}
+              </TabsTrigger>
+              <TabsTrigger value="comments">
+                <MessageCircle className="w-4 h-4 mr-2" />
+                <span className="hidden sm:inline">Comments</span>
+              </TabsTrigger>
+              <TabsTrigger value="files">
+                <Upload className="w-4 h-4 mr-2" />
+                <span className="hidden sm:inline">Files</span>
+              </TabsTrigger>
+              <TabsTrigger value="activity">
+                <Activity className="w-4 h-4 mr-2" />
+                <span className="hidden sm:inline">Activity</span>
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Team Members Tab */}
+            {/* Team Members Tab */}
+            <TabsContent value="team">
+              <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                {/* Member List (2 cols wide) */}
+                <div className="xl:col-span-2 space-y-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold">Team Members ({filteredMembers.length})</h3>
+                  </div>
+                  {filteredMembers.map((member) => (
+                    <Card key={member.id} className="p-6">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start gap-4 flex-1">
+                          <div className="relative">
+                            <Avatar className="w-12 h-12">
+                              <AvatarImage src={member.avatar} alt={member.name} />
+                              <AvatarFallback>{member.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                            </Avatar>
+                            <div className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-background ${getStatusColor(member.status)}`} />
                           </div>
                           <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-2">
-                              <h3 className="text-lg font-semibold">{project.name}</h3>
-                              <Badge variant={project.status === "active" ? "default" : "secondary"}>
-                                {project.status}
-                              </Badge>
+                            <h3 className="font-semibold mb-1">{member.name}</h3>
+                            <p className="text-sm text-muted-foreground mb-2">{member.role}</p>
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
+                              <span>{member.projects} projects</span>
+                              <span>{member.lastActive}</span>
                             </div>
-                            <div className="flex items-center gap-6 text-sm text-muted-foreground">
-                              <span>Owner: {project.owner}</span>
-                              <div className="flex items-center gap-2">
-                                <Users className="w-4 h-4" />
-                                {project.members} members
-                              </div>
-                              <span>Updated {project.lastUpdate}</span>
+                            <div className="flex items-center gap-2">
+                              <Button size="sm" variant="outline" className="gap-2">
+                                <MessageSquare className="w-3 h-3" />
+                                Message
+                              </Button>
+                              <Button size="sm" variant="outline" className="gap-2">
+                                <FileText className="w-3 h-3" />
+                                View Work
+                              </Button>
                             </div>
                           </div>
                         </div>
-                        <Button>View Project</Button>
+                        <Button variant="ghost" size="icon">
+                          <MoreVertical className="w-4 h-4" />
+                        </Button>
                       </div>
                     </Card>
                   ))}
                 </div>
-              </TabsContent>
 
-              {/* Real-Time Chat Tab */}
-              <TabsContent value="chat">
-                {subscription?.tier === "free" ? (
-                  <Card className="p-8 text-center">
-                    <MessageSquare className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-                    <h3 className="text-xl font-semibold mb-2">Real-Time Chat</h3>
-                    <p className="text-muted-foreground mb-4">
-                      Collaborate in real-time with your team members using our integrated chat feature.
-                    </p>
-                    <Button onClick={() => setUpgradeOpen(true)}>
-                      Upgrade to Pro
-                    </Button>
+                {/* Leaderboard (1 col wide) */}
+                <div className="xl:col-span-1">
+                  <TeamLeaderboard />
+                </div>
+              </div>
+            </TabsContent>
+
+            {/* Shared Projects Tab */}
+            <TabsContent value="projects">
+              <div className="space-y-4">
+                {sharedProjects.map((project) => (
+                  <Card key={project.id} className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4 flex-1">
+                        <div className="p-3 rounded-lg bg-primary/10">
+                          <FileText className="w-6 h-6 text-primary" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <h3 className="text-lg font-semibold">{project.name}</h3>
+                            <Badge variant={project.status === "active" ? "default" : "secondary"}>
+                              {project.status}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-6 text-sm text-muted-foreground">
+                            <span>Owner: {project.owner}</span>
+                            <div className="flex items-center gap-2">
+                              <Users className="w-4 h-4" />
+                              {project.members} members
+                            </div>
+                            <span>Updated {project.lastUpdate}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <Button>View Project</Button>
+                    </div>
                   </Card>
-                ) : (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <ChatPanel projectName="Protein Analysis Discussion" />
-                    <ChatPanel projectName="General Lab Updates" />
-                  </div>
-                )}
-              </TabsContent>
+                ))}
+              </div>
+            </TabsContent>
 
-              {/* Comments Tab */}
-              <TabsContent value="comments">
-                <CommentsSystem
-                  entityId="project-1"
-                  entityType="experiment"
-                  entityName="Protein Structure Analysis"
-                />
-              </TabsContent>
+            {/* Real-Time Chat Tab */}
+            <TabsContent value="chat">
+              {subscription?.tier === "free" ? (
+                <Card className="p-8 text-center">
+                  <MessageSquare className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+                  <h3 className="text-xl font-semibold mb-2">Real-Time Chat</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Collaborate in real-time with your team members using our integrated chat feature.
+                  </p>
+                  <Button onClick={() => setUpgradeOpen(true)}>
+                    Upgrade to Pro
+                  </Button>
+                </Card>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <ChatPanel projectName="Protein Analysis Discussion" />
+                  <ChatPanel projectName="General Lab Updates" />
+                </div>
+              )}
+            </TabsContent>
 
-              {/* File Sharing Tab */}
-              <TabsContent value="files">
-                <FileSharing
-                  projectId="project-1"
-                  projectName="Protein Structure Analysis"
-                />
-              </TabsContent>
+            {/* Comments Tab */}
+            <TabsContent value="comments">
+              <CommentsSystem
+                entityId="project-1"
+                entityType="experiment"
+                entityName="Protein Structure Analysis"
+              />
+            </TabsContent>
 
-              {/* Activity Feed Tab */}
-              <TabsContent value="activity">
-                <ActivityTimeline />
-              </TabsContent>
-            </Tabs>
+            {/* File Sharing Tab */}
+            <TabsContent value="files">
+              <FileSharing
+                projectId="project-1"
+                projectName="Protein Structure Analysis"
+              />
+            </TabsContent>
 
-            <UpgradeDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} />
-          </main>
-        </div>
-        <MobileNav />
-      </div>
+            {/* Activity Feed Tab */}
+            <TabsContent value="activity">
+              <ActivityTimeline />
+            </TabsContent>
+          </Tabs>
+
+          <UpgradeDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} />
+        </main>
+      </MainLayout>
     </AuthGuard>
   );
 };

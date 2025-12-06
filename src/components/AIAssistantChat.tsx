@@ -51,14 +51,15 @@ interface AIAssistantChatProps {
   mode?: AssistantMode;
   onModeChange?: (mode: AssistantMode) => void;
   onImmersiveChange?: (isImmersive: boolean) => void;
+  initialDatasetId?: string;
 }
 
-export const AIAssistantChat = ({ mode = 'analysis', onModeChange, onImmersiveChange }: AIAssistantChatProps) => {
+export const AIAssistantChat = ({ mode = 'analysis', onModeChange, onImmersiveChange, initialDatasetId }: AIAssistantChatProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [thinking, setThinking] = useState('');
-  const [selectedDataset, setSelectedDataset] = useState<string | null>(null);
+  const [selectedDataset, setSelectedDataset] = useState<string | null>(initialDatasetId || null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isImmersive, setIsImmersive] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
@@ -69,6 +70,13 @@ export const AIAssistantChat = ({ mode = 'analysis', onModeChange, onImmersiveCh
       if (data.user) setUserId(data.user.id);
     });
   }, []);
+
+  // Update selected dataset if prop changes
+  useEffect(() => {
+    if (initialDatasetId) {
+      setSelectedDataset(initialDatasetId);
+    }
+  }, [initialDatasetId]);
 
   // Load chat history when dataset or mode changes
   useEffect(() => {
@@ -84,7 +92,7 @@ export const AIAssistantChat = ({ mode = 'analysis', onModeChange, onImmersiveCh
 
     try {
       const { data, error } = await supabase
-        .from('chat_history')
+        .from('chat_history' as any)
         .select('*')
         .eq('user_id', userId)
         .eq('dataset_id', selectedDataset)
@@ -94,7 +102,7 @@ export const AIAssistantChat = ({ mode = 'analysis', onModeChange, onImmersiveCh
       if (error) throw error;
 
       if (data && data.length > 0) {
-        const loadedMessages = data.map(msg => ({
+        const loadedMessages = (data as any[]).map(msg => ({
           role: msg.role as 'user' | 'assistant',
           content: msg.content,
           sections: msg.sections,
@@ -114,7 +122,7 @@ export const AIAssistantChat = ({ mode = 'analysis', onModeChange, onImmersiveCh
     if (!selectedDataset || !userId) return;
 
     try {
-      await supabase.from('chat_history').insert({
+      await supabase.from('chat_history' as any).insert({
         user_id: userId,
         dataset_id: selectedDataset,
         mode,
@@ -178,90 +186,30 @@ export const AIAssistantChat = ({ mode = 'analysis', onModeChange, onImmersiveCh
     setThinking('Analyzing your data...');
 
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-data-assistant`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          },
-          body: JSON.stringify({
-            messages: [...messages, userMessage].map(m => ({ role: m.role, content: m.content })),
-            mode,
-            datasetId: selectedDataset
-          }),
-        }
+      // Use local ML service
+      const response = await fetch('http://localhost:8002/api/ml/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: [...messages, userMessage].map(m => ({ role: m.role, content: m.content })),
+          mode,
+          datasetId: selectedDataset
+        }),
+      }
       );
 
-      if (!response.ok || !response.body) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to get response');
+      if (!response.ok) {
+        throw new Error('Failed to get response from AI Assistant');
       }
 
-      setThinking('');
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let assistantContent = '';
-      let textBuffer = '';
-
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: '',
-        timestamp: new Date().toISOString()
-      }]);
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        textBuffer += decoder.decode(value, { stream: true });
-
-        let newlineIndex: number;
-        while ((newlineIndex = textBuffer.indexOf('\n')) !== -1) {
-          let line = textBuffer.slice(0, newlineIndex);
-          textBuffer = textBuffer.slice(newlineIndex + 1);
-
-          if (line.endsWith('\r')) line = line.slice(0, -1);
-          if (line.startsWith(':') || line.trim() === '') continue;
-          if (!line.startsWith('data: ')) continue;
-
-          const jsonStr = line.slice(6).trim();
-          if (jsonStr === '[DONE]') break;
-
-          try {
-            const parsed = JSON.parse(jsonStr);
-            const content = parsed.choices?.[0]?.delta?.content;
-
-            if (content) {
-              assistantContent += content;
-              setMessages(prev => {
-                const newMessages = [...prev];
-                newMessages[newMessages.length - 1] = {
-                  role: 'assistant',
-                  content: assistantContent
-                };
-                return newMessages;
-              });
-            }
-          } catch (e) {
-            textBuffer = line + '\n' + textBuffer;
-            break;
-          }
-        }
-      }
+      const data = await response.json();
+      const assistantContent = "Here is the analysis:"; // The content is mainly in sections now
 
       // Parse final JSON response
-      let sections: Section[] | undefined;
-      try {
-        const jsonResponse = JSON.parse(assistantContent);
-        if (jsonResponse.sections) {
-          sections = jsonResponse.sections;
-        }
-      } catch (e) {
-        console.log('Response is not structured JSON');
-      }
+      // The python API returns { sections: [...] }
+      const sections = data.sections;
 
       const finalMessage: Message = {
         role: 'assistant',
@@ -270,10 +218,12 @@ export const AIAssistantChat = ({ mode = 'analysis', onModeChange, onImmersiveCh
         timestamp: new Date().toISOString()
       };
 
-      setMessages(prev => prev.map((msg, idx) =>
-        idx === prev.length - 1 ? finalMessage : msg
-      ));
+      setMessages(prev => [...prev, finalMessage]);
       await saveChatMessage(finalMessage);
+
+      /* Streaming logic removed for local API consistency */
+
+      setThinking('');
 
     } catch (error) {
       console.error('Chat error:', error);

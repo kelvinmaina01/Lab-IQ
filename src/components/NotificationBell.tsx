@@ -28,7 +28,7 @@ export const NotificationBell = () => {
 
   useEffect(() => {
     fetchNotifications();
-    
+
     // Subscribe to real-time notifications
     const channel = supabase
       .channel('notifications')
@@ -110,8 +110,8 @@ export const NotificationBell = () => {
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="w-5 h-5" />
           {unreadCount > 0 && (
-            <Badge 
-              variant="destructive" 
+            <Badge
+              variant="destructive"
               className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
             >
               {unreadCount}
@@ -133,9 +133,8 @@ export const NotificationBell = () => {
               {notifications.map((notification) => (
                 <div
                   key={notification.id}
-                  className={`p-4 cursor-pointer hover:bg-muted/50 transition-colors ${
-                    !notification.read ? 'bg-primary/5' : ''
-                  }`}
+                  className={`p-4 cursor-pointer hover:bg-muted/50 transition-colors ${!notification.read ? 'bg-primary/5' : ''
+                    }`}
                   onClick={() => handleNotificationClick(notification)}
                 >
                   <div className="flex items-start gap-3">
@@ -157,8 +156,22 @@ export const NotificationBell = () => {
               ))}
             </div>
           )}
+
         </ScrollArea>
+        <div className="p-2 border-t bg-muted/20">
+          <Button
+            variant="ghost"
+            className="w-full text-xs h-8"
+            onClick={() => {
+              navigate('/notifications');
+              // Close popover logic if I could access it, but usually navigation closes it or user clicks away.
+              // We can't easily close it from here without lifting state, but navigation works.
+            }}
+          >
+            View all notifications
+          </Button>
+        </div>
       </PopoverContent>
-    </Popover>
+    </Popover >
   );
 };

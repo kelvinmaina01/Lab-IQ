@@ -78,3 +78,7 @@ evidently==0.4.47
 torch==2.5.1
 tensorflow==2.18.0
 keras==3.7.0
+
+# Domain Specific
+biopython==1.84
+rdkit-pypi==2023.9.5

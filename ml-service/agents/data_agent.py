@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 from typing import Dict, Any, List
 from .base_agent import BaseAgent
+from .domain_agent import DomainAgent
 import logging
 
 logger = logging.getLogger(__name__)
@@ -15,6 +16,7 @@ class DataAgent(BaseAgent):
     
     def __init__(self):
         super().__init__("data_agent", "Data Understanding Agent 🗂️")
+        self.domain_agent = DomainAgent()
     
     async def execute(self, data: Any, context: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -42,6 +44,11 @@ class DataAgent(BaseAgent):
         
         # Recommendations
         recommendations = self._generate_recommendations(df, missing_analysis, outliers, type_analysis)
+
+        # Domain Analysis
+        domain_analysis = await self.domain_agent.execute(data, context)
+        if domain_analysis.get("domain_detected") != "general":
+            recommendations.append(f"🧬 Detected {domain_analysis['domain_detected']} domain data. Applied specialized analysis.")
         
         return {
             "basic_info": basic_info,
@@ -50,7 +57,9 @@ class DataAgent(BaseAgent):
             "statistical_summary": stats_summary,
             "outliers": outliers,
             "quality_score": quality_score,
-            "recommendations": recommendations
+            "quality_score": quality_score,
+            "recommendations": recommendations,
+            "domain_analysis": domain_analysis
         }
     
     def _get_basic_info(self, df: pd.DataFrame) -> Dict[str, Any]:

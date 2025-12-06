@@ -9,6 +9,7 @@ from .hyperparameter_agent import HyperparameterAgent
 from .training_agent import TrainingAgent
 from .insights_agent import InsightsAgent
 from .orchestrator import OrchestratorAgent
+from .domain_agent import DomainAgent
 
 __all__ = [
     'BaseAgent',
@@ -19,5 +20,7 @@ __all__ = [
     'HyperparameterAgent',
     'TrainingAgent',
     'InsightsAgent',
-    'OrchestratorAgent'
+    'InsightsAgent',
+    'OrchestratorAgent',
+    'DomainAgent'
 ]

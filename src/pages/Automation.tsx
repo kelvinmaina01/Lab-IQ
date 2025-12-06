@@ -1,8 +1,7 @@
+
 import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
-import Sidebar from "@/components/Sidebar";
-import TopBar from "@/components/TopBar";
-import MobileNav from "@/components/MobileNav";
+import { MainLayout } from "@/components/layout/MainLayout";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -106,7 +105,7 @@ const Automation = () => {
       if (!user) return;
 
       const { error } = await supabase
-        .from('workflows')
+        .from('workflows' as any)
         .insert({
           user_id: user.id,
           name: workflow.name,
@@ -137,169 +136,162 @@ const Automation = () => {
 
   return (
     <AuthGuard>
-      <div className="flex min-h-screen bg-background">
-        <Sidebar />
-
-        <div className="flex-1 md:ml-64 pb-16 md:pb-0">
-          <TopBar />
-
-          <main className="p-4 md:p-8">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-8">
-              <div>
-                <h1 className="text-3xl font-bold text-foreground mb-2">Automation</h1>
-                <p className="text-muted-foreground">Configure automated workflows and processes</p>
-              </div>
-              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button className="gap-2">
-                    <Plus className="w-4 h-4" />
-                    Create Workflow
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>Create Automation Workflow</DialogTitle>
-                  </DialogHeader>
-                  {useBuilder ? (
-                    <WorkflowBuilder
-                      onSave={handleCreateWorkflow}
-                      onCancel={() => {
-                        setIsCreateDialogOpen(false);
-                        setUseBuilder(false);
-                      }}
-                      initialDatasetId={initialDatasetId}
-                    />
-                  ) : (
-                    <div className="text-center py-8">
-                      <Button
-                        onClick={() => setUseBuilder(true)}
-                        size="lg"
-                      >
-                        Open Workflow Builder
-                      </Button>
-                    </div>
-                  )}
-                </DialogContent>
-              </Dialog>
+      <MainLayout>
+        <main className="p-4 md:p-8">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h1 className="text-3xl font-bold text-foreground mb-2">Automation</h1>
+              <p className="text-muted-foreground">Configure automated workflows and processes</p>
             </div>
+            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="gap-2">
+                  <Plus className="w-4 h-4" />
+                  Create Workflow
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Create Automation Workflow</DialogTitle>
+                </DialogHeader>
+                {useBuilder ? (
+                  <WorkflowBuilder
+                    onSave={handleCreateWorkflow}
+                    onCancel={() => {
+                      setIsCreateDialogOpen(false);
+                      setUseBuilder(false);
+                    }}
+                    initialDatasetId={initialDatasetId}
+                  />
+                ) : (
+                  <div className="text-center py-8">
+                    <Button
+                      onClick={() => setUseBuilder(true)}
+                      size="lg"
+                    >
+                      Open Workflow Builder
+                    </Button>
+                  </div>
+                )}
+              </DialogContent>
+            </Dialog>
+          </div>
 
-            {/* Statistics Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-              <Card className="p-6">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-lg bg-blue-500/10">
-                    <Zap className="w-6 h-6 text-blue-500" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">5</p>
-                    <p className="text-sm text-muted-foreground">Active Workflows</p>
-                  </div>
-                </div>
-              </Card>
-              <Card className="p-6">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-lg bg-green-500/10">
-                    <PlayCircle className="w-6 h-6 text-green-500" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">532</p>
-                    <p className="text-sm text-muted-foreground">Total Runs</p>
-                  </div>
-                </div>
-              </Card>
-              <Card className="p-6">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-lg bg-purple-500/10">
-                    <TrendingUp className="w-6 h-6 text-purple-500" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">98.5%</p>
-                    <p className="text-sm text-muted-foreground">Success Rate</p>
-                  </div>
-                </div>
-              </Card>
-              <Card className="p-6">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-lg bg-orange-500/10">
-                    <Clock className="w-6 h-6 text-orange-500" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">124h</p>
-                    <p className="text-sm text-muted-foreground">Time Saved</p>
-                  </div>
-                </div>
-              </Card>
-            </div>
-
-            {/* Workflows List */}
-            <div className="space-y-4">
-              {workflows.map((workflow) => (
-                <Card key={workflow.id} className="p-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-4 flex-1">
-                      <div className={`p-3 rounded-lg ${workflow.enabled ? 'bg-primary/10' : 'bg-muted'}`}>
-                        <Zap className={`w-6 h-6 ${workflow.enabled ? 'text-primary' : 'text-muted-foreground'}`} />
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="text-lg font-semibold">{workflow.name}</h3>
-                          <Badge variant="outline">{workflow.trigger}</Badge>
-                          {workflow.status === "success" && (
-                            <Badge className="bg-green-500/10 text-green-500 border-green-500/20">
-                              Running smoothly
-                            </Badge>
-                          )}
-                          {workflow.status === "warning" && (
-                            <Badge className="bg-orange-500/10 text-orange-500 border-orange-500/20">
-                              Needs attention
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-muted-foreground mb-4">{workflow.description}</p>
-                        <div className="flex items-center gap-6 text-sm text-muted-foreground">
-                          <div className="flex items-center gap-2">
-                            <Clock className="w-4 h-4" />
-                            {workflow.schedule}
-                          </div>
-                          <div>Last run: {workflow.lastRun}</div>
-                          <div>{workflow.runs} total runs</div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <Switch
-                        checked={workflow.enabled}
-                        onCheckedChange={() => handleToggleWorkflow(workflow.id)}
-                      />
-                      <Button variant="ghost" size="icon">
-                        <Settings className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
-
-            {/* Info Card */}
-            <Card className="mt-8 p-6 bg-primary/5 border-primary/20">
-              <div className="flex items-start gap-4">
-                <div className="p-3 rounded-lg bg-primary/10">
-                  <Zap className="w-6 h-6 text-primary" />
+          {/* Statistics Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <Card className="p-6">
+              <div className="flex items-center gap-4">
+                <div className="p-3 rounded-lg bg-blue-500/10">
+                  <Zap className="w-6 h-6 text-blue-500" />
                 </div>
                 <div>
-                  <h3 className="font-semibold mb-2">Automation Benefits</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Automation workflows help you save time by handling repetitive tasks automatically.
-                    Set up triggers based on schedules, events, or thresholds, and let LabIQ handle the rest.
-                  </p>
+                  <p className="text-2xl font-bold">5</p>
+                  <p className="text-sm text-muted-foreground">Active Workflows</p>
                 </div>
               </div>
             </Card>
-          </main>
-        </div>
-        <MobileNav />
-      </div>
+            <Card className="p-6">
+              <div className="flex items-center gap-4">
+                <div className="p-3 rounded-lg bg-green-500/10">
+                  <PlayCircle className="w-6 h-6 text-green-500" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">532</p>
+                  <p className="text-sm text-muted-foreground">Total Runs</p>
+                </div>
+              </div>
+            </Card>
+            <Card className="p-6">
+              <div className="flex items-center gap-4">
+                <div className="p-3 rounded-lg bg-purple-500/10">
+                  <TrendingUp className="w-6 h-6 text-purple-500" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">98.5%</p>
+                  <p className="text-sm text-muted-foreground">Success Rate</p>
+                </div>
+              </div>
+            </Card>
+            <Card className="p-6">
+              <div className="flex items-center gap-4">
+                <div className="p-3 rounded-lg bg-orange-500/10">
+                  <Clock className="w-6 h-6 text-orange-500" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">124h</p>
+                  <p className="text-sm text-muted-foreground">Time Saved</p>
+                </div>
+              </div>
+            </Card>
+          </div>
+
+          {/* Workflows List */}
+          <div className="space-y-4">
+            {workflows.map((workflow) => (
+              <Card key={workflow.id} className="p-6">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start gap-4 flex-1">
+                    <div className={`p-3 rounded-lg ${workflow.enabled ? 'bg-primary/10' : 'bg-muted'}`}>
+                      <Zap className={`w-6 h-6 ${workflow.enabled ? 'text-primary' : 'text-muted-foreground'}`} />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="text-lg font-semibold">{workflow.name}</h3>
+                        <Badge variant="outline">{workflow.trigger}</Badge>
+                        {workflow.status === "success" && (
+                          <Badge className="bg-green-500/10 text-green-500 border-green-500/20">
+                            Running smoothly
+                          </Badge>
+                        )}
+                        {workflow.status === "warning" && (
+                          <Badge className="bg-orange-500/10 text-orange-500 border-orange-500/20">
+                            Needs attention
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-muted-foreground mb-4">{workflow.description}</p>
+                      <div className="flex items-center gap-6 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-2">
+                          <Clock className="w-4 h-4" />
+                          {workflow.schedule}
+                        </div>
+                        <div>Last run: {workflow.lastRun}</div>
+                        <div>{workflow.runs} total runs</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <Switch
+                      checked={workflow.enabled}
+                      onCheckedChange={() => handleToggleWorkflow(workflow.id)}
+                    />
+                    <Button variant="ghost" size="icon">
+                      <Settings className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+
+          {/* Info Card */}
+          <Card className="mt-8 p-6 bg-primary/5 border-primary/20">
+            <div className="flex items-start gap-4">
+              <div className="p-3 rounded-lg bg-primary/10">
+                <Zap className="w-6 h-6 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-semibold mb-2">Automation Benefits</h3>
+                <p className="text-sm text-muted-foreground">
+                  Automation workflows help you save time by handling repetitive tasks automatically.
+                  Set up triggers based on schedules, events, or thresholds, and let LabIQ handle the rest.
+                </p>
+              </div>
+            </div>
+          </Card>
+        </main>
+      </MainLayout>
     </AuthGuard>
   );
 };

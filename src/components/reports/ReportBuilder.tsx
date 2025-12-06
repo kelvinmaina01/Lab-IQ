@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { FileText, Database, BarChart3, Clock, Mail, CheckCircle2, FlaskConical, Brain, AlertTriangle, FileCheck } from "lucide-react";
+import { FileText, Database, BarChart3, Clock, Mail, CheckCircle2, FlaskConical, Brain, AlertTriangle, FileCheck, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface ReportBuilderProps {
@@ -22,6 +22,7 @@ interface ReportBuilderProps {
 export const ReportBuilder = ({ open, onOpenChange, onComplete, initialConfig }: ReportBuilderProps) => {
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
+    const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
     const [datasets, setDatasets] = useState<any[]>([]);
 
     const defaultConfig = {
@@ -81,6 +82,35 @@ export const ReportBuilder = ({ open, onOpenChange, onComplete, initialConfig }:
             ...prev,
             modules: { ...prev.modules, [key]: checked }
         }));
+    };
+
+    const generateDescription = async () => {
+        setIsGeneratingDescription(true);
+        try {
+            // Get active modules
+            const activeModules = Object.entries(config.modules)
+                .filter(([_, enabled]) => enabled)
+                .map(([key]) => key);
+
+            const response = await fetch('http://localhost:8002/api/ml/generate-description', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: config.title || "Untitled Report",
+                    report_type: config.type,
+                    modules: activeModules
+                })
+            });
+
+            const data = await response.json();
+            if (data.success && data.description) {
+                setConfig(prev => ({ ...prev, description: data.description }));
+            }
+        } catch (error) {
+            console.error("Failed to generate description:", error);
+        } finally {
+            setIsGeneratingDescription(false);
+        }
     };
 
     const handleNext = () => {
@@ -158,10 +188,15 @@ export const ReportBuilder = ({ open, onOpenChange, onComplete, initialConfig }:
                                         variant="ghost"
                                         size="sm"
                                         className="h-6 text-xs gap-1 text-primary hover:text-primary hover:bg-primary/10"
-                                        onClick={() => setConfig({ ...config, description: `Comprehensive ${config.type} analysis of laboratory data, including statistical validation, anomaly detection, and compliance verification against ${config.type === 'compliance' ? 'ISO 17025' : 'internal standards'}. Includes automated insights and experimental recommendations.` })}
+                                        disabled={isGeneratingDescription}
+                                        onClick={generateDescription}
                                     >
-                                        <Brain className="w-3 h-3" />
-                                        Auto-Generate
+                                        {isGeneratingDescription ? (
+                                            <Loader2 className="w-3 h-3 animate-spin" />
+                                        ) : (
+                                            <Brain className="w-3 h-3" />
+                                        )}
+                                        {isGeneratingDescription ? "Generating..." : "Auto-Generate with AI"}
                                     </Button>
                                 </div>
                                 <Textarea

@@ -43,6 +43,11 @@ class QuickAnalysisRequest(BaseModel):
     dataset_id: str
     data: List[Dict[str, Any]]
 
+class GenerateDescriptionRequest(BaseModel):
+    title: str
+    report_type: str
+    modules: List[str]
+
 # Active orchestrators for tracking
 active_orchestrators: Dict[str, OrchestratorAgent] = {}
 
@@ -302,20 +307,120 @@ async def train_model(request: Dict[str, Any]):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+class InsightsRequest(BaseModel):
+    dataset_id: str
+    data: List[Dict[str, Any]]
+    columns: Optional[List[Dict[str, Any]]] = None
+
+@app.post("/api/ml/insights")
+async def generate_insights(request: InsightsRequest):
+    """
+    Generate comprehensive insights using DataAgent (including DomainAgent) and InsightsAgent
+    """
+    try:
+        from agents.data_agent import DataAgent
+        from agents.insights_agent import InsightsAgent
+        
+        data_agent = DataAgent()
+        insights_agent = InsightsAgent()
+        
+        # 1. Run Data Analysis (includes Domain Analysis)
+        data_result = await data_agent.execute(request.data, {"dataset_id": request.dataset_id})
+        
+        # 2. Run Insights Analysis
+        context = {
+            "dataset_id": request.dataset_id,
+            "data_profile": data_result,
+            "columns": request.columns
+        }
+        
+        insights_result = await insights_agent.execute(request.data, context)
+        
+        # Merge results
+        return {
+            "success": True,
+            "dataset_id": request.dataset_id,
+            "insights": insights_result.get("key_findings", []) + data_result.get("recommendations", []),
+            "correlations": insights_result.get("correlations", []),
+            "recommendations": insights_result.get("recommendations", []),
+            "domain_analysis": data_result.get("domain_analysis", {}),
+            "data_profile": data_result
+        }
+        
+    except Exception as e:
+        logger.error(f"Insights generation failed: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/ml/generate-description")
+async def generate_description(request: GenerateDescriptionRequest):
+    """
+    Generate a professional description for a report using Gemini
+    """
+    try:
+        from agents.content_agent import ContentAgent
+        
+        agent = ContentAgent()
+        result = await agent.generate_report_description(
+            title=request.title,
+            report_type=request.report_type,
+            modules=request.modules
+        )
+        
+        if "error" in result:
+             raise HTTPException(status_code=500, detail=result["error"])
+             
+        return {
+            "success": True,
+            "description": result.get("generated_text", "")
+        }
+        
+    except Exception as e:
+        logger.error(f"Description generation failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
+class ChatRequest(BaseModel):
+    messages: List[Dict[str, Any]]
+    datasetId: Optional[str] = None
+    mode: str = "analysis"
+
+@app.post("/api/ml/chat")
+async def chat_interaction(request: ChatRequest):
+    """
+    Handle chat interactions using ContentAgent
+    """
+    try:
+        from agents.content_agent import ContentAgent
+        
+        agent = ContentAgent()
+        
+        # In a real scenario, we would fetch dataset metadata/sample here using datasetId
+        # For now, we'll pass the ID to the context
+        context = {"dataset_id": request.datasetId}
+        
+        # If datasetId is provided, we could fetch a snippet.
+        # Check if we have active orchestrators or cached data for this dataset
+        if request.datasetId and request.datasetId in active_orchestrators:
+             # Basic context from orchestration
+             context["dataset_context"] = "Pipeline is running/active for this dataset."
+             
+        result = await agent.generate_chat_response(request.messages, context)
+        return result
+        
+    except Exception as e:
+        logger.error(f"Chat failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 if __name__ == "__main__":
     import uvicorn
     print("=" * 70)
-    print("🚀 Lab-IQ Multi-Agent AutoML Service")
-    print("=" * 70)
-    print("Powered by 6 specialized AI agents:")
-    print("  🗂️  Data Understanding Agent")
-    print("  ⚙️  Feature Engineering Agent")
-    print("  🤖 Model Selection Agent")
-    print("  🎯 Hyperparameter Optimization Agent")
-    print("  📊 Training & Evaluation Agent")
-    print("  💡 Insights & Explanation Agent")
-    print("=" * 70)
-    print("Starting server on http://0.0.0.0:8002")
+    print("= Lab-IQ Multi-Agent AutoML Service")
+    print("= Serving on http://localhost:8002")
+    print("= Documentation: http://localhost:8002/docs")
     print("=" * 70)
     
     uvicorn.run(app, host="0.0.0.0", port=8002)
