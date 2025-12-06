@@ -23,7 +23,81 @@ import { DataExplorer } from "@/components/data/DataExplorer";
 import { QuickActionsPanel } from "@/components/upload/QuickActionsPanel";
 
 const DatasetDetail = () => {
-    // ... (state and effects same)
+    const { id } = useParams();
+    const navigate = useNavigate();
+    const [dataset, setDataset] = useState<any>(null);
+    const [quality, setQuality] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+    const [analysisResults, setAnalysisResults] = useState<any>(null);
+
+    useEffect(() => {
+        if (id) {
+            fetchDataset();
+        }
+    }, [id]);
+
+    const fetchDataset = async () => {
+        try {
+            setLoading(true);
+
+            // Fetch dataset
+            const { data: datasetData, error: datasetError } = await supabase
+                .from('datasets')
+                .select('*')
+                .eq('id', id)
+                .single();
+
+            if (datasetError) throw datasetError;
+
+            setDataset(datasetData);
+
+            // Fetch quality scores if available
+            if (datasetData?.metadata?.quality) {
+                setQuality(datasetData.metadata.quality);
+            }
+
+            // Fetch analysis results if available
+            if (datasetData?.metadata?.analysis) {
+                setAnalysisResults(datasetData.metadata.analysis);
+            }
+        } catch (error) {
+            console.error('Error fetching dataset:', error);
+            toast.error('Failed to load dataset');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!confirm('Are you sure you want to delete this dataset?')) return;
+
+        try {
+            const { error } = await supabase
+                .from('datasets')
+                .delete()
+                .eq('id', id);
+
+            if (error) throw error;
+
+            toast.success('Dataset deleted successfully');
+            navigate('/datasets');
+        } catch (error) {
+            console.error('Error deleting dataset:', error);
+            toast.error('Failed to delete dataset');
+        }
+    };
+
+    const handleDownload = () => {
+        if (dataset?.file_path) {
+            window.open(dataset.file_path, '_blank');
+        } else {
+            toast.error('File path not available');
+        }
+    };
+
+    const runAutoAnalysis = async () => {
+        toast.info('Analysis feature coming soon!');
+    };
 
     if (loading) {
         return (
