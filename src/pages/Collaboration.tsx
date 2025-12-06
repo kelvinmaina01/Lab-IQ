@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { Card } from "@/components/ui/card";
@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Users, Mail, Search, MoreVertical, FileText, MessageSquare, Activity, Upload, MessageCircle } from "lucide-react";
+import { Plus, Users, Mail, Search, MoreVertical, FileText, MessageSquare, Activity, Upload, MessageCircle, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ChatPanel } from "@/components/collaboration/ChatPanel";
 import { CommentsSystem } from "@/components/collaboration/CommentsSystem";
@@ -19,131 +19,117 @@ import { ActivityTimeline } from "@/components/collaboration/ActivityTimeline";
 import { TeamLeaderboard } from "@/components/collaboration/TeamLeaderboard";
 import { useSubscription } from "@/hooks/useSubscription";
 import { UpgradeDialog } from "@/components/UpgradeDialog";
+import { usePresence } from "@/hooks/usePresence";
+import { teamService } from "@/services/teamService";
+import { supabase } from "@/integrations/supabase/client";
+import { toast as sonnerToast } from "sonner";
 
 const Collaboration = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<"admin" | "researcher" | "analyst" | "viewer">("researcher");
+
+  // Real data state
+  const [teamMembers, setTeamMembers] = useState<any[]>([]);
+  const [channels, setChannels] = useState<any[]>([]);
+  const [labId, setLabId] = useState<string | null>(null);
+  const [loadingData, setLoadingData] = useState(true);
+
   const { toast } = useToast();
   const { subscription, loading } = useSubscription();
 
-  const teamMembers = [
-    {
-      id: 1,
-      name: "Dr. Sarah Chen",
-      email: "sarah.chen@labiq.com",
-      role: "Principal Investigator",
-      avatar: "/placeholder.svg",
-      status: "online",
-      projects: 8,
-      lastActive: "Active now"
-    },
-    {
-      id: 2,
-      name: "John Smith",
-      email: "john.smith@labiq.com",
-      role: "Senior Researcher",
-      avatar: "/placeholder.svg",
-      status: "online",
-      projects: 5,
-      lastActive: "Active now"
-    },
-    {
-      id: 3,
-      name: "Dr. Mike Ross",
-      email: "mike.ross@labiq.com",
-      role: "Research Scientist",
-      avatar: "/placeholder.svg",
-      status: "away",
-      projects: 6,
-      lastActive: "2 hours ago"
-    },
-    {
-      id: 4,
-      name: "Emma Wilson",
-      email: "emma.wilson@labiq.com",
-      role: "Lab Technician",
-      avatar: "/placeholder.svg",
-      status: "online",
-      projects: 4,
-      lastActive: "Active now"
-    },
-    {
-      id: 5,
-      name: "Alex Turner",
-      email: "alex.turner@labiq.com",
-      role: "Data Analyst",
-      avatar: "/placeholder.svg",
-      status: "offline",
-      projects: 3,
-      lastActive: "Yesterday"
-    },
-  ];
+  // Track user presence (online/offline)
+  usePresence();
 
-  const sharedProjects = [
-    {
-      id: 1,
-      name: "Protein Structure Analysis",
-      owner: "Dr. Sarah Chen",
-      members: 4,
-      lastUpdate: "2 hours ago",
-      status: "active"
-    },
-    {
-      id: 2,
-      name: "Chemical Compound Screening",
-      owner: "John Smith",
-      members: 3,
-      lastUpdate: "1 day ago",
-      status: "active"
-    },
-    {
-      id: 3,
-      name: "Climate Data Analysis",
-      owner: "Emma Wilson",
-      members: 5,
-      lastUpdate: "3 days ago",
-      status: "archived"
-    },
-  ];
+  // Initialize collaboration data
+  useEffect(() => {
+    initializeCollaboration();
+  }, []);
 
-  const recentActivity = [
-    {
-      id: 1,
-      user: "Dr. Sarah Chen",
-      action: "shared",
-      target: "Protein Analysis Report",
-      time: "10 minutes ago"
-    },
-    {
-      id: 2,
-      user: "John Smith",
-      action: "commented on",
-      target: "Chemical Screening Dataset",
-      time: "1 hour ago"
-    },
-    {
-      id: 3,
-      user: "Emma Wilson",
-      action: "uploaded",
-      target: "Climate Data v2.csv",
-      time: "2 hours ago"
-    },
-    {
-      id: 4,
-      user: "Dr. Mike Ross",
-      action: "invited",
-      target: "Alex Turner to Material Testing",
-      time: "5 hours ago"
-    },
-  ];
+  const initializeCollaboration = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-  const handleInviteMember = () => {
-    toast({
-      title: "Invitation Sent",
-      description: "An invitation email has been sent to the new team member.",
-    });
-    setIsInviteDialogOpen(false);
+      // Get or create user's team member record
+      let { data: teamMember } = await teamService.getCurrentUserTeamMember();
+
+      // If user doesn't have a team member record, create one
+      if (!teamMember) {
+        const defaultLabId = '00000000-0000-0000-0000-000000000001'; // Default lab for testing
+        await teamService.upsertTeamMember({
+          lab_id: defaultLabId,
+          role: 'researcher',
+          display_name: user.email?.split('@')[0] || 'User',
+          status: 'online'
+        });
+
+        teamMember = (await teamService.getCurrentUserTeamMember()).data;
+      }
+
+      if (teamMember) {
+        setLabId(teamMember.lab_id);
+
+        // Load team members
+        const { data: members } = await teamService.getTeamMembers(teamMember.lab_id);
+        if (members) {
+          setTeamMembers(members);
+        }
+
+        // Load chat channels
+        const { data: channelsData } = await supabase
+          .from('chat_channels')
+          .select('*')
+          .eq('lab_id', teamMember.lab_id)
+          .order('created_at', { ascending: false });
+
+        if (channelsData && channelsData.length > 0) {
+          setChannels(channelsData);
+          setSelectedChannelId(channelsData[0].id);
+        } else {
+          // Create a default General channel if none exists
+          const { data: newChannel } = await supabase
+            .from('chat_channels')
+            .insert({
+              name: 'General',
+              description: 'General discussion channel',
+              lab_id: teamMember.lab_id,
+              type: 'general',
+              created_by: user.id
+            })
+            .select()
+            .single();
+
+          if (newChannel) {
+            setChannels([newChannel]);
+            setSelectedChannelId(newChannel.id);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error initializing collaboration:', error);
+      sonnerToast.error('Failed to load collaboration data');
+    } finally {
+      setLoadingData(false);
+    }
+  };
+
+  const handleInviteMember = async () => {
+    if (!inviteEmail || !labId) return;
+
+    try {
+      await teamService.inviteMember(inviteEmail, inviteRole, labId);
+      sonnerToast.success("Invitation sent successfully!");
+      setIsInviteDialogOpen(false);
+      setInviteEmail("");
+      setInviteRole("researcher");
+    } catch (error) {
+      console.error('Error inviting member:', error);
+      sonnerToast.error("Failed to send invitation");
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -351,9 +337,18 @@ const Collaboration = () => {
                   </Button>
                 </Card>
               ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <ChatPanel projectName="Protein Analysis Discussion" />
-                  <ChatPanel projectName="General Lab Updates" />
+                <div className="space-y-6">
+                  {loadingData ? (
+                    <div className="flex items-center justify-center p-12">
+                      <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                      <p className="ml-4 text-muted-foreground">Loading chat...</p>
+                    </div>
+                  ) : (
+                    <ChatPanel
+                      channelId={selectedChannelId}
+                      projectName={channels.find(c => c.id === selectedChannelId)?.name || "General"}
+                    />
+                  )}
                 </div>
               )}
             </TabsContent>
