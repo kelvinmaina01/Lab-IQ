@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Database, Brain, FlaskConical, Award, Activity, BarChart3, Zap, Info, Wifi, Shield, ArrowRight, Bot } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
