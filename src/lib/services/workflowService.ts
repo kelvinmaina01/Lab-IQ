@@ -367,9 +367,12 @@ class WorkflowService {
    */
   getWorkflowTemplates() {
     return [
+      // ===== GENERAL TEMPLATES =====
       {
         name: 'Auto-ML Pipeline',
         description: 'Automatically train ML models when new datasets are uploaded',
+        category: 'General',
+        icon: '🤖',
         trigger_type: 'dataset_upload' as const,
         trigger_config: {},
         steps: [
@@ -377,22 +380,28 @@ class WorkflowService {
           { type: 'train_model' as const, config: { auto_detect: true } },
           { type: 'notify' as const, config: { recipients: [] } }
         ],
-        status: 'active' as const
+        status: 'active' as const,
+        estimatedTimeSaved: '10 min per dataset'
       },
       {
         name: 'Data Quality Check',
         description: 'Check data quality and send alerts if below threshold',
+        category: 'General',
+        icon: '✓',
         trigger_type: 'dataset_upload' as const,
         trigger_config: {},
         steps: [
           { type: 'quality_check' as const, config: { threshold: 85 } },
           { type: 'notify' as const, config: { recipients: [] } }
         ],
-        status: 'active' as const
+        status: 'active' as const,
+        estimatedTimeSaved: '5 min per dataset'
       },
       {
         name: 'Weekly Analysis Report',
         description: 'Generate and export weekly analysis reports',
+        category: 'General',
+        icon: '📊',
         trigger_type: 'schedule' as const,
         trigger_config: { schedule: 'weekly', day: 'monday', time: '09:00' },
         steps: [
@@ -400,7 +409,452 @@ class WorkflowService {
           { type: 'export' as const, config: { format: 'pdf' } },
           { type: 'notify' as const, config: { recipients: [] } }
         ],
-        status: 'active' as const
+        status: 'active' as const,
+        estimatedTimeSaved: '30 min per week'
+      },
+
+      // ===== BIOTECH TEMPLATES =====
+      {
+        name: 'IC50 Calculation & Analysis',
+        description: 'Automated IC50 calculation, curve fitting, and statistical validation for drug screening',
+        category: 'Biotech',
+        icon: '🧬',
+        trigger_type: 'dataset_upload' as const,
+        trigger_config: { tags: ['ic50', 'dose-response'] },
+        steps: [
+          { type: 'quality_check' as const, config: {
+            threshold: 90,
+            required_columns: ['concentration', 'response'],
+            check_outliers: true
+          }},
+          { type: 'transform' as const, config: {
+            operations: ['log_transform', 'normalize', 'curve_fitting'],
+            model: 'four_parameter_logistic'
+          }},
+          { type: 'analyze' as const, config: {
+            mode: 'analysis',
+            metrics: ['ic50', 'hill_slope', 'r_squared', 'confidence_interval']
+          }},
+          { type: 'export' as const, config: {
+            format: 'pdf',
+            include: ['dose_response_curve', 'statistics_table', 'quality_metrics']
+          }},
+          { type: 'notify' as const, config: {
+            recipients: [],
+            include_summary: true
+          }}
+        ],
+        status: 'active' as const,
+        estimatedTimeSaved: '45 min per assay'
+      },
+      {
+        name: 'ELISA Plate Analysis',
+        description: 'Automated ELISA plate reader data analysis with standard curve generation',
+        category: 'Biotech',
+        icon: '🔬',
+        trigger_type: 'dataset_upload' as const,
+        trigger_config: { tags: ['elisa', 'plate-reader'] },
+        steps: [
+          { type: 'quality_check' as const, config: {
+            threshold: 85,
+            check_plate_layout: true,
+            cv_threshold: 15
+          }},
+          { type: 'transform' as const, config: {
+            operations: ['background_subtraction', 'standard_curve_fit'],
+            interpolation: 'four_parameter'
+          }},
+          { type: 'analyze' as const, config: {
+            mode: 'analysis',
+            calculate: ['concentrations', 'cv', 'lod', 'loq']
+          }},
+          { type: 'export' as const, config: {
+            format: 'excel',
+            include: ['standard_curve', 'sample_concentrations', 'qc_metrics']
+          }},
+          { type: 'notify' as const, config: { recipients: [] }}
+        ],
+        status: 'active' as const,
+        estimatedTimeSaved: '30 min per plate'
+      },
+      {
+        name: 'Cell Viability Analysis',
+        description: 'Automated MTT/MTS assay analysis with viability calculations and IC50',
+        category: 'Biotech',
+        icon: '🧫',
+        trigger_type: 'dataset_upload' as const,
+        trigger_config: { tags: ['cell-viability', 'mtt', 'mts'] },
+        steps: [
+          { type: 'quality_check' as const, config: {
+            threshold: 85,
+            check_controls: true,
+            replicate_check: true
+          }},
+          { type: 'transform' as const, config: {
+            operations: ['blank_subtraction', 'viability_calculation', 'normalization'],
+            control: 'untreated'
+          }},
+          { type: 'analyze' as const, config: {
+            mode: 'analysis',
+            calculate: ['percent_viability', 'ic50', 'statistical_significance']
+          }},
+          { type: 'export' as const, config: {
+            format: 'pdf',
+            include: ['dose_response', 'viability_table', 'statistics']
+          }},
+          { type: 'notify' as const, config: { recipients: [] }}
+        ],
+        status: 'active' as const,
+        estimatedTimeSaved: '40 min per experiment'
+      },
+      {
+        name: 'Protein Quantification (Bradford/BCA)',
+        description: 'Standard curve generation and protein concentration calculation',
+        category: 'Biotech',
+        icon: '🧪',
+        trigger_type: 'dataset_upload' as const,
+        trigger_config: { tags: ['bradford', 'bca', 'protein-quant'] },
+        steps: [
+          { type: 'quality_check' as const, config: {
+            threshold: 90,
+            check_standards: true,
+            linearity_check: true
+          }},
+          { type: 'transform' as const, config: {
+            operations: ['standard_curve_fit', 'interpolation'],
+            curve_type: 'linear'
+          }},
+          { type: 'analyze' as const, config: {
+            mode: 'analysis',
+            calculate: ['concentrations', 'r_squared', 'detection_range']
+          }},
+          { type: 'export' as const, config: {
+            format: 'excel',
+            include: ['standard_curve', 'sample_concentrations', 'dilution_factors']
+          }},
+          { type: 'notify' as const, config: { recipients: [] }}
+        ],
+        status: 'active' as const,
+        estimatedTimeSaved: '20 min per assay'
+      },
+
+      // ===== PHARMACEUTICAL TEMPLATES =====
+      {
+        name: 'HPLC Data Analysis',
+        description: 'Automated HPLC chromatogram analysis with peak integration and purity calculation',
+        category: 'Pharmaceutical',
+        icon: '📈',
+        trigger_type: 'dataset_upload' as const,
+        trigger_config: { tags: ['hplc', 'chromatography'] },
+        steps: [
+          { type: 'quality_check' as const, config: {
+            threshold: 90,
+            check_baseline: true,
+            resolution_check: true
+          }},
+          { type: 'transform' as const, config: {
+            operations: ['baseline_correction', 'peak_detection', 'integration'],
+            method: 'trapezoid'
+          }},
+          { type: 'analyze' as const, config: {
+            mode: 'analysis',
+            calculate: ['peak_area', 'retention_time', 'purity', 'symmetry_factor']
+          }},
+          { type: 'export' as const, config: {
+            format: 'pdf',
+            include: ['chromatogram', 'peak_table', 'purity_report', 'system_suitability']
+          }},
+          { type: 'notify' as const, config: { recipients: [] }}
+        ],
+        status: 'active' as const,
+        estimatedTimeSaved: '25 min per run'
+      },
+      {
+        name: 'Stability Study Analysis',
+        description: 'Track drug stability over time with degradation kinetics and shelf-life prediction',
+        category: 'Pharmaceutical',
+        icon: '⏱️',
+        trigger_type: 'dataset_upload' as const,
+        trigger_config: { tags: ['stability', 'degradation'] },
+        steps: [
+          { type: 'quality_check' as const, config: {
+            threshold: 95,
+            temporal_consistency: true,
+            missing_timepoints: false
+          }},
+          { type: 'transform' as const, config: {
+            operations: ['time_series_analysis', 'degradation_modeling'],
+            models: ['zero_order', 'first_order']
+          }},
+          { type: 'analyze' as const, config: {
+            mode: 'analysis',
+            calculate: ['degradation_rate', 'shelf_life', 't90', 'arrhenius_plot']
+          }},
+          { type: 'export' as const, config: {
+            format: 'pdf',
+            include: ['stability_plot', 'kinetics_table', 'shelf_life_prediction', 'statistical_summary']
+          }},
+          { type: 'notify' as const, config: { recipients: [] }}
+        ],
+        status: 'active' as const,
+        estimatedTimeSaved: '60 min per study'
+      },
+      {
+        name: 'Dissolution Profile Analysis',
+        description: 'Automated dissolution testing analysis with similarity factor (f2) calculation',
+        category: 'Pharmaceutical',
+        icon: '💊',
+        trigger_type: 'dataset_upload' as const,
+        trigger_config: { tags: ['dissolution', 'release-profile'] },
+        steps: [
+          { type: 'quality_check' as const, config: {
+            threshold: 90,
+            check_timepoints: true,
+            vessel_variability: true
+          }},
+          { type: 'transform' as const, config: {
+            operations: ['cumulative_calculation', 'vessel_averaging'],
+            correction: 'volume_correction'
+          }},
+          { type: 'analyze' as const, config: {
+            mode: 'analysis',
+            calculate: ['dissolution_profile', 'f2_similarity', 'cv', 'model_fitting']
+          }},
+          { type: 'export' as const, config: {
+            format: 'pdf',
+            include: ['dissolution_curve', 'f2_calculation', 'statistical_comparison', 'specifications']
+          }},
+          { type: 'notify' as const, config: { recipients: [] }}
+        ],
+        status: 'active' as const,
+        estimatedTimeSaved: '35 min per batch'
+      },
+      {
+        name: 'Batch Release Testing',
+        description: 'QC batch testing workflow with specification compliance checking',
+        category: 'Pharmaceutical',
+        icon: '✅',
+        trigger_type: 'dataset_upload' as const,
+        trigger_config: { tags: ['qc', 'batch-release'] },
+        steps: [
+          { type: 'quality_check' as const, config: {
+            threshold: 98,
+            completeness_check: true,
+            duplicate_check: true
+          }},
+          { type: 'analyze' as const, config: {
+            mode: 'analysis',
+            tests: ['assay', 'impurities', 'dissolution', 'appearance'],
+            specifications: 'usp_standards'
+          }},
+          { type: 'transform' as const, config: {
+            operations: ['specification_check', 'ooc_flagging'],
+            criteria: 'acceptance_limits'
+          }},
+          { type: 'export' as const, config: {
+            format: 'pdf',
+            include: ['certificate_of_analysis', 'test_results', 'trend_charts', 'ooc_summary']
+          }},
+          { type: 'notify' as const, config: {
+            recipients: [],
+            urgent_if_failure: true
+          }}
+        ],
+        status: 'active' as const,
+        estimatedTimeSaved: '50 min per batch'
+      },
+
+      // ===== CHEMISTRY TEMPLATES =====
+      {
+        name: 'NMR Spectrum Analysis',
+        description: 'Automated NMR peak picking, integration, and chemical shift assignment',
+        category: 'Chemistry',
+        icon: '📊',
+        trigger_type: 'dataset_upload' as const,
+        trigger_config: { tags: ['nmr', '1h-nmr', '13c-nmr'] },
+        steps: [
+          { type: 'quality_check' as const, config: {
+            threshold: 85,
+            check_shimming: true,
+            check_resolution: true
+          }},
+          { type: 'transform' as const, config: {
+            operations: ['baseline_correction', 'phase_correction', 'peak_picking'],
+            threshold: 'auto'
+          }},
+          { type: 'analyze' as const, config: {
+            mode: 'analysis',
+            calculate: ['chemical_shifts', 'coupling_constants', 'integrations', 'multiplicity']
+          }},
+          { type: 'export' as const, config: {
+            format: 'pdf',
+            include: ['spectrum', 'peak_table', 'integration', 'structure_assignment']
+          }},
+          { type: 'notify' as const, config: { recipients: [] }}
+        ],
+        status: 'active' as const,
+        estimatedTimeSaved: '20 min per spectrum'
+      },
+      {
+        name: 'Reaction Optimization',
+        description: 'Design of Experiments (DOE) for reaction condition optimization',
+        category: 'Chemistry',
+        icon: '⚗️',
+        trigger_type: 'dataset_upload' as const,
+        trigger_config: { tags: ['doe', 'optimization'] },
+        steps: [
+          { type: 'quality_check' as const, config: {
+            threshold: 85,
+            design_check: true,
+            balance_check: true
+          }},
+          { type: 'analyze' as const, config: {
+            mode: 'analysis',
+            method: 'response_surface_methodology',
+            factors: ['temperature', 'time', 'concentration', 'catalyst']
+          }},
+          { type: 'train_model' as const, config: {
+            model_type: 'polynomial_regression',
+            interaction_terms: true
+          }},
+          { type: 'transform' as const, config: {
+            operations: ['optimization', 'desirability_function'],
+            target: 'maximize_yield'
+          }},
+          { type: 'export' as const, config: {
+            format: 'pdf',
+            include: ['response_surface', 'contour_plot', 'optimal_conditions', 'predicted_response']
+          }},
+          { type: 'notify' as const, config: { recipients: [] }}
+        ],
+        status: 'active' as const,
+        estimatedTimeSaved: '90 min per optimization'
+      },
+      {
+        name: 'GC-MS Compound Identification',
+        description: 'Automated GC-MS peak identification and library matching',
+        category: 'Chemistry',
+        icon: '🔍',
+        trigger_type: 'dataset_upload' as const,
+        trigger_config: { tags: ['gcms', 'mass-spec'] },
+        steps: [
+          { type: 'quality_check' as const, config: {
+            threshold: 85,
+            check_calibration: true,
+            check_resolution: true
+          }},
+          { type: 'transform' as const, config: {
+            operations: ['peak_detection', 'deconvolution', 'library_search'],
+            library: 'nist'
+          }},
+          { type: 'analyze' as const, config: {
+            mode: 'analysis',
+            calculate: ['retention_indices', 'match_factors', 'quantification']
+          }},
+          { type: 'export' as const, config: {
+            format: 'pdf',
+            include: ['chromatogram', 'compound_list', 'spectra', 'quantification_table']
+          }},
+          { type: 'notify' as const, config: { recipients: [] }}
+        ],
+        status: 'active' as const,
+        estimatedTimeSaved: '30 min per sample'
+      },
+      {
+        name: 'Yield & Purity Calculation',
+        description: 'Automated reaction yield and product purity assessment',
+        category: 'Chemistry',
+        icon: '💯',
+        trigger_type: 'dataset_upload' as const,
+        trigger_config: { tags: ['synthesis', 'yield'] },
+        steps: [
+          { type: 'quality_check' as const, config: {
+            threshold: 90,
+            material_balance: true
+          }},
+          { type: 'transform' as const, config: {
+            operations: ['stoichiometry_calculation', 'yield_calculation', 'purity_assessment'],
+            limiting_reagent: 'auto_detect'
+          }},
+          { type: 'analyze' as const, config: {
+            mode: 'analysis',
+            calculate: ['theoretical_yield', 'actual_yield', 'percent_yield', 'purity', 'ee']
+          }},
+          { type: 'export' as const, config: {
+            format: 'excel',
+            include: ['reaction_scheme', 'yield_table', 'purity_data', 'mass_balance']
+          }},
+          { type: 'notify' as const, config: { recipients: [] }}
+        ],
+        status: 'active' as const,
+        estimatedTimeSaved: '15 min per reaction'
+      },
+
+      // ===== CLINICAL/DIAGNOSTIC TEMPLATES =====
+      {
+        name: 'Clinical Assay Validation',
+        description: 'Complete assay validation including precision, accuracy, linearity, and LOD/LOQ',
+        category: 'Clinical',
+        icon: '🏥',
+        trigger_type: 'dataset_upload' as const,
+        trigger_config: { tags: ['validation', 'clinical'] },
+        steps: [
+          { type: 'quality_check' as const, config: {
+            threshold: 95,
+            completeness_check: true,
+            replicate_check: true
+          }},
+          { type: 'analyze' as const, config: {
+            mode: 'analysis',
+            validations: ['precision', 'accuracy', 'linearity', 'lod', 'loq', 'specificity']
+          }},
+          { type: 'transform' as const, config: {
+            operations: ['statistical_analysis', 'acceptance_criteria_check'],
+            standards: 'clsi_guidelines'
+          }},
+          { type: 'export' as const, config: {
+            format: 'pdf',
+            include: ['validation_report', 'statistical_summary', 'plots', 'acceptance_table']
+          }},
+          { type: 'notify' as const, config: { recipients: [] }}
+        ],
+        status: 'active' as const,
+        estimatedTimeSaved: '120 min per validation'
+      },
+      {
+        name: 'Patient Sample QC',
+        description: 'Quality control checks for patient sample processing with flagging',
+        category: 'Clinical',
+        icon: '🩺',
+        trigger_type: 'dataset_upload' as const,
+        trigger_config: { tags: ['patient-samples', 'qc'] },
+        steps: [
+          { type: 'quality_check' as const, config: {
+            threshold: 98,
+            check_controls: true,
+            check_calibrators: true,
+            delta_check: true
+          }},
+          { type: 'analyze' as const, config: {
+            mode: 'analysis',
+            qc_rules: 'westgard_rules',
+            reference_ranges: true
+          }},
+          { type: 'transform' as const, config: {
+            operations: ['outlier_flagging', 'critical_value_alert'],
+            flag_criteria: 'clinical_significance'
+          }},
+          { type: 'export' as const, config: {
+            format: 'csv',
+            include: ['patient_results', 'qc_summary', 'flags', 'trending']
+          }},
+          { type: 'notify' as const, config: {
+            recipients: [],
+            urgent_if_critical: true
+          }}
+        ],
+        status: 'active' as const,
+        estimatedTimeSaved: '40 min per batch'
       }
     ];
   }
