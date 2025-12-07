@@ -9,6 +9,15 @@ from typing import List, Dict, Any, Optional
 import asyncio
 import logging
 import json
+import os
+
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+    logging.info("Loaded environment variables from .env file")
+except ImportError:
+    logging.warning("python-dotenv not installed. Install with: pip install python-dotenv")
 
 # Import agent system
 from agents.orchestrator import OrchestratorAgent
