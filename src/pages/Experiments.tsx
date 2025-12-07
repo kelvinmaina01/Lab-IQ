@@ -294,7 +294,7 @@ const Experiments = () => {
               <TabsTrigger value="templates">Templates Library</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="all" className="space-y-4 mt-6">
+            <TabsContent value="all" className="space-y-4 mt-6" data-tour="experiments-list">
               {filteredExperiments.map((exp) => (
                 <Card key={exp.id} className="p-6 hover:shadow-lg transition-shadow">
                   <div className="flex items-start justify-between mb-4">

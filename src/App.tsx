@@ -12,8 +12,10 @@ import Insights from "./pages/Insights";
 import Analytics from "./pages/Analytics";
 import Experiments from "./pages/Experiments";
 import Automation from "./pages/Automation";
+import WorkflowExecution from "./pages/WorkflowExecution";
 import Collaboration from "./pages/Collaboration";
 import Reports from "./pages/Reports";
+import Assistant from "./pages/Assistant";
 import NotFound from "./pages/NotFound";
 import NotificationPreferences from "./pages/NotificationPreferences";
 import Profile from "./pages/Profile";
@@ -27,8 +29,12 @@ import Datasets from "./pages/Datasets";
 const queryClient = new QueryClient();
 
 import { SidebarProvider } from "@/components/layout/SidebarContext";
+import { TourGuide } from "@/components/onboarding/TourGuide";
+import { useOnboarding } from "@/hooks/use-onboarding";
 
 const App = () => {
+  const { showOnboarding, closeOnboarding, completeOnboarding, loading: onboardingLoading } = useOnboarding();
+
   React.useEffect(() => {
     // Initialize theme from local storage
     const theme = localStorage.getItem('theme');
@@ -56,8 +62,10 @@ const App = () => {
               <Route path="/analytics" element={<Analytics />} />
               <Route path="/experiments" element={<Experiments />} />
               <Route path="/automation" element={<Automation />} />
+              <Route path="/automation/execution/:executionId" element={<WorkflowExecution />} />
               <Route path="/collaboration" element={<Collaboration />} />
               <Route path="/reports" element={<Reports />} />
+              <Route path="/assistant" element={<Assistant />} />
               <Route path="/pricing" element={<Pricing />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/settings/notifications" element={<NotificationPreferences />} />
@@ -70,6 +78,15 @@ const App = () => {
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
+
+            {/* Global Tour Guide - Persists across all routes */}
+            {!onboardingLoading && (
+              <TourGuide
+                isOpen={showOnboarding}
+                onClose={closeOnboarding}
+                onComplete={completeOnboarding}
+              />
+            )}
           </BrowserRouter>
         </SidebarProvider>
       </TooltipProvider>

@@ -1,0 +1,613 @@
+import { useState, useEffect, useRef } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  X,
+  ArrowRight,
+  ArrowLeft,
+  Check,
+  Bot,
+  Sparkles,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+
+export interface GuideStep {
+  id: string;
+  title: string;
+  description: string;
+  route: string;
+  targetSelector: string;
+  arrowSide: "top" | "bottom" | "left" | "right";
+}
+
+const fullTourSteps: GuideStep[] = [
+  {
+    id: "welcome",
+    title: "Welcome to Lab-IQ!",
+    description: "Let me guide you through every feature. Use Next/Back to navigate at your pace.",
+    route: "/dashboard",
+    targetSelector: "",
+    arrowSide: "left",
+  },
+  {
+    id: "dashboard",
+    title: "Dashboard Overview",
+    description: "Your command center showing key metrics, activities, and performance scores.",
+    route: "/dashboard",
+    targetSelector: "[data-tour='dashboard-stats']",
+    arrowSide: "bottom",
+  },
+  {
+    id: "sidebar-upload",
+    title: "Upload Data",
+    description: "Click here to upload CSV, Excel, or JSON files for analysis.",
+    route: "/dashboard",
+    targetSelector: "a[href='/upload']",
+    arrowSide: "right",
+  },
+  {
+    id: "upload-zone",
+    title: "Drop Zone",
+    description: "Drag and drop files here. Auto-validation and quality checks included.",
+    route: "/upload",
+    targetSelector: "[data-tour='upload-zone']",
+    arrowSide: "top",
+  },
+  {
+    id: "sidebar-datasets",
+    title: "Datasets Library",
+    description: "Manage all your uploaded datasets with quality metrics and search.",
+    route: "/upload",
+    targetSelector: "a[href='/datasets']",
+    arrowSide: "right",
+  },
+  {
+    id: "datasets-grid",
+    title: "Browse Datasets",
+    description: "View all datasets with quality scores, size, and status at a glance.",
+    route: "/datasets",
+    targetSelector: "[data-tour='datasets-grid']",
+    arrowSide: "top",
+  },
+  {
+    id: "sidebar-experiments",
+    title: "Experiments",
+    description: "Document and track all your research experiments with full reproducibility.",
+    route: "/datasets",
+    targetSelector: "a[href='/experiments']",
+    arrowSide: "right",
+  },
+  {
+    id: "experiments-list",
+    title: "Experiment Log",
+    description: "View and compare all experiments side-by-side.",
+    route: "/experiments",
+    targetSelector: "[data-tour='experiments-list']",
+    arrowSide: "top",
+  },
+  {
+    id: "sidebar-models",
+    title: "AI Models",
+    description: "Train machine learning models without writing code - AutoML powered.",
+    route: "/experiments",
+    targetSelector: "a[href='/models']",
+    arrowSide: "right",
+  },
+  {
+    id: "models-interface",
+    title: "Model Training",
+    description: "Select dataset and target - AutoML handles algorithms and tuning.",
+    route: "/models",
+    targetSelector: "[data-tour='models-grid']",
+    arrowSide: "top",
+  },
+  {
+    id: "sidebar-analytics",
+    title: "Analytics",
+    description: "Explore data through interactive visualizations and statistical tests.",
+    route: "/models",
+    targetSelector: "a[href='/analytics']",
+    arrowSide: "right",
+  },
+  {
+    id: "analytics-charts",
+    title: "Data Visualizations",
+    description: "Create custom charts, run correlations, and export for presentations.",
+    route: "/analytics",
+    targetSelector: "[data-tour='analytics-charts']",
+    arrowSide: "top",
+  },
+  {
+    id: "sidebar-automation",
+    title: "Automation",
+    description: "Create intelligent workflows with triggers and actions.",
+    route: "/analytics",
+    targetSelector: "a[href='/automation']",
+    arrowSide: "right",
+  },
+  {
+    id: "automation-workflows",
+    title: "Smart Workflows",
+    description: "Build pipelines using 18 industry-specific templates.",
+    route: "/automation",
+    targetSelector: "[data-tour='workflows-list']",
+    arrowSide: "top",
+  },
+  {
+    id: "sidebar-insights",
+    title: "AI Insights",
+    description: "AI continuously analyzes data and discovers patterns automatically.",
+    route: "/automation",
+    targetSelector: "a[href='/insights']",
+    arrowSide: "right",
+  },
+  {
+    id: "insights-feed",
+    title: "Discoveries Feed",
+    description: "AI-generated insights ranked by importance with recommendations.",
+    route: "/insights",
+    targetSelector: "[data-tour='insights-feed']",
+    arrowSide: "top",
+  },
+  {
+    id: "sidebar-collaboration",
+    title: "Collaboration",
+    description: "Invite team members and work together in real-time.",
+    route: "/insights",
+    targetSelector: "a[href='/collaboration']",
+    arrowSide: "right",
+  },
+  {
+    id: "collaboration-team",
+    title: "Team Hub",
+    description: "Share resources, track contributions, and view leaderboards.",
+    route: "/collaboration",
+    targetSelector: "[data-tour='team-section']",
+    arrowSide: "top",
+  },
+  {
+    id: "sidebar-reports",
+    title: "Reports",
+    description: "Generate publication-ready documents in PDF, Word, or HTML.",
+    route: "/collaboration",
+    targetSelector: "a[href='/reports']",
+    arrowSide: "right",
+  },
+  {
+    id: "reports-builder",
+    title: "Report Builder",
+    description: "Drag-drop sections and customize layouts for professional reports.",
+    route: "/reports",
+    targetSelector: "[data-tour='reports-builder']",
+    arrowSide: "top",
+  },
+  {
+    id: "sidebar-assistant",
+    title: "AI Assistant",
+    description: "Ask questions about your data in plain English - 24/7 support.",
+    route: "/reports",
+    targetSelector: "a[href='/assistant']",
+    arrowSide: "right",
+  },
+  {
+    id: "assistant-chat",
+    title: "Chat Interface",
+    description: "Have conversations with your data and get instant visual answers.",
+    route: "/assistant",
+    targetSelector: "[data-tour='chat-interface']",
+    arrowSide: "top",
+  },
+  {
+    id: "sidebar-settings",
+    title: "Settings",
+    description: "Manage profile, notifications, billing, and privacy settings.",
+    route: "/assistant",
+    targetSelector: "a[href='/settings']",
+    arrowSide: "right",
+  },
+  {
+    id: "complete",
+    title: "Tour Complete! 🎉",
+    description: "You're ready to start! Restart this tour anytime from Settings.",
+    route: "/dashboard",
+    targetSelector: "",
+    arrowSide: "left",
+  },
+];
+
+interface TourGuideProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onComplete: () => void;
+}
+
+export const TourGuide = ({ isOpen, onClose, onComplete }: TourGuideProps) => {
+  const [currentStep, setCurrentStep] = useState(0);
+  const [cardPosition, setCardPosition] = useState({ top: "50%", left: "50%", transform: "translate(-50%, -50%)" });
+  const [arrowStyle, setArrowStyle] = useState<React.CSSProperties>({});
+  const cardRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const step = fullTourSteps[currentStep];
+  const progress = ((currentStep + 1) / fullTourSteps.length) * 100;
+
+  // Navigate to step's route
+  useEffect(() => {
+    if (!isOpen || !step) return;
+
+    if (step.route !== location.pathname) {
+      navigate(step.route);
+    }
+  }, [currentStep, step, location.pathname, navigate, isOpen]);
+
+  // Position card and arrow
+  useEffect(() => {
+    if (!isOpen || !step) return;
+
+    // Start with card centered while positioning
+    setCardPosition({
+      top: "50%",
+      left: "50%",
+      transform: "translate(-50%, -50%)",
+    });
+    setArrowStyle({ display: "none" });
+
+    const positionElements = () => {
+      if (!step.targetSelector) {
+        // Center on screen
+        setCardPosition({
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+        });
+        setArrowStyle({ display: "none" });
+        return;
+      }
+
+      const target = document.querySelector(step.targetSelector) as HTMLElement;
+      if (!target) {
+        // If target not found, center the card and keep it visible
+        console.log(`Target not found for ${step.id}: ${step.targetSelector}, centering card...`);
+        setCardPosition({
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+        });
+        setArrowStyle({ display: "none" });
+        return;
+      }
+
+      if (!cardRef.current) {
+        console.log("Card ref not ready, centering...");
+        return; // Don't update position yet
+      }
+
+      const targetRect = target.getBoundingClientRect();
+      const cardWidth = 380;
+      const cardHeight = cardRef.current.offsetHeight || 180;
+      const gap = 20;
+
+      let newPosition: any = {};
+      let newArrowStyle: React.CSSProperties = {};
+
+      // Highlight target
+      target.classList.add("tour-guide-highlight");
+      target.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+
+      // Calculate position based on arrow side
+      switch (step.arrowSide) {
+        case "right":
+          // Card on right of target
+          newPosition = {
+            top: `${targetRect.top + targetRect.height / 2}px`,
+            left: `${targetRect.right + gap}px`,
+            transform: "translateY(-50%)",
+          };
+          newArrowStyle = {
+            position: "absolute",
+            left: "0px",
+            top: "50%",
+            transform: "translate3d(-12px, -50%, 0px)",
+            width: "16px",
+            height: "16px",
+            background: "white",
+            border: "2px solid #3b82f6",
+            borderRight: "none",
+            borderBottom: "none",
+            rotate: "-45deg",
+            zIndex: 1001,
+          };
+          break;
+        case "left":
+          // Card on left of target
+          newPosition = {
+            top: `${targetRect.top + targetRect.height / 2}px`,
+            left: `${targetRect.left - cardWidth - gap}px`,
+            transform: "translateY(-50%)",
+          };
+          newArrowStyle = {
+            position: "absolute",
+            right: "0px",
+            top: "50%",
+            transform: "translate3d(12px, -50%, 0px)",
+            width: "16px",
+            height: "16px",
+            background: "white",
+            border: "2px solid #3b82f6",
+            borderLeft: "none",
+            borderTop: "none",
+            rotate: "-45deg",
+            zIndex: 1001,
+          };
+          break;
+        case "top":
+          // Card above target
+          newPosition = {
+            top: `${targetRect.top - cardHeight - gap}px`,
+            left: `${targetRect.left + targetRect.width / 2}px`,
+            transform: "translateX(-50%)",
+          };
+          newArrowStyle = {
+            position: "absolute",
+            bottom: "0px",
+            left: "50%",
+            transform: "translate3d(-50%, 12px, 0px)",
+            width: "16px",
+            height: "16px",
+            background: "white",
+            border: "2px solid #3b82f6",
+            borderTop: "none",
+            borderRight: "none",
+            rotate: "-45deg",
+            zIndex: 1001,
+          };
+          break;
+        case "bottom":
+          // Card below target
+          newPosition = {
+            top: `${targetRect.bottom + gap}px`,
+            left: `${targetRect.left + targetRect.width / 2}px`,
+            transform: "translateX(-50%)",
+          };
+          newArrowStyle = {
+            position: "absolute",
+            top: "0px",
+            left: "50%",
+            transform: "translate3d(-50%, -12px, 0px)",
+            width: "16px",
+            height: "16px",
+            background: "white",
+            border: "2px solid #3b82f6",
+            borderBottom: "none",
+            borderLeft: "none",
+            rotate: "-45deg",
+            zIndex: 1001,
+          };
+          break;
+      }
+
+      // Ensure card stays within viewport
+      const leftNum = parseInt(newPosition.left);
+      const topNum = parseInt(newPosition.top);
+
+      if (leftNum + cardWidth > window.innerWidth) {
+        newPosition.left = `${window.innerWidth - cardWidth - 20}px`;
+      }
+      if (leftNum < 20) {
+        newPosition.left = "20px";
+      }
+      if (topNum + cardHeight > window.innerHeight) {
+        newPosition.top = `${window.innerHeight - cardHeight - 20}px`;
+      }
+      if (topNum < 20) {
+        newPosition.top = "20px";
+      }
+
+      setCardPosition(newPosition);
+      setArrowStyle(newArrowStyle);
+    };
+
+    // Aggressive retry positioning to handle page transitions and DOM loading
+    const timeout1 = setTimeout(positionElements, 100);
+    const timeout2 = setTimeout(positionElements, 300);
+    const timeout3 = setTimeout(positionElements, 600);
+    const timeout4 = setTimeout(positionElements, 1000);
+    const timeout5 = setTimeout(positionElements, 1500);
+    const timeout6 = setTimeout(positionElements, 2000);
+
+    window.addEventListener("resize", positionElements);
+
+    return () => {
+      clearTimeout(timeout1);
+      clearTimeout(timeout2);
+      clearTimeout(timeout3);
+      clearTimeout(timeout4);
+      clearTimeout(timeout5);
+      clearTimeout(timeout6);
+      window.removeEventListener("resize", positionElements);
+      document.querySelectorAll(".tour-guide-highlight").forEach((el) => {
+        el.classList.remove("tour-guide-highlight");
+      });
+    };
+  }, [currentStep, step, isOpen]);
+
+  const handleNext = () => {
+    if (currentStep < fullTourSteps.length - 1) {
+      setCurrentStep(currentStep + 1);
+    } else {
+      handleComplete();
+    }
+  };
+
+  const handleBack = () => {
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const handleComplete = () => {
+    onComplete();
+    onClose();
+  };
+
+  if (!isOpen || !step) return null;
+
+  return (
+    <>
+      {/* Guide Card */}
+      <div
+        ref={cardRef}
+        style={{
+          position: "fixed",
+          ...cardPosition,
+          zIndex: 1000,
+        }}
+        className="animate-in fade-in zoom-in duration-300"
+      >
+        <Card className="w-[380px] shadow-2xl border-2 border-blue-500 bg-white dark:bg-gray-900 relative">
+          {/* Arrow protruding from card border */}
+          {step.targetSelector && (
+            <>
+              <div
+                className="popover-arrow"
+                style={{
+                  ...arrowStyle,
+                  filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.1))",
+                }}
+              />
+              <div
+                className="popover-arrow-border"
+                style={arrowStyle}
+              />
+            </>
+          )}
+
+          <div className="p-5 space-y-4">
+            {/* Header */}
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3 flex-1">
+                <div className="w-11 h-11 rounded-full bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600 flex items-center justify-center shadow-lg flex-shrink-0">
+                  <Bot className="w-6 h-6 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-bold text-base text-center flex items-center justify-center gap-2">
+                    {step.title}
+                    {step.id === "complete" && <Sparkles className="w-4 h-4 text-yellow-500" />}
+                  </h3>
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onClose}
+                className="flex-shrink-0 h-8 w-8"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+
+            {/* Description - Centered */}
+            <p className="text-sm text-gray-600 dark:text-gray-300 text-center leading-relaxed px-2">
+              {step.description}
+            </p>
+
+            {/* Progress Bar */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+                <span className="font-medium">Progress</span>
+                <span>
+                  {currentStep + 1} / {fullTourSteps.length}
+                </span>
+              </div>
+              <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 transition-all duration-500"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Navigation - Centered */}
+            <div className="flex items-center justify-center gap-3 pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleBack}
+                disabled={currentStep === 0}
+                className="gap-2"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Back
+              </Button>
+
+              <Badge variant="secondary" className="text-xs px-3">
+                {Math.round(progress)}%
+              </Badge>
+
+              <Button
+                size="sm"
+                onClick={handleNext}
+                className="gap-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700"
+              >
+                {currentStep === fullTourSteps.length - 1 ? (
+                  <>
+                    Finish
+                    <Check className="w-4 h-4" />
+                  </>
+                ) : (
+                  <>
+                    Next
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* Global Styles */}
+      <style>{`
+        .popover-arrow {
+          background: white;
+        }
+
+        .dark .popover-arrow {
+          background: rgb(17, 24, 39);
+        }
+
+        .tour-guide-highlight {
+          position: relative;
+          z-index: 998 !important;
+          box-shadow:
+            0 0 0 4px rgba(59, 130, 246, 0.5),
+            0 0 0 8px rgba(59, 130, 246, 0.2),
+            0 0 30px rgba(59, 130, 246, 0.4) !important;
+          border-radius: 8px;
+          transition: all 0.3s ease;
+          animation: pulse-glow 2s infinite;
+        }
+
+        @keyframes pulse-glow {
+          0%, 100% {
+            box-shadow:
+              0 0 0 4px rgba(59, 130, 246, 0.5),
+              0 0 0 8px rgba(59, 130, 246, 0.2),
+              0 0 30px rgba(59, 130, 246, 0.4);
+          }
+          50% {
+            box-shadow:
+              0 0 0 4px rgba(59, 130, 246, 0.7),
+              0 0 0 8px rgba(59, 130, 246, 0.3),
+              0 0 40px rgba(59, 130, 246, 0.5);
+          }
+        }
+      `}</style>
+    </>
+  );
+};
+
+export default TourGuide;

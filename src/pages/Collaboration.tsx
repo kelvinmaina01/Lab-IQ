@@ -239,7 +239,7 @@ const Collaboration = () => {
 
             {/* Team Members Tab */}
             {/* Team Members Tab */}
-            <TabsContent value="team">
+            <TabsContent value="team" data-tour="team-section">
               <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
                 {/* Member List (2 cols wide) */}
                 <div className="xl:col-span-2 space-y-4">

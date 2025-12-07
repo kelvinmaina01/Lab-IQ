@@ -40,10 +40,38 @@ export const useSubscription = () => {
         .eq('user_id', user.id)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        // If table doesn't exist or no subscription found, use free tier defaults
+        if (error.code === 'PGRST205' || error.code === 'PGRST116') {
+          console.log('Using default free tier subscription');
+          setSubscription({
+            tier: 'free',
+            storage_limit_mb: 200,
+            max_datasets: 5,
+            max_experiments: 10,
+            max_automations: 3,
+            max_collaborators: 3,
+            ai_requests_per_month: 100,
+            student_verified: false,
+          });
+          return;
+        }
+        throw error;
+      }
       setSubscription(data);
     } catch (error) {
       console.error('Error fetching subscription:', error);
+      // Fallback to free tier on any error
+      setSubscription({
+        tier: 'free',
+        storage_limit_mb: 200,
+        max_datasets: 5,
+        max_experiments: 10,
+        max_automations: 3,
+        max_collaborators: 3,
+        ai_requests_per_month: 100,
+        student_verified: false,
+      });
     }
   };
 
@@ -53,7 +81,7 @@ export const useSubscription = () => {
       if (!user) return;
 
       const currentMonth = new Date().toISOString().slice(0, 7) + '-01';
-      
+
       const { data, error } = await supabase
         .from('usage_stats')
         .select('*')
@@ -61,7 +89,7 @@ export const useSubscription = () => {
         .eq('month', currentMonth)
         .single();
 
-      if (error && error.code !== 'PGRST116') throw error;
+      if (error && error.code !== 'PGRST116' && error.code !== 'PGRST205') throw error;
       setUsage(data || {
         storage_used_mb: 0,
         ai_requests_used: 0,
@@ -71,6 +99,14 @@ export const useSubscription = () => {
       });
     } catch (error) {
       console.error('Error fetching usage:', error);
+      // Fallback to default usage stats on error
+      setUsage({
+        storage_used_mb: 0,
+        ai_requests_used: 0,
+        datasets_count: 0,
+        experiments_count: 0,
+        automations_count: 0,
+      });
     }
   };
 

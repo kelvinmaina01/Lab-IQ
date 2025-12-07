@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
-import { Database, Brain, FlaskConical, Award, Activity, BarChart3, Zap, Info, Wifi, Shield, ArrowRight } from "lucide-react";
+import { Database, Brain, FlaskConical, Award, Activity, BarChart3, Zap, Info, Wifi, Shield, ArrowRight, Bot } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
 import MetricCard from "@/components/MetricCard";
@@ -20,10 +20,12 @@ import { ProUnlocksDrawer } from "@/components/dashboard/ProUnlocksDrawer";
 import { ModelPerformanceWidget } from "@/components/dashboard/ModelPerformanceWidget";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { useOnboarding } from "@/hooks/use-onboarding";
 
 const Dashboard = () => {
   const { subscription, usage, loading, isPro } = useSubscription();
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const { resetOnboarding } = useOnboarding();
 
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
   const [loadingActivities, setLoadingActivities] = useState(true);
@@ -135,7 +137,7 @@ const Dashboard = () => {
         </div>
 
         {/* Core Metrics Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6" data-tour="dashboard-stats">
           <MetricCard
             title="Total Datasets"
             value={usage?.datasets_count || 0}
@@ -354,6 +356,16 @@ const Dashboard = () => {
         <NextActionsPanel />
 
         <UpgradeDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} />
+
+        {/* Tour CTA Button - Floating */}
+        <Button
+          onClick={resetOnboarding}
+          className="fixed bottom-6 right-6 z-50 gap-2 shadow-lg bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 animate-in slide-in-from-bottom duration-500"
+          size="sm"
+        >
+          <Bot className="w-4 h-4" />
+          Take a Tour
+        </Button>
       </MainLayout>
     </AuthGuard>
   );

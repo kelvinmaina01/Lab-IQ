@@ -384,6 +384,7 @@ export default function Upload() {
                     onDragLeave={handleDrag}
                     onDragOver={handleDrag}
                     onDrop={handleDrop}
+                    data-tour="upload-zone"
                   >
                     <input
                       type="file"

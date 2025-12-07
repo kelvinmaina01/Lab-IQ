@@ -134,7 +134,7 @@ const Assistant = () => {
           </div>
 
           {/* Charts */}
-          <Tabs defaultValue="performance" className="mb-8">
+          <Tabs defaultValue="performance" className="mb-8" data-tour="chat-interface">
             <TabsList className="mb-4">
               <TabsTrigger value="performance">Performance</TabsTrigger>
               <TabsTrigger value="usage">Data Usage</TabsTrigger>

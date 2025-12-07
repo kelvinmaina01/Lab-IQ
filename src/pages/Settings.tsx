@@ -3,16 +3,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { MainLayout } from "@/components/layout/MainLayout";
-import { ChevronRight, User, Bell, Shield, Cloud, CreditCard, LogOut, Moon, HelpCircle } from "lucide-react";
+import { ChevronRight, User, Bell, Shield, Cloud, CreditCard, LogOut, Moon, HelpCircle, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
 import { useEffect, useState } from "react";
+import { useOnboarding } from "@/hooks/use-onboarding";
 
 export default function Settings() {
     const navigate = useNavigate();
     const { toast } = useToast();
     const [darkMode, setDarkMode] = useState(false);
+    const { startOnboarding, resetOnboarding } = useOnboarding();
 
     useEffect(() => {
         // Sync with document class and local storage
@@ -53,7 +55,16 @@ export default function Settings() {
             title: "Coming Soon",
             description: "This feature is currently under development.",
         });
-    }
+    };
+
+    const handleStartTour = async () => {
+        await resetOnboarding();
+        toast({
+            title: "Tour Started",
+            description: "Welcome back! Let's explore Lab-IQ together.",
+        });
+        navigate("/dashboard");
+    };
 
     const settingsGroups = [
         {
@@ -119,6 +130,12 @@ export default function Settings() {
                     label: "Help & Documentation",
                     description: "Guides, tutorials, and support",
                     action: handleComingSoon
+                },
+                {
+                    icon: Sparkles,
+                    label: "Take the Lab-IQ Tour",
+                    description: "Restart the interactive guided tour of all features",
+                    action: handleStartTour
                 }
             ]
         }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { Card } from "@/components/ui/card";
@@ -52,6 +52,7 @@ import { workflowService, Workflow } from "@/lib/services/workflowService";
 
 const Automation = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isTemplatesDialogOpen, setIsTemplatesDialogOpen] = useState(false);
   const [useBuilder, setUseBuilder] = useState(false);
@@ -60,7 +61,9 @@ const Automation = () => {
   const [executeLoading, setExecuteLoading] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [workflowToDelete, setWorkflowToDelete] = useState<string | null>(null);
-  const { toast } = useToast();
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [workflowToEdit, setWorkflowToEdit] = useState<Workflow | null>(null);
+  const { toast} = useToast();
   const [initialDatasetId, setInitialDatasetId] = useState<string>();
   const [stats, setStats] = useState({
     active: 0,
@@ -147,25 +150,47 @@ const Automation = () => {
   const handleExecuteWorkflow = async (id: string) => {
     try {
       setExecuteLoading(id);
-      await workflowService.executeWorkflow(id);
+      const execution = await workflowService.executeWorkflow(id);
 
       toast({
         title: "Workflow Executed",
-        description: "Workflow is running in the background.",
+        description: "Opening execution details...",
       });
 
-      // Reload after a delay to get updated stats
-      setTimeout(() => {
-        loadWorkflows();
-      }, 2000);
+      // Navigate to execution detail page
+      navigate(`/automation/execution/${execution.id}`);
     } catch (error) {
       toast({
         title: "Execution Failed",
         description: "Failed to execute workflow",
         variant: "destructive",
       });
-    } finally {
       setExecuteLoading(null);
+    }
+  };
+
+  const handleEditWorkflow = async (updatedWorkflow: any) => {
+    if (!workflowToEdit) return;
+
+    try {
+      await workflowService.updateWorkflow(workflowToEdit.id, updatedWorkflow);
+
+      toast({
+        title: "Workflow Updated",
+        description: "Your workflow has been updated successfully.",
+      });
+
+      setIsEditDialogOpen(false);
+      setWorkflowToEdit(null);
+      setUseBuilder(false);
+      loadWorkflows();
+    } catch (error) {
+      console.error("Error updating workflow:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update workflow",
+        variant: "destructive",
+      });
     }
   };
 
@@ -337,28 +362,62 @@ const Automation = () => {
                     Templates
                   </Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>Workflow Templates</DialogTitle>
                     <DialogDescription>
-                      Choose from pre-built workflow templates
+                      Choose from pre-built industry-specific workflow templates
                     </DialogDescription>
                   </DialogHeader>
-                  <div className="space-y-3 mt-4">
-                    {workflowService.getWorkflowTemplates().map((template, index) => (
-                      <Card key={index} className="p-4 hover:bg-accent/50 cursor-pointer transition-colors"
-                        onClick={() => handleCreateFromTemplate(template)}
-                      >
-                        <h4 className="font-semibold mb-1">{template.name}</h4>
-                        <p className="text-sm text-muted-foreground mb-3">
-                          {template.description}
-                        </p>
-                        <div className="flex items-center gap-2 text-xs">
-                          <Badge variant="outline">{template.steps.length} steps</Badge>
-                          <Badge variant="outline">{getTriggerLabel({ trigger_type: template.trigger_type } as any)}</Badge>
-                        </div>
-                      </Card>
-                    ))}
+                  <div className="mt-6 space-y-6">
+                    {(() => {
+                      const templates = workflowService.getWorkflowTemplates();
+                      const categories = ['General', 'Biotech', 'Pharmaceutical', 'Chemistry', 'Clinical'];
+
+                      return categories.map((category) => {
+                        const categoryTemplates = templates.filter((t: any) => t.category === category);
+                        if (categoryTemplates.length === 0) return null;
+
+                        return (
+                          <div key={category}>
+                            <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                              {category === 'General' && '⚙️'}
+                              {category === 'Biotech' && '🧬'}
+                              {category === 'Pharmaceutical' && '💊'}
+                              {category === 'Chemistry' && '⚗️'}
+                              {category === 'Clinical' && '🏥'}
+                              <span>{category}</span>
+                              <Badge variant="secondary" className="ml-2">{categoryTemplates.length}</Badge>
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              {categoryTemplates.map((template: any, index: number) => (
+                                <Card
+                                  key={index}
+                                  className="p-4 hover:bg-accent/50 cursor-pointer transition-all hover:shadow-md"
+                                  onClick={() => handleCreateFromTemplate(template)}
+                                >
+                                  <div className="flex items-start gap-3 mb-2">
+                                    <span className="text-2xl">{template.icon}</span>
+                                    <div className="flex-1">
+                                      <h4 className="font-semibold text-sm mb-1">{template.name}</h4>
+                                      <p className="text-xs text-muted-foreground line-clamp-2">
+                                        {template.description}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center justify-between text-xs mt-3">
+                                    <div className="flex items-center gap-2">
+                                      <Badge variant="outline" className="text-xs">{template.steps.length} steps</Badge>
+                                      <span className="text-muted-foreground">⏱️ Saves {template.estimatedTimeSaved}</span>
+                                    </div>
+                                  </div>
+                                </Card>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()}
                   </div>
                 </DialogContent>
               </Dialog>
@@ -388,6 +447,44 @@ const Automation = () => {
                         setUseBuilder(false);
                       }}
                       initialDatasetId={initialDatasetId}
+                    />
+                  ) : (
+                    <div className="text-center py-8">
+                      <Button onClick={() => setUseBuilder(true)} size="lg">
+                        Open Workflow Builder
+                      </Button>
+                    </div>
+                  )}
+                </DialogContent>
+              </Dialog>
+
+              {/* Edit Workflow Dialog */}
+              <Dialog
+                open={isEditDialogOpen}
+                onOpenChange={(open) => {
+                  setIsEditDialogOpen(open);
+                  if (!open) {
+                    setWorkflowToEdit(null);
+                    setUseBuilder(false);
+                  }
+                }}
+              >
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>Edit Workflow</DialogTitle>
+                    <DialogDescription>
+                      Update your workflow configuration and steps
+                    </DialogDescription>
+                  </DialogHeader>
+                  {useBuilder && workflowToEdit ? (
+                    <WorkflowBuilder
+                      onSave={handleEditWorkflow}
+                      onCancel={() => {
+                        setIsEditDialogOpen(false);
+                        setWorkflowToEdit(null);
+                        setUseBuilder(false);
+                      }}
+                      initialWorkflow={workflowToEdit}
                     />
                   ) : (
                     <div className="text-center py-8">
@@ -478,7 +575,7 @@ const Automation = () => {
               </div>
             </Card>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-4" data-tour="workflows-list">
               {workflows.map((workflow) => (
                 <Card key={workflow.id} className="p-6">
                   <div className="flex items-start justify-between">
@@ -562,7 +659,13 @@ const Automation = () => {
                               </>
                             )}
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setWorkflowToEdit(workflow);
+                              setIsEditDialogOpen(true);
+                              setUseBuilder(true);
+                            }}
+                          >
                             <Settings className="mr-2 h-4 w-4" />
                             Edit Workflow
                           </DropdownMenuItem>

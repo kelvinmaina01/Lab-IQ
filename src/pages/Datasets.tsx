@@ -279,7 +279,7 @@ export default function Datasets() {
                             </CardContent>
                         </Card>
                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" data-tour="datasets-grid">
                             {filteredDatasets.map((dataset) => (
                                 <Link key={dataset.id} to={`/dashboard/datasets/${dataset.id}`}>
                                     <Card className="h-full hover:shadow-lg transition-all hover:-translate-y-1 cursor-pointer">

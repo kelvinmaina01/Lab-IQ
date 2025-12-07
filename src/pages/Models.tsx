@@ -24,7 +24,7 @@ const Models = () => {
     return (
         <AuthGuard>
             <MainLayout>
-                <main className="min-h-screen">
+                <main className="min-h-screen" data-tour="models-grid">
                     <AutoMLInterface />
                 </main>
             </MainLayout>

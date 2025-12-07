@@ -25,7 +25,7 @@ const Insights = () => {
     <AuthGuard>
       <MainLayout>
         <main className="h-[calc(100vh-64px)] flex flex-col">
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 overflow-hidden" data-tour="insights-feed">
             <AIAssistantChat
               mode={mode}
               onModeChange={setMode}

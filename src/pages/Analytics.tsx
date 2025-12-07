@@ -171,7 +171,7 @@ const Analytics = () => {
               </div>
 
               {/* Charts */}
-              <Tabs defaultValue="distribution" className="mb-8">
+              <Tabs defaultValue="distribution" className="mb-8" data-tour="analytics-charts">
                 <TabsList className="mb-4">
                   <TabsTrigger value="distribution">Distribution</TabsTrigger>
                   <TabsTrigger value="performance">Performance</TabsTrigger>

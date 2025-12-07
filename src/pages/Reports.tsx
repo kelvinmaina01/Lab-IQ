@@ -194,7 +194,7 @@ const Reports = () => {
               {activeTab === 'templates' ? (
                 <TemplatesGallery onUseTemplate={handleUseTemplate} />
               ) : (
-                <div className="rounded-md border bg-card">
+                <div className="rounded-md border bg-card" data-tour="reports-builder">
                   <div className="grid grid-cols-12 gap-4 p-4 border-b bg-muted/40 text-sm font-medium text-muted-foreground">
                     <div className="col-span-4">Report Name</div>
                     <div className="col-span-2">Type & Compliance</div>
