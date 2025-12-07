@@ -376,6 +376,9 @@ const Automation = () => {
                 <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>Create Automation Workflow</DialogTitle>
+                    <DialogDescription>
+                      Build a custom workflow with sequential steps to automate your data processing pipeline
+                    </DialogDescription>
                   </DialogHeader>
                   {useBuilder ? (
                     <WorkflowBuilder
