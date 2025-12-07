@@ -50,11 +50,32 @@ export class DatasetService {
                 onProgress?.(overallProgress, `Uploading data rows (${Math.round(progress)}%)...`);
             });
 
-            // 5. Update status to ready
+            // 5. Update status to ready and save preview data
             onProgress?.(95, 'Finalizing...');
+
+            // Save first 100 rows as preview_data
+            const previewRows = parsedData.rows.slice(0, 100);
+
+            // Build schema object for easy access
+            const schemaObject = {
+                columns: parsedData.columns.map(col => ({
+                    id: `col_${col.index}`,
+                    column_name: col.name,
+                    name: col.name,
+                    data_type: col.dataType,
+                    type: col.dataType,
+                    nullable: col.nullable,
+                    unique_values_count: col.uniqueValues
+                }))
+            };
+
             const { error: updateError } = await supabase
                 .from('datasets')
-                .update({ status: 'ready' })
+                .update({
+                    status: 'ready',
+                    preview_data: previewRows,
+                    schema: schemaObject
+                })
                 .eq('id', datasetId);
 
             if (updateError) throw new Error(`Failed to update status: ${updateError.message}`);

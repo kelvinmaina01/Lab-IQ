@@ -69,16 +69,26 @@ const DatasetDetail = () => {
                 setRows(datasetData.preview_data);
             }
 
-            if (datasetData?.schema?.columns) {
+            // Handle columns - support both schema.columns and preview_data generation
+            if (datasetData?.schema?.columns && Array.isArray(datasetData.schema.columns)) {
                 setColumns(datasetData.schema.columns);
             } else if (datasetData?.preview_data && datasetData.preview_data.length > 0) {
                 // Generate columns from first row if schema not available
                 const firstRow = datasetData.preview_data[0];
-                const generatedColumns = Object.keys(firstRow).map(key => ({
+                const generatedColumns = Object.keys(firstRow).map((key, index) => ({
+                    id: `col_${index}`,
+                    column_name: key,
                     name: key,
-                    type: typeof firstRow[key]
+                    data_type: typeof firstRow[key],
+                    type: typeof firstRow[key],
+                    unique_values_count: 0,
+                    nullable: true
                 }));
                 setColumns(generatedColumns);
+            } else if (datasetData?.row_count && datasetData?.column_count) {
+                // If we have counts but no preview data, show empty state with info
+                console.log('Dataset has no preview data:', datasetData);
+                toast.error('Dataset uploaded but preview data is not available');
             }
         } catch (error) {
             console.error('Error fetching dataset:', error);
@@ -278,16 +288,25 @@ const DatasetDetail = () => {
                     </TabsContent>
 
                     <TabsContent value="schema" className="mt-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {columns.map((col) => (
-                                <Card key={col.id}>
-                                    <CardHeader className="pb-2">
-                                        <CardTitle className="text-base font-medium flex justify-between">
-                                            {col.column_name}
-                                            <Badge>{col.data_type}</Badge>
-                                        </CardTitle>
-                                    </CardHeader>
-                                    <CardContent className="text-sm space-y-2">
+                        {columns.length === 0 ? (
+                            <Card className="p-12 text-center">
+                                <Database className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                                <h3 className="text-lg font-medium mb-2">No Schema Available</h3>
+                                <p className="text-sm text-muted-foreground">
+                                    The dataset schema could not be loaded. Try re-uploading the file.
+                                </p>
+                            </Card>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {columns.map((col, index) => (
+                                    <Card key={col.id || `col_${index}`}>
+                                        <CardHeader className="pb-2">
+                                            <CardTitle className="text-base font-medium flex justify-between">
+                                                {col.column_name || col.name}
+                                                <Badge>{col.data_type || col.type}</Badge>
+                                            </CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="text-sm space-y-2">
                                         <div className="flex justify-between py-1 border-b">
                                             <span className="text-muted-foreground">Unique Values</span>
                                             <span>{col.unique_values_count}</span>
@@ -321,7 +340,8 @@ const DatasetDetail = () => {
                                     </CardContent>
                                 </Card>
                             ))}
-                        </div>
+                            </div>
+                        )}
                     </TabsContent>
 
                     <TabsContent value="analysis" className="mt-6">

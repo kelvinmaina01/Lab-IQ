@@ -327,7 +327,7 @@ const Collaboration = () => {
 
             {/* Real-Time Chat Tab */}
             <TabsContent value="chat">
-              {subscription?.tier === "free" ? (
+              {false && subscription?.tier === "free" ? (
                 <Card className="p-8 text-center">
                   <MessageSquare className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
                   <h3 className="text-xl font-semibold mb-2">Real-Time Chat</h3>
