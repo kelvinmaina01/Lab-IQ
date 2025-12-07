@@ -1,35 +1,39 @@
 import { Link, useLocation } from "react-router-dom";
-import { Home, Upload, Brain, BarChart3, FlaskConicalIcon, Boxes, Users, FileText } from "lucide-react";
+import { Home, Upload, Brain, BarChart3, FlaskConicalIcon, Boxes, Users, FileText, Cpu, Database } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const MobileNav = () => {
   const location = useLocation();
 
   const navItems = [
-    { path: "/dashboard", label: "Home", icon: Home },
+    { path: "/dashboard", label: "Overview", icon: Home },
+    { path: "/datasets", label: "Datasets", icon: Database },
     { path: "/upload", label: "Upload", icon: Upload },
     { path: "/insights", label: "AI", icon: Brain },
-    { path: "/experiments", label: "Labs", icon: FlaskConicalIcon },
-    { path: "/reports", label: "Reports", icon: FileText },
+    { path: "/models", label: "Models", icon: Cpu },
   ];
 
+  // We might want to show only a subset on mobile or use a scrollable container
+  // For now, let's just show the top 5 or make it scrollable
+  // The previous code seemed to just map them all.
+
   return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border safe-area-bottom">
-      <nav className="flex items-center justify-around h-16">
+    <div className="md:hidden fixed bottom-0 left-0 right-0 bg-background border-t border-border z-50">
+      <nav className="flex items-center justify-between px-2 overflow-x-auto no-scrollbar">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = location.pathname === item.path;
           return (
-            <Link key={item.path} to={item.path} className="flex-1">
+            <Link key={item.path} to={item.path} className="flex-1 min-w-[60px]">
               <div className="flex flex-col items-center justify-center gap-1 py-2">
-                <Icon 
+                <Icon
                   className={cn(
                     "w-5 h-5 transition-colors",
                     isActive ? "text-primary" : "text-muted-foreground"
-                  )} 
+                  )}
                 />
                 <span className={cn(
-                  "text-xs font-medium transition-colors",
+                  "text-[10px] font-medium transition-colors truncate w-full text-center",
                   isActive ? "text-primary" : "text-muted-foreground"
                 )}>
                   {item.label}

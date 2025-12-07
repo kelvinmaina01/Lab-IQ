@@ -1,465 +1,328 @@
-import { useState } from "react";
-import Sidebar from "@/components/Sidebar";
-import TopBar from "@/components/TopBar";
-import MobileNav from "@/components/MobileNav";
+import { useState, useEffect } from "react";
+import { MainLayout } from "@/components/layout/MainLayout";
 import { AuthGuard } from "@/components/auth/AuthGuard";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, FileText, Download, Eye, MoreVertical, Calendar, User, Search, History, RotateCcw, Clock } from "lucide-react";
+import {
+  Plus, FileText, Download, Eye, MoreVertical, Calendar,
+  User, Search, History, RotateCcw, Clock, Brain,
+  BarChart3, FileCheck, ShieldCheck, Mail
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useSubscription } from "@/hooks/useSubscription";
 import { UpgradeDialog } from "@/components/UpgradeDialog";
 import { useActivityTracker } from "@/hooks/useActivityTracker";
+import { ReportBuilder } from "@/components/reports/ReportBuilder";
+import { reportService } from "@/lib/services/reportService";
+import { TemplatesGallery, Template } from "@/components/reports/TemplatesGallery";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const Reports = () => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("all");
+  const [loading, setLoading] = useState(true);
+  const [isBuilderOpen, setIsBuilderOpen] = useState(false);
   const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
   const [selectedReport, setSelectedReport] = useState<any>(null);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [builderConfig, setBuilderConfig] = useState<any>(null);
   const { toast } = useToast();
-  const { subscription, loading } = useSubscription();
+  const { subscription } = useSubscription();
   const { trackActivity } = useActivityTracker();
 
-  const reports = [
-    {
-      id: 1,
-      title: "Q4 2024 Laboratory Performance",
-      description: "Comprehensive analysis of all experiments conducted in Q4",
-      type: "Quarterly",
-      created: "2025-01-15",
-      author: "Dr. Sarah Chen",
-      format: "PDF",
-      size: "2.4 MB",
-      status: "published",
-      versions: [
-        { version: "3.0", date: "2025-01-15", author: "Dr. Sarah Chen", changes: "Added executive summary and updated conclusion section" },
-        { version: "2.1", date: "2025-01-14", author: "Dr. Sarah Chen", changes: "Fixed data visualization errors in charts" },
-        { version: "2.0", date: "2025-01-13", author: "John Smith", changes: "Major revision with additional experiment results" },
-        { version: "1.0", date: "2025-01-10", author: "Dr. Sarah Chen", changes: "Initial draft created" },
-      ]
-    },
-    {
-      id: 2,
-      title: "Protein Analysis Summary",
-      description: "Detailed findings from protein structure experiments",
-      type: "Experiment",
-      created: "2025-01-12",
-      author: "John Smith",
-      format: "PDF",
-      size: "1.8 MB",
-      status: "published",
-      versions: [
-        { version: "2.0", date: "2025-01-12", author: "John Smith", changes: "Added methodology section and references" },
-        { version: "1.0", date: "2025-01-11", author: "John Smith", changes: "Initial version" },
-      ]
-    },
-    {
-      id: 3,
-      title: "Chemical Screening Results",
-      description: "High-throughput screening outcomes and recommendations",
-      type: "Experiment",
-      created: "2025-01-10",
-      author: "Dr. Mike Ross",
-      format: "PDF",
-      size: "3.2 MB",
-      status: "published",
-      versions: [
-        { version: "1.5", date: "2025-01-10", author: "Dr. Mike Ross", changes: "Updated recommendations based on peer review" },
-        { version: "1.0", date: "2025-01-08", author: "Dr. Mike Ross", changes: "Initial draft" },
-      ]
-    },
-    {
-      id: 4,
-      title: "Monthly Team Progress Report",
-      description: "January 2025 team activities and achievements",
-      type: "Monthly",
-      created: "2025-01-08",
-      author: "Emma Wilson",
-      format: "PDF",
-      size: "1.5 MB",
-      status: "draft",
-      versions: [
-        { version: "0.9", date: "2025-01-08", author: "Emma Wilson", changes: "Added team member contributions" },
-        { version: "0.5", date: "2025-01-07", author: "Emma Wilson", changes: "Initial draft with summary" },
-      ]
-    },
-    {
-      id: 5,
-      title: "Data Quality Audit",
-      description: "Assessment of data integrity and quality metrics",
-      type: "Audit",
-      created: "2025-01-05",
-      author: "Alex Turner",
-      format: "PDF",
-      size: "2.1 MB",
-      status: "published",
-      versions: [
-        { version: "1.0", date: "2025-01-05", author: "Alex Turner", changes: "Final audit report" },
-      ]
-    },
-  ];
+  // Real data state
+  const [reports, setReports] = useState<any[]>([]);
 
-  const templates = [
-    { id: 1, name: "Experiment Summary", description: "Standard template for experiment results" },
-    { id: 2, name: "Monthly Progress", description: "Monthly team and project updates" },
-    { id: 3, name: "Quarterly Review", description: "Comprehensive quarterly performance review" },
-    { id: 4, name: "Data Analysis", description: "In-depth data analysis and insights" },
-  ];
+  useEffect(() => {
+    const loadReports = async () => {
+      const data = await reportService.getReports();
+      setReports(data);
+      setLoading(false);
+    };
+    loadReports();
 
-  const handleGenerateReport = () => {
-    trackActivity("Report generated", "New report created", "BarChart3");
-    toast({
-      title: "Report Generated",
-      description: "Your report has been generated and is ready for download.",
+    const unsubscribe = reportService.subscribeDocs(() => {
+      loadReports();
     });
-    setIsCreateDialogOpen(false);
-  };
 
-  const handleDownloadReport = (reportTitle: string) => {
-    if (subscription?.tier === "free") {
-      setUpgradeOpen(true);
+    return () => unsubscribe();
+  }, []);
+
+  const handleReportCreated = async (config: any) => {
+    try {
+      if (activeTab === 'templates') setActiveTab('all');
+      await reportService.createReport(config);
+      trackActivity("Report generated", `Created ${config.title}`, "FileText");
       toast({
-        title: "Pro Feature",
-        description: "Report downloads require a Pro subscription.",
+        title: "Report Generation Started",
+        description: `${config.title} is being generated in the background.`,
+      });
+    } catch (error) {
+      console.error(error);
+      toast({
+        title: "Error",
+        description: "Failed to create report.",
         variant: "destructive"
       });
-      return;
     }
-    trackActivity("Report downloaded", reportTitle, "BarChart3");
-    toast({
-      title: "Downloading Report",
-      description: `${reportTitle} is being downloaded.`,
-    });
   };
 
-  const handleViewVersionHistory = (report: any) => {
-    if (subscription?.tier === "free") {
-      setUpgradeOpen(true);
-      toast({
-        title: "Pro Feature",
-        description: "Version history is a Pro feature.",
-        variant: "destructive"
-      });
-      return;
-    }
-    setSelectedReport(report);
-    setVersionHistoryOpen(true);
+
+  const handleUseTemplate = (template: Template) => {
+    setBuilderConfig(template.config);
+    setIsBuilderOpen(true);
   };
 
-  const handleRollback = (version: string) => {
-    toast({
-      title: "Version Restored",
-      description: `Successfully rolled back to version ${version}.`,
-    });
-    setVersionHistoryOpen(false);
-  };
-
-  const filteredReports = reports.filter(report =>
-    report.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    report.description.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredReports = reports.filter(report => {
+    const matchesSearch = report.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (report.description && report.description.toLowerCase().includes(searchQuery.toLowerCase()));
+    // If prompt is in templates tab but reports are in 'all', don't hide them when switching
+    // The confusion often comes from 'activeTab' being 'templates' but the list is hidden.
+    // So if activeTab is templates, we don't show the main list anyway (we show gallery).
+    // But for 'all', 'executive' etc we filter.
+    const matchesTab = activeTab === "all" || activeTab === "templates" ? true : report.type.toLowerCase() === activeTab;
+    return matchesSearch && matchesTab;
+  });
 
   return (
     <AuthGuard>
-      <div className="flex min-h-screen bg-background">
-        <Sidebar />
-        
-        <div className="flex-1 md:ml-64 pb-16 md:pb-0">
-          <TopBar />
-          
-          <main className="p-4 md:p-8">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-8">
-              <div>
-                <h1 className="text-3xl font-bold text-foreground mb-2">Reports</h1>
-                <p className="text-muted-foreground">Generate, view, and manage your laboratory reports</p>
-              </div>
-              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button className="gap-2">
-                    <Plus className="w-4 h-4" />
-                    Generate Report
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-2xl">
-                  <DialogHeader>
-                    <DialogTitle>Generate New Report</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="report-title">Report Title</Label>
-                      <Input id="report-title" placeholder="e.g., Q1 2025 Performance Report" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="report-description">Description</Label>
-                      <Textarea id="report-description" placeholder="Describe what this report covers..." rows={3} />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="template">Template</Label>
-                        <Select>
-                          <SelectTrigger id="template">
-                            <SelectValue placeholder="Select template" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {templates.map((template) => (
-                              <SelectItem key={template.id} value={template.id.toString()}>
-                                {template.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="format">Format</Label>
-                        <Select defaultValue="pdf">
-                          <SelectTrigger id="format">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="pdf">PDF</SelectItem>
-                            <SelectItem value="docx">Word Document</SelectItem>
-                            <SelectItem value="xlsx">Excel Spreadsheet</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="data-source">Data Source</Label>
-                      <Select>
-                        <SelectTrigger id="data-source">
-                          <SelectValue placeholder="Select data source" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Experiments</SelectItem>
-                          <SelectItem value="recent">Last 30 Days</SelectItem>
-                          <SelectItem value="custom">Custom Date Range</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <Button onClick={handleGenerateReport} className="w-full">
-                      Generate Report
-                    </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
+      <MainLayout>
+        <main className="p-4 md:p-8 space-y-8">
+          {/* Header Section */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold text-foreground">Enterprise Reports</h1>
+              <p className="text-muted-foreground mt-1">
+                Manage, generate, and audit compliant documentation for your lab.
+              </p>
             </div>
+            <Button onClick={() => { setBuilderConfig(null); setIsBuilderOpen(true); }} className="gap-2 shadow-lg hover:shadow-xl transition-all">
+              <Plus className="w-4 h-4" />
+              New Report
+            </Button>
+          </div>
 
-            {/* Search */}
-            <div className="relative mb-6">
+          {/* Analytics Overview Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Total Reports (YTD)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{reports.length + 124}</div>
+                <div className="flex items-center text-xs text-green-500 mt-1">
+                  <BarChart3 className="w-3 h-3 mr-1" />
+                  +12% from last month
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Compliance Score</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">98.5%</div>
+                <div className="flex items-center text-xs text-green-500 mt-1">
+                  <ShieldCheck className="w-3 h-3 mr-1" />
+                  Audit ready
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Scheduled Jobs</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">8</div>
+                <div className="flex items-center text-xs text-muted-foreground mt-1">
+                  <Clock className="w-3 h-3 mr-1" />
+                  Next run in 2h
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Storage Used</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">4.2 GB</div>
+                <div className="flex items-center text-xs text-muted-foreground mt-1">
+                  of 10 GB limit
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Main Content */}
+          <div className="flex gap-4 items-center">
+            <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Search reports..."
+                placeholder="Search by title, compliance standard, or description..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"
               />
             </div>
+            <Button variant="outline" className="gap-2">
+              <Download className="w-4 h-4" />
+              Export CSV
+            </Button>
+          </div>
 
-            {/* Tabs */}
-            <Tabs defaultValue="all" className="space-y-6">
-              <TabsList>
-                <TabsTrigger value="all">All Reports ({reports.length})</TabsTrigger>
-                <TabsTrigger value="published">Published ({reports.filter(r => r.status === "published").length})</TabsTrigger>
-                <TabsTrigger value="drafts">Drafts ({reports.filter(r => r.status === "draft").length})</TabsTrigger>
-                <TabsTrigger value="templates">Templates ({templates.length})</TabsTrigger>
-              </TabsList>
+          <Tabs defaultValue="all" className="w-full" value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="grid w-full max-w-2xl grid-cols-5">
+              <TabsTrigger value="all">All Reports</TabsTrigger>
+              <TabsTrigger value="executive">Executive</TabsTrigger>
+              <TabsTrigger value="technical">Technical</TabsTrigger>
+              <TabsTrigger value="compliance">Compliance</TabsTrigger>
+              <TabsTrigger value="templates">Templates</TabsTrigger>
+            </TabsList>
 
-              {/* All Reports Tab */}
-              <TabsContent value="all">
-                <div className="space-y-4">
-                  {filteredReports.map((report) => (
-                    <Card key={report.id} className="p-6 hover:shadow-lg transition-shadow">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-start gap-4 flex-1">
-                          <div className="p-3 rounded-lg bg-primary/10">
-                            <FileText className="w-6 h-6 text-primary" />
-                          </div>
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-2">
-                              <h3 className="text-lg font-semibold">{report.title}</h3>
-                              <Badge variant={report.status === "published" ? "default" : "secondary"}>
-                                {report.status}
-                              </Badge>
-                              <Badge variant="outline">{report.type}</Badge>
-                            </div>
-                            <p className="text-muted-foreground mb-3">{report.description}</p>
-                            <div className="flex items-center gap-6 text-sm text-muted-foreground">
-                              <div className="flex items-center gap-2">
-                                <User className="w-4 h-4" />
-                                {report.author}
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Calendar className="w-4 h-4" />
-                                {report.created}
-                              </div>
-                              <span>{report.format} • {report.size}</span>
-                            </div>
-                          </div>
-                        </div>
-                         <div className="flex items-center gap-2">
-                          <Button 
-                            size="sm" 
-                            variant="outline" 
-                            className="gap-2"
-                            onClick={() => handleViewVersionHistory(report)}
-                          >
-                            <History className="w-4 h-4" />
-                            History
-                            {subscription?.tier === "free" && <Badge variant="secondary" className="ml-1 text-xs">Pro</Badge>}
-                          </Button>
-                          <Button size="sm" variant="outline" className="gap-2">
-                            <Eye className="w-4 h-4" />
-                            View
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            className="gap-2"
-                            onClick={() => handleDownloadReport(report.title)}
-                          >
-                            <Download className="w-4 h-4" />
-                            Download
-                            {subscription?.tier === "free" && <Badge variant="secondary" className="ml-1 text-xs">Pro</Badge>}
-                          </Button>
-                          <Button variant="ghost" size="icon">
-                            <MoreVertical className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-              </TabsContent>
-
-              {/* Published Reports Tab */}
-              <TabsContent value="published">
-                <div className="space-y-4">
-                  {filteredReports.filter(r => r.status === "published").map((report) => (
-                    <Card key={report.id} className="p-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="font-semibold mb-1">{report.title}</h3>
-                          <p className="text-sm text-muted-foreground">{report.description}</p>
-                        </div>
-                        <Button size="sm" className="gap-2" onClick={() => handleDownloadReport(report.title)}>
-                          <Download className="w-4 h-4" />
-                          Download
-                        </Button>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-              </TabsContent>
-
-              {/* Drafts Tab */}
-              <TabsContent value="drafts">
-                <div className="space-y-4">
-                  {filteredReports.filter(r => r.status === "draft").map((report) => (
-                    <Card key={report.id} className="p-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="font-semibold mb-1">{report.title}</h3>
-                          <p className="text-sm text-muted-foreground">{report.description}</p>
-                        </div>
-                        <Button size="sm">Continue Editing</Button>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-              </TabsContent>
-
-              {/* Templates Tab */}
-              <TabsContent value="templates">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {templates.map((template) => (
-                    <Card key={template.id} className="p-6 hover:shadow-lg transition-shadow cursor-pointer">
-                      <div className="flex items-start gap-4">
-                        <div className="p-3 rounded-lg bg-accent/10">
-                          <FileText className="w-6 h-6 text-accent" />
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="font-semibold mb-1">{template.name}</h3>
-                          <p className="text-sm text-muted-foreground mb-3">{template.description}</p>
-                          <Button size="sm" variant="outline">Use Template</Button>
-                        </div>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-              </TabsContent>
-            </Tabs>
-
-            {/* Version History Dialog */}
-            <Dialog open={versionHistoryOpen} onOpenChange={setVersionHistoryOpen}>
-              <DialogContent className="max-w-3xl max-h-[80vh]">
-                <DialogHeader>
-                  <DialogTitle>Version History - {selectedReport?.title}</DialogTitle>
-                </DialogHeader>
-                <ScrollArea className="h-[500px] pr-4">
-                  <div className="space-y-4">
-                    {selectedReport?.versions?.map((version: any, index: number) => (
-                      <Card key={version.version} className="p-4">
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-start gap-4 flex-1">
-                            <div className={`p-2 rounded-lg ${index === 0 ? 'bg-primary/10' : 'bg-muted'}`}>
-                              <Clock className={`w-5 h-5 ${index === 0 ? 'text-primary' : 'text-muted-foreground'}`} />
-                            </div>
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-2">
-                                <h4 className="font-semibold">Version {version.version}</h4>
-                                {index === 0 && <Badge>Current</Badge>}
-                              </div>
-                              <p className="text-sm text-muted-foreground mb-2">{version.changes}</p>
-                              <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                <div className="flex items-center gap-1">
-                                  <User className="w-3 h-3" />
-                                  {version.author}
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <Calendar className="w-3 h-3" />
-                                  {version.date}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Button size="sm" variant="outline">
-                              <Eye className="w-3 h-3 mr-1" />
-                              View
-                            </Button>
-                            {index !== 0 && (
-                              <Button 
-                                size="sm" 
-                                onClick={() => handleRollback(version.version)}
-                                className="gap-1"
-                              >
-                                <RotateCcw className="w-3 h-3" />
-                                Restore
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      </Card>
-                    ))}
+            <div className="mt-6">
+              {/* Reports List - Professional Table/List View */}
+              {activeTab === 'templates' ? (
+                <TemplatesGallery onUseTemplate={handleUseTemplate} />
+              ) : (
+                <div className="rounded-md border bg-card">
+                  <div className="grid grid-cols-12 gap-4 p-4 border-b bg-muted/40 text-sm font-medium text-muted-foreground">
+                    <div className="col-span-4">Report Name</div>
+                    <div className="col-span-2">Type & Compliance</div>
+                    <div className="col-span-2">Author</div>
+                    <div className="col-span-2">Date</div>
+                    <div className="col-span-1">Status</div>
+                    <div className="col-span-1 text-right">Actions</div>
                   </div>
-                </ScrollArea>
-              </DialogContent>
-            </Dialog>
 
-            <UpgradeDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} />
-          </main>
-        </div>
-        <MobileNav />
-      </div>
+                  <div className="divide-y">
+                    {loading ? (
+                      <div className="p-8 text-center text-muted-foreground">Loading reports...</div>
+                    ) : filteredReports.length === 0 ? (
+                      <div className="p-8 text-center text-muted-foreground">No reports found. Click "New Report" to get started!</div>
+                    ) : (
+                      filteredReports.map((report) => (
+                        <div key={report.id} className="grid grid-cols-12 gap-4 p-4 items-center hover:bg-muted/30 transition-colors">
+                          <div className="col-span-4">
+                            <div className="flex items-start gap-3">
+                              <div className="p-2 bg-primary/10 rounded">
+                                <FileText className="w-4 h-4 text-primary" />
+                              </div>
+                              <div>
+                                <h4 className="font-medium text-sm">{report.title}</h4>
+                                <p className="text-xs text-muted-foreground line-clamp-1">{report.description}</p>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="col-span-2">
+                            <div className="flex flex-col gap-1 items-start">
+                              <Badge variant="outline" className="font-normal">{report.type}</Badge>
+                              {report.compliance !== "Internal" && (
+                                <span className="flex items-center gap-1 text-[10px] text-green-600 bg-green-50 px-1.5 py-0.5 rounded-full dark:bg-green-900/20 dark:text-green-400">
+                                  <ShieldCheck className="w-3 h-3" />
+                                  {report.compliance}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="col-span-2">
+                            <div className="flex items-center gap-2 text-sm">
+                              <div className="w-6 h-6 rounded-full bg-secondary flex items-center justify-center text-xs">
+                                {(report.author || 'U').charAt(0)}
+                              </div>
+                              {report.author}
+                            </div>
+                          </div>
+                          <div className="col-span-2 text-sm text-muted-foreground">
+                            {report.created}
+                          </div>
+                          <div className="col-span-1">
+                            <Badge variant={report.status === 'published' ? 'default' : 'secondary'} className="capitalize">
+                              {report.status}
+                            </Badge>
+                          </div>
+                          <div className="col-span-1 text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                  <MoreVertical className="w-4 h-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => { }}>
+                                  <Eye className="w-4 h-4 mr-2" /> View
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => { }}>
+                                  <Download className="w-4 h-4 mr-2" /> Download
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => { setSelectedReport(report); setVersionHistoryOpen(true); }}>
+                                  <History className="w-4 h-4 mr-2" /> Version History
+                                </DropdownMenuItem>
+                                <DropdownMenuItem className="text-red-600">
+                                  Archive
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </Tabs>
+
+          <ReportBuilder
+            open={isBuilderOpen}
+            onOpenChange={setIsBuilderOpen}
+            onComplete={handleReportCreated}
+            initialConfig={builderConfig}
+          />
+
+          {/* Version History Dialog */}
+          <Dialog open={versionHistoryOpen} onOpenChange={setVersionHistoryOpen}>
+            <DialogContent className="max-w-xl">
+              <DialogHeader>
+                <DialogTitle>Version History</DialogTitle>
+              </DialogHeader>
+              <ScrollArea className="h-[400px] pr-4">
+                <div className="space-y-4 pt-4">
+                  {selectedReport?.versions?.map((version: any, index: number) => (
+                    <div key={index} className="flex gap-4 pb-4 border-b last:border-0 relative">
+                      <div className="mt-1">
+                        <div className={`w-2 h-2 rounded-full ${index === 0 ? 'bg-primary ring-4 ring-primary/20' : 'bg-muted-foreground'}`} />
+                        {index !== (selectedReport.versions.length - 1) && (
+                          <div className="absolute top-3 left-[3.5px] w-[1px] h-full bg-border -z-10" />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex justify-between items-center mb-1">
+                          <h4 className="font-medium text-sm">Version {version.version}</h4>
+                          <span className="text-xs text-muted-foreground">{version.date}</span>
+                        </div>
+                        <p className="text-sm text-foreground mb-1">{version.changes}</p>
+                        <p className="text-xs text-muted-foreground">Edited by {version.author}</p>
+                      </div>
+                      <Button variant="outline" size="sm" className="h-7 text-xs">View</Button>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </DialogContent>
+          </Dialog>
+        </main>
+      </MainLayout>
+      <UpgradeDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} />
     </AuthGuard>
   );
 };

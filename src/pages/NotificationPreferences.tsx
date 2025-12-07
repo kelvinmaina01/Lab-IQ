@@ -1,25 +1,49 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Bell, ArrowLeft, Save, AlertTriangle, CheckCircle2 } from "lucide-react";
+import {
+  Bell,
+  CheckCircle2,
+  AlertTriangle,
+  Settings,
+  Inbox,
+  Search,
+  Check,
+  Trash2,
+  Mail
+} from "lucide-react";
 import { AuthGuard } from "@/components/auth/AuthGuard";
-import Sidebar from "@/components/Sidebar";
-import TopBar from "@/components/TopBar";
-import MobileNav from "@/components/MobileNav";
+import { MainLayout } from "@/components/layout/MainLayout";
 
-export default function NotificationPreferences() {
+interface Notification {
+  id: string;
+  title: string;
+  message: string;
+  type: string;
+  read: boolean;
+  link: string | null;
+  created_at: string;
+}
+
+export default function NotificationsPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  // ... (rest of state and functions remain the same) ...
+  const [activeTab, setActiveTab] = useState("inbox");
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  
+
+  // Preferences State
   const [preferences, setPreferences] = useState({
     email_on_action_assignment: true,
     email_on_bottleneck_detection: true,
@@ -28,46 +52,88 @@ export default function NotificationPreferences() {
     bottleneck_threshold: 30,
     data_quality_threshold: 70,
   });
+  const [savingPreferences, setSavingPreferences] = useState(false);
 
   useEffect(() => {
-    fetchPreferences();
+    fetchData();
   }, []);
 
-  const fetchPreferences = async () => {
+  const fetchData = async () => {
+    // ... (same as before) ...
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data, error } = await supabase
+      // Fetch Notifications
+      const { data: notifs } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (notifs) setNotifications(notifs);
+
+      // Fetch Preferences
+      const { data: prefs } = await supabase
         .from('notification_preferences')
         .select('*')
         .eq('user_id', user.id)
         .maybeSingle();
 
-      if (error) throw error;
-
-      if (data) {
+      if (prefs) {
         setPreferences({
-          email_on_action_assignment: data.email_on_action_assignment,
-          email_on_bottleneck_detection: data.email_on_bottleneck_detection,
-          email_on_experiment_complete: data.email_on_experiment_complete,
-          email_on_data_quality_issues: data.email_on_data_quality_issues,
-          bottleneck_threshold: data.bottleneck_threshold,
-          data_quality_threshold: data.data_quality_threshold,
+          email_on_action_assignment: prefs.email_on_action_assignment,
+          email_on_bottleneck_detection: prefs.email_on_bottleneck_detection,
+          email_on_experiment_complete: prefs.email_on_experiment_complete,
+          email_on_data_quality_issues: prefs.email_on_data_quality_issues,
+          bottleneck_threshold: prefs.bottleneck_threshold,
+          data_quality_threshold: prefs.data_quality_threshold,
         });
       }
     } catch (error) {
-      console.error('Error fetching preferences:', error);
+      console.error("Error fetching data:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const savePreferences = async () => {
-    setSaving(true);
+  const markAsRead = async (id: string) => {
+    try {
+      await supabase.from('notifications').update({ read: true }).eq('id', id);
+      setNotifications(notifications.map(n => n.id === id ? { ...n, read: true } : n));
+    } catch (error) {
+      console.error("Error marking as read", error);
+    }
+  };
+
+  const markAllAsRead = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
+      if (!user) return;
+      await supabase.from('notifications').update({ read: true }).eq('user_id', user.id).eq('read', false);
+      setNotifications(notifications.map(n => ({ ...n, read: true })));
+      toast({ title: "All notifications marked as read" });
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to mark all as read", variant: "destructive" });
+    }
+  };
+
+  const deleteNotification = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await supabase.from('notifications').delete().eq('id', id);
+      setNotifications(notifications.filter(n => n.id !== id));
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to delete notification", variant: "destructive" });
+    }
+  };
+
+  const savePreferences = async () => {
+    setSavingPreferences(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
       const { error } = await supabase
         .from('notification_preferences')
@@ -77,246 +143,224 @@ export default function NotificationPreferences() {
         });
 
       if (error) throw error;
-
-      toast({
-        title: "Preferences saved",
-        description: "Your notification preferences have been updated.",
-      });
+      toast({ title: "Preferences saved", description: "Your notification settings have been updated." });
     } catch (error) {
-      console.error('Error saving preferences:', error);
-      toast({
-        title: "Error",
-        description: "Failed to save preferences. Please try again.",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "Failed to save preferences", variant: "destructive" });
     } finally {
-      setSaving(false);
+      setSavingPreferences(false);
     }
   };
 
-  if (loading) {
-    return (
-      <AuthGuard>
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        </div>
-      </AuthGuard>
-    );
-  }
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case 'error': return <AlertTriangle className="h-5 w-5 text-red-500" />;
+      case 'warning': return <AlertTriangle className="h-5 w-5 text-amber-500" />;
+      case 'success': return <CheckCircle2 className="h-5 w-5 text-green-500" />;
+      default: return <Bell className="h-5 w-5 text-primary" />;
+    }
+  };
+
+  const getTypeStyle = (type: string) => {
+    switch (type) {
+      case 'error': return 'bg-red-500/10 border-red-500/20';
+      case 'warning': return 'bg-amber-500/10 border-amber-500/20';
+      case 'success': return 'bg-green-500/10 border-green-500/20';
+      default: return 'bg-primary/5 border-primary/10';
+    }
+  };
 
   return (
     <AuthGuard>
-      <div className="min-h-screen flex flex-col lg:flex-row bg-background">
-        <Sidebar />
-        <div className="flex-1 flex flex-col min-h-screen">
-          <TopBar />
-          <main className="flex-1 p-4 md:p-6 lg:p-8 space-y-6">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => navigate(-1)}
-                className="shrink-0"
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary/10 rounded-lg">
-                  <Bell className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <h1 className="text-2xl md:text-3xl font-bold text-foreground">
-                    Notification Preferences
-                  </h1>
-                  <p className="text-sm text-muted-foreground">
-                    Customize your email alerts and thresholds
-                  </p>
-                </div>
+      <MainLayout>
+        <div className="flex-1 p-4 md:p-8 space-y-6">
+          {/* Header */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-gradient-to-br from-primary/20 to-primary/5 rounded-xl border border-primary/10">
+                <Bell className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight">Notifications</h1>
+                <p className="text-sm text-muted-foreground">Manage your alerts and preferences</p>
               </div>
             </div>
+          </div>
 
-            <div className="grid gap-6 max-w-4xl">
-              {/* Email Notification Settings */}
-              <Card className="border-border/50">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <CheckCircle2 className="h-5 w-5 text-primary" />
-                    Email Notifications
-                  </CardTitle>
-                  <CardDescription>
-                    Choose which events trigger email notifications
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="action-assignment">Action Assignment</Label>
-                      <p className="text-sm text-muted-foreground">
-                        Get notified when you're assigned to an action
-                      </p>
-                    </div>
-                    <Switch
-                      id="action-assignment"
-                      checked={preferences.email_on_action_assignment}
-                      onCheckedChange={(checked) =>
-                        setPreferences({ ...preferences, email_on_action_assignment: checked })
-                      }
-                    />
-                  </div>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+            <TabsList className="bg-muted/50 p-1 border">
+              <TabsTrigger value="inbox" className="gap-2">
+                <Inbox className="h-4 w-4" /> Inbox
+                {notifications.some(n => !n.read) && (
+                  <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                    {notifications.filter(n => !n.read).length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="settings" className="gap-2">
+                <Settings className="h-4 w-4" /> Preferences
+              </TabsTrigger>
+            </TabsList>
 
-                  <Separator />
-
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="bottleneck-detection">Critical Bottleneck Detection</Label>
-                      <p className="text-sm text-muted-foreground">
-                        Alert when high-impact bottlenecks are detected
-                      </p>
-                    </div>
-                    <Switch
-                      id="bottleneck-detection"
-                      checked={preferences.email_on_bottleneck_detection}
-                      onCheckedChange={(checked) =>
-                        setPreferences({ ...preferences, email_on_bottleneck_detection: checked })
-                      }
-                    />
-                  </div>
-
-                  <Separator />
-
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="experiment-complete">Experiment Completion</Label>
-                      <p className="text-sm text-muted-foreground">
-                        Notify when your experiments finish processing
-                      </p>
-                    </div>
-                    <Switch
-                      id="experiment-complete"
-                      checked={preferences.email_on_experiment_complete}
-                      onCheckedChange={(checked) =>
-                        setPreferences({ ...preferences, email_on_experiment_complete: checked })
-                      }
-                    />
-                  </div>
-
-                  <Separator />
-
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="data-quality">Data Quality Issues</Label>
-                      <p className="text-sm text-muted-foreground">
-                        Alert on data quality degradation
-                      </p>
-                    </div>
-                    <Switch
-                      id="data-quality"
-                      checked={preferences.email_on_data_quality_issues}
-                      onCheckedChange={(checked) =>
-                        setPreferences({ ...preferences, email_on_data_quality_issues: checked })
-                      }
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Threshold Settings */}
-              <Card className="border-border/50">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <AlertTriangle className="h-5 w-5 text-primary" />
-                    Alert Thresholds
-                  </CardTitle>
-                  <CardDescription>
-                    Set custom impact scores for triggering alerts
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="bottleneck-threshold">
-                        Bottleneck Impact Threshold
-                      </Label>
-                      <span className="text-sm font-medium text-muted-foreground">
-                        {preferences.bottleneck_threshold}
-                      </span>
-                    </div>
-                    <Slider
-                      id="bottleneck-threshold"
-                      min={10}
-                      max={100}
-                      step={10}
-                      value={[preferences.bottleneck_threshold]}
-                      onValueChange={([value]) =>
-                        setPreferences({ ...preferences, bottleneck_threshold: value })
-                      }
-                      className="w-full"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Only notify about bottlenecks with impact score ≥ {preferences.bottleneck_threshold}
-                    </p>
-                  </div>
-
-                  <Separator />
-
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="quality-threshold">
-                        Data Quality Score Threshold
-                      </Label>
-                      <span className="text-sm font-medium text-muted-foreground">
-                        {preferences.data_quality_threshold}%
-                      </span>
-                    </div>
-                    <Slider
-                      id="quality-threshold"
-                      min={50}
-                      max={100}
-                      step={5}
-                      value={[preferences.data_quality_threshold]}
-                      onValueChange={([value]) =>
-                        setPreferences({ ...preferences, data_quality_threshold: value })
-                      }
-                      className="w-full"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Alert when data quality falls below {preferences.data_quality_threshold}%
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Save Button */}
-              <div className="flex justify-end gap-3">
-                <Button
-                  variant="outline"
-                  onClick={() => navigate(-1)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={savePreferences}
-                  disabled={saving}
-                  className="gap-2"
-                >
-                  {saving ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="h-4 w-4" />
-                      Save Preferences
-                    </>
-                  )}
-                </Button>
+            <TabsContent value="inbox" className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold">Your Activity</h2>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={markAllAsRead}>
+                    <Check className="mr-2 h-3.5 w-3.5" /> Mark all read
+                  </Button>
+                </div>
               </div>
-            </div>
-          </main>
-          <MobileNav />
+
+              <div className="grid gap-3">
+                {loading ? (
+                  <div className="p-12 text-center text-muted-foreground">Loading notifications...</div>
+                ) : notifications.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-16 text-center border rounded-xl border-dashed">
+                    <div className="p-4 bg-muted/50 rounded-full mb-4">
+                      <Bell className="h-8 w-8 text-muted-foreground/50" />
+                    </div>
+                    <h3 className="text-lg font-medium text-foreground">All caught up!</h3>
+                    <p className="text-muted-foreground max-w-sm mt-1">
+                      You have no new notifications at the moment.
+                    </p>
+                  </div>
+                ) : (
+                  notifications.map((notif) => (
+                    <div
+                      key={notif.id}
+                      className={`group relative flex items-start gap-4 p-4 rounded-xl border transition-all duration-200 hover:shadow-md ${notif.read ? 'bg-card/50 border-border/50' : 'bg-card border-primary/20 shadow-sm'
+                        }`}
+                      onClick={() => {
+                        markAsRead(notif.id);
+                        if (notif.link) navigate(notif.link);
+                      }}
+                    >
+                      <div className={`mt-0.5 p-2 rounded-lg shrink-0 ${getTypeStyle(notif.type)}`}>
+                        {getTypeIcon(notif.type)}
+                      </div>
+                      <div className="flex-1 min-w-0 cursor-pointer">
+                        <div className="flex items-center justify-between mb-1">
+                          <h4 className={`text-sm font-semibold ${!notif.read ? 'text-foreground' : 'text-muted-foreground'}`}>
+                            {notif.title}
+                          </h4>
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(notif.created_at).toLocaleDateString()} at {new Date(notif.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                        <p className="text-sm text-muted-foreground line-clamp-2">{notif.message}</p>
+                      </div>
+                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                          onClick={(e) => deleteNotification(notif.id, e)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      {!notif.read && (
+                        <div className="absolute top-4 right-4 h-2 w-2 rounded-full bg-primary animate-pulse md:static md:hidden" />
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="settings">
+              <div className="grid gap-6 max-w-3xl">
+                <Card className="border-primary/5 shadow-sm">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <Mail className="h-5 w-5 text-primary" />
+                      Email Notifications
+                    </CardTitle>
+                    <CardDescription>Control which emails you receive</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label className="text-base">Action Assignments</Label>
+                        <p className="text-sm text-muted-foreground">When you are assigned new tasks</p>
+                      </div>
+                      <Switch
+                        checked={preferences.email_on_action_assignment}
+                        onCheckedChange={(c) => setPreferences(p => ({ ...p, email_on_action_assignment: c }))}
+                      />
+                    </div>
+                    <Separator />
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label className="text-base">Bottleneck Alerts</Label>
+                        <p className="text-sm text-muted-foreground">When critical bottlenecks are detected</p>
+                      </div>
+                      <Switch
+                        checked={preferences.email_on_bottleneck_detection}
+                        onCheckedChange={(c) => setPreferences(p => ({ ...p, email_on_bottleneck_detection: c }))}
+                      />
+                    </div>
+                    <Separator />
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label className="text-base">Experiment Completion</Label>
+                        <p className="text-sm text-muted-foreground">When ML experiments finish</p>
+                      </div>
+                      <Switch
+                        checked={preferences.email_on_experiment_complete}
+                        onCheckedChange={(c) => setPreferences(p => ({ ...p, email_on_experiment_complete: c }))}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-primary/5 shadow-sm">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <AlertTriangle className="h-5 w-5 text-primary" />
+                      Threshold Configuration
+                    </CardTitle>
+                    <CardDescription>Adjust sensitivity for automated alerts</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-8">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <Label>Bottleneck Impact Threshold</Label>
+                        <span className="font-mono text-sm">{preferences.bottleneck_threshold}</span>
+                      </div>
+                      <Slider
+                        value={[preferences.bottleneck_threshold]}
+                        min={10} max={100} step={5}
+                        onValueChange={([v]) => setPreferences(p => ({ ...p, bottleneck_threshold: v }))}
+                      />
+                      <p className="text-xs text-muted-foreground">Alert only when impact score exceeds this value.</p>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <Label>Data Quality Warning</Label>
+                        <span className="font-mono text-sm">{preferences.data_quality_threshold}%</span>
+                      </div>
+                      <Slider
+                        value={[preferences.data_quality_threshold]}
+                        min={50} max={99} step={1}
+                        onValueChange={([v]) => setPreferences(p => ({ ...p, data_quality_threshold: v }))}
+                      />
+                      <p className="text-xs text-muted-foreground">Alert when data quality drops below this percentage.</p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <div className="flex justify-end">
+                  <Button size="lg" onClick={savePreferences} disabled={savingPreferences}>
+                    {savingPreferences ? 'Saving...' : 'Save Preferences'}
+                  </Button>
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
         </div>
-      </div>
+      </MainLayout>
     </AuthGuard>
   );
 }

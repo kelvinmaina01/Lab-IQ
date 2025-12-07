@@ -37,17 +37,17 @@ All colors MUST be HSL.
     --ring: 183 90% 45%;
 
     --radius: 0.75rem;
-    
+
     /* Gradients */
     --gradient-cyan: linear-gradient(135deg, hsl(190 80% 45%) 0%, hsl(195 75% 55%) 100%);
     --gradient-purple: linear-gradient(135deg, hsl(280 60% 55%) 0%, hsl(285 65% 65%) 100%);
     --gradient-teal: linear-gradient(135deg, hsl(175 70% 45%) 0%, hsl(180 65% 55%) 100%);
     --gradient-orange: linear-gradient(135deg, hsl(30 70% 50%) 0%, hsl(35 75% 60%) 100%);
-    
+
     /* Shadows */
     --shadow-soft: 0 2px 20px -2px hsl(220 13% 46% / 0.1);
     --shadow-glow: 0 0 40px hsl(183 90% 45% / 0.1);
-    
+
     /* Animations */
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
@@ -109,12 +109,12 @@ All colors MUST be HSL.
     --border: 220 20% 20%;
     --input: 220 20% 18%;
     --ring: 183 90% 45%;
-    
+
     --gradient-cyan: linear-gradient(135deg, hsl(190 80% 35%) 0%, hsl(195 75% 45%) 100%);
     --gradient-purple: linear-gradient(135deg, hsl(280 60% 45%) 0%, hsl(285 65% 55%) 100%);
     --gradient-teal: linear-gradient(135deg, hsl(175 70% 35%) 0%, hsl(180 65% 45%) 100%);
     --gradient-orange: linear-gradient(135deg, hsl(30 60% 35%) 0%, hsl(35 65% 45%) 100%);
-    
+
     --shadow-soft: 0 4px 24px -2px hsl(220 25% 5% / 0.4);
     --shadow-glow: 0 0 40px hsl(183 90% 45% / 0.15);
     --sidebar-background: 220 30% 10%;
@@ -145,4 +145,127 @@ All colors MUST be HSL.
 
 html {
   @apply dark;
+}
+
+/* Antigravity-inspired Animations */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Animation utility classes */
+.animate-fade-in-up {
+  animation: fade-in-up 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  opacity: 0;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  opacity: 0;
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  opacity: 0;
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.7s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  opacity: 0;
+}
+
+/* Smooth transitions for all interactive elements */
+@layer utilities {
+  .transition-smooth {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .transition-transform-smooth {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
+
+/* Hover effects */
+.hover-lift {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.2);
+}
+
+/* Gradient text animation */
+@keyframes gradient-shift {
+
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient-shift 3s ease infinite;
 }

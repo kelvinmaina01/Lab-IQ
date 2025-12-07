@@ -5,81 +5,53 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Send, MoreVertical, Hash, Bell, BellOff } from "lucide-react";
-
-interface Message {
-  id: number;
-  user: string;
-  avatar: string;
-  content: string;
-  timestamp: string;
-  thread?: Message[];
-  mentions?: string[];
-}
+import { Send, MoreVertical, Hash, Bell, BellOff, Loader2 } from "lucide-react";
+import { useRealtimeChat } from "@/hooks/useRealtimeChat";
+import { useTypingIndicator } from "@/hooks/useTypingIndicator";
+import { toast } from "sonner";
+import { formatDistanceToNow } from "date-fns";
 
 interface ChatPanelProps {
+  channelId: string | null;
   projectName?: string;
 }
 
-export const ChatPanel = ({ projectName = "Project Discussion" }: ChatPanelProps) => {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 1,
-      user: "Dr. Sarah Chen",
-      avatar: "/placeholder.svg",
-      content: "I've uploaded the latest protein analysis results. The binding affinity looks promising!",
-      timestamp: "10:30 AM",
-      thread: [
-        {
-          id: 11,
-          user: "John Smith",
-          avatar: "/placeholder.svg",
-          content: "Great! I'll review the data this afternoon.",
-          timestamp: "10:35 AM"
-        }
-      ]
-    },
-    {
-      id: 2,
-      user: "Emma Wilson",
-      avatar: "/placeholder.svg",
-      content: "@Dr. Mike Ross Can you check the methodology section? I think we need to add more details about the temperature control.",
-      timestamp: "11:15 AM",
-      mentions: ["Dr. Mike Ross"]
-    },
-    {
-      id: 3,
-      user: "Dr. Mike Ross",
-      avatar: "/placeholder.svg",
-      content: "Good catch @Emma Wilson. I'll update it with the specific temperature ranges and monitoring intervals.",
-      timestamp: "11:20 AM",
-      mentions: ["Emma Wilson"]
-    },
-  ]);
+export const ChatPanel = ({ channelId, projectName = "Project Discussion" }: ChatPanelProps) => {
+  const { messages, loading, error, sendMessage } = useRealtimeChat(channelId);
+  const { typingUsers, startTyping, stopTyping } = useTypingIndicator(channelId);
 
   const [newMessage, setNewMessage] = useState("");
   const [muted, setMuted] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
 
-  const handleSendMessage = () => {
-    if (!newMessage.trim()) return;
+  // Handle typing indicator
+  const handleTyping = () => {
+    startTyping();
+  };
 
-    const message: Message = {
-      id: messages.length + 1,
-      user: "You",
-      avatar: "/placeholder.svg",
-      content: newMessage,
-      timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-    };
+  const handleSendMessage = async () => {
+    if (!newMessage.trim() || !channelId) return;
 
-    setMessages([...messages, message]);
-    setNewMessage("");
+    setIsSending(true);
+    try {
+      await sendMessage(newMessage);
+      setNewMessage("");
+      stopTyping();
+      toast.success("Message sent");
+    } catch (err) {
+      console.error("Failed to send message:", err);
+      toast.error("Failed to send message");
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -89,6 +61,36 @@ export const ChatPanel = ({ projectName = "Project Discussion" }: ChatPanelProps
     }
   };
 
+  // Show loading state
+  if (loading) {
+    return (
+      <Card className="flex flex-col h-[600px] items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <p className="text-sm text-muted-foreground mt-2">Loading messages...</p>
+      </Card>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <Card className="flex flex-col h-[600px] items-center justify-center">
+        <p className="text-sm text-destructive">Failed to load messages</p>
+        <p className="text-xs text-muted-foreground mt-2">{error.message}</p>
+      </Card>
+    );
+  }
+
+  // Show no channel selected state
+  if (!channelId) {
+    return (
+      <Card className="flex flex-col h-[600px] items-center justify-center">
+        <Hash className="w-12 h-12 text-muted-foreground mb-4" />
+        <p className="text-sm text-muted-foreground">Select a channel to start chatting</p>
+      </Card>
+    );
+  }
+
   return (
     <Card className="flex flex-col h-[600px]">
       {/* Chat Header */}
@@ -96,13 +98,14 @@ export const ChatPanel = ({ projectName = "Project Discussion" }: ChatPanelProps
         <div className="flex items-center gap-2">
           <Hash className="w-5 h-5 text-muted-foreground" />
           <h3 className="font-semibold">{projectName}</h3>
-          <Badge variant="secondary" className="text-xs">3 online</Badge>
+          <Badge variant="secondary" className="text-xs">{messages.length} messages</Badge>
         </div>
         <div className="flex items-center gap-2">
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             size="icon"
             onClick={() => setMuted(!muted)}
+            title={muted ? "Unmute notifications" : "Mute notifications"}
           >
             {muted ? <BellOff className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
           </Button>
@@ -114,53 +117,67 @@ export const ChatPanel = ({ projectName = "Project Discussion" }: ChatPanelProps
 
       {/* Messages */}
       <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-        <div className="space-y-4">
-          {messages.map((message) => (
-            <div key={message.id} className="space-y-2">
-              <div className="flex items-start gap-3">
-                <Avatar className="w-8 h-8">
-                  <AvatarImage src={message.avatar} alt={message.user} />
-                  <AvatarFallback>{message.user.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-semibold text-sm">{message.user}</span>
-                    <span className="text-xs text-muted-foreground">{message.timestamp}</span>
+        {messages.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-center">
+            <Hash className="w-12 h-12 text-muted-foreground mb-4" />
+            <p className="text-sm text-muted-foreground">No messages yet</p>
+            <p className="text-xs text-muted-foreground mt-1">Be the first to start the conversation!</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {messages.map((message) => (
+              <div key={message.id} className="space-y-2">
+                <div className="flex items-start gap-3">
+                  <Avatar className="w-8 h-8">
+                    <AvatarImage src={message.user?.avatar_url} />
+                    <AvatarFallback>
+                      {message.user?.display_name?.substring(0, 2).toUpperCase() || 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-semibold text-sm">
+                        {message.user?.display_name || 'Unknown User'}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}
+                      </span>
+                      {message.edited_at && (
+                        <span className="text-xs text-muted-foreground italic">(edited)</span>
+                      )}
+                    </div>
+                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                    {message.reactions && Object.keys(message.reactions).length > 0 && (
+                      <div className="flex gap-1 mt-2">
+                        {Object.entries(message.reactions).map(([emoji, users]) => (
+                          <Badge
+                            key={emoji}
+                            variant="secondary"
+                            className="text-xs cursor-pointer hover:bg-secondary/80"
+                          >
+                            {emoji} {users.length}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  <p className="text-sm">{message.content}</p>
-                  {message.thread && message.thread.length > 0 && (
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="mt-2 text-xs text-primary"
-                    >
-                      {message.thread.length} {message.thread.length === 1 ? 'reply' : 'replies'}
-                    </Button>
-                  )}
                 </div>
               </div>
-              {message.thread && (
-                <div className="ml-11 pl-4 border-l-2 border-muted space-y-3">
-                  {message.thread.map((reply) => (
-                    <div key={reply.id} className="flex items-start gap-3">
-                      <Avatar className="w-6 h-6">
-                        <AvatarImage src={reply.avatar} alt={reply.user} />
-                        <AvatarFallback className="text-xs">{reply.user.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-medium text-xs">{reply.user}</span>
-                          <span className="text-xs text-muted-foreground">{reply.timestamp}</span>
-                        </div>
-                        <p className="text-xs">{reply.content}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
+
+        {/* Typing indicator */}
+        {typingUsers.length > 0 && (
+          <div className="flex items-center gap-2 mt-4 text-sm text-muted-foreground">
+            <Loader2 className="w-3 h-3 animate-spin" />
+            <span className="italic">
+              {typingUsers.length === 1
+                ? `${typingUsers[0]} is typing...`
+                : `${typingUsers.length} people are typing...`}
+            </span>
+          </div>
+        )}
       </ScrollArea>
 
       {/* Message Input */}
@@ -169,12 +186,24 @@ export const ChatPanel = ({ projectName = "Project Discussion" }: ChatPanelProps
           <Input
             placeholder="Type a message... Use @ to mention someone"
             value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
+            onChange={(e) => {
+              setNewMessage(e.target.value);
+              handleTyping();
+            }}
             onKeyPress={handleKeyPress}
+            disabled={isSending}
             className="flex-1"
           />
-          <Button onClick={handleSendMessage} size="icon">
-            <Send className="w-4 h-4" />
+          <Button
+            onClick={handleSendMessage}
+            size="icon"
+            disabled={isSending || !newMessage.trim()}
+          >
+            {isSending ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Send className="w-4 h-4" />
+            )}
           </Button>
         </div>
         <p className="text-xs text-muted-foreground mt-2">

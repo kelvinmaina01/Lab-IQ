@@ -1,7 +1,5 @@
-import { useState } from "react";
-import Sidebar from "@/components/Sidebar";
-import TopBar from "@/components/TopBar";
-import MobileNav from "@/components/MobileNav";
+import { useState, useEffect } from "react";
+import { MainLayout } from "@/components/layout/MainLayout";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,136 +10,128 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Users, Mail, Search, MoreVertical, FileText, MessageSquare, Activity } from "lucide-react";
+import { Plus, Users, Mail, Search, MoreVertical, FileText, MessageSquare, Activity, Upload, MessageCircle, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ChatPanel } from "@/components/collaboration/ChatPanel";
+import { ChannelSidebar } from "@/components/collaboration/ChannelSidebar";
+import { CommentsSystem } from "@/components/collaboration/CommentsSystem";
+import { FileSharing } from "@/components/collaboration/FileSharing";
+import { ActivityTimeline } from "@/components/collaboration/ActivityTimeline";
+import { TeamLeaderboard } from "@/components/collaboration/TeamLeaderboard";
 import { useSubscription } from "@/hooks/useSubscription";
 import { UpgradeDialog } from "@/components/UpgradeDialog";
+import { usePresence } from "@/hooks/usePresence";
+import { teamService } from "@/services/teamService";
+import { supabase } from "@/integrations/supabase/client";
+import { toast as sonnerToast } from "sonner";
 
 const Collaboration = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<"admin" | "researcher" | "analyst" | "viewer">("researcher");
+
+  // Real data state
+  const [teamMembers, setTeamMembers] = useState<any[]>([]);
+  const [channels, setChannels] = useState<any[]>([]);
+  const [sharedProjects, setSharedProjects] = useState<any[]>([]);
+  const [labId, setLabId] = useState<string | null>(null);
+  const [loadingData, setLoadingData] = useState(true);
+
   const { toast } = useToast();
   const { subscription, loading } = useSubscription();
 
-  const teamMembers = [
-    {
-      id: 1,
-      name: "Dr. Sarah Chen",
-      email: "sarah.chen@labiq.com",
-      role: "Principal Investigator",
-      avatar: "/placeholder.svg",
-      status: "online",
-      projects: 8,
-      lastActive: "Active now"
-    },
-    {
-      id: 2,
-      name: "John Smith",
-      email: "john.smith@labiq.com",
-      role: "Senior Researcher",
-      avatar: "/placeholder.svg",
-      status: "online",
-      projects: 5,
-      lastActive: "Active now"
-    },
-    {
-      id: 3,
-      name: "Dr. Mike Ross",
-      email: "mike.ross@labiq.com",
-      role: "Research Scientist",
-      avatar: "/placeholder.svg",
-      status: "away",
-      projects: 6,
-      lastActive: "2 hours ago"
-    },
-    {
-      id: 4,
-      name: "Emma Wilson",
-      email: "emma.wilson@labiq.com",
-      role: "Lab Technician",
-      avatar: "/placeholder.svg",
-      status: "online",
-      projects: 4,
-      lastActive: "Active now"
-    },
-    {
-      id: 5,
-      name: "Alex Turner",
-      email: "alex.turner@labiq.com",
-      role: "Data Analyst",
-      avatar: "/placeholder.svg",
-      status: "offline",
-      projects: 3,
-      lastActive: "Yesterday"
-    },
-  ];
+  // Track user presence (online/offline)
+  usePresence();
 
-  const sharedProjects = [
-    {
-      id: 1,
-      name: "Protein Structure Analysis",
-      owner: "Dr. Sarah Chen",
-      members: 4,
-      lastUpdate: "2 hours ago",
-      status: "active"
-    },
-    {
-      id: 2,
-      name: "Chemical Compound Screening",
-      owner: "John Smith",
-      members: 3,
-      lastUpdate: "1 day ago",
-      status: "active"
-    },
-    {
-      id: 3,
-      name: "Climate Data Analysis",
-      owner: "Emma Wilson",
-      members: 5,
-      lastUpdate: "3 days ago",
-      status: "archived"
-    },
-  ];
+  // Initialize collaboration data
+  useEffect(() => {
+    initializeCollaboration();
+  }, []);
 
-  const recentActivity = [
-    {
-      id: 1,
-      user: "Dr. Sarah Chen",
-      action: "shared",
-      target: "Protein Analysis Report",
-      time: "10 minutes ago"
-    },
-    {
-      id: 2,
-      user: "John Smith",
-      action: "commented on",
-      target: "Chemical Screening Dataset",
-      time: "1 hour ago"
-    },
-    {
-      id: 3,
-      user: "Emma Wilson",
-      action: "uploaded",
-      target: "Climate Data v2.csv",
-      time: "2 hours ago"
-    },
-    {
-      id: 4,
-      user: "Dr. Mike Ross",
-      action: "invited",
-      target: "Alex Turner to Material Testing",
-      time: "5 hours ago"
-    },
-  ];
+  const initializeCollaboration = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-  const handleInviteMember = () => {
-    toast({
-      title: "Invitation Sent",
-      description: "An invitation email has been sent to the new team member.",
-    });
-    setIsInviteDialogOpen(false);
+      // Get or create user's team member record
+      let { data: teamMember } = await teamService.getCurrentUserTeamMember();
+
+      // If user doesn't have a team member record, create one
+      if (!teamMember) {
+        const defaultLabId = '00000000-0000-0000-0000-000000000001'; // Default lab for testing
+        await teamService.upsertTeamMember({
+          lab_id: defaultLabId,
+          role: 'researcher',
+          display_name: user.email?.split('@')[0] || 'User',
+          status: 'online'
+        });
+
+        teamMember = (await teamService.getCurrentUserTeamMember()).data;
+      }
+
+      if (teamMember) {
+        setLabId(teamMember.lab_id);
+
+        // Load team members
+        const { data: members } = await teamService.getTeamMembers(teamMember.lab_id);
+        if (members) {
+          setTeamMembers(members);
+        }
+
+        // Load chat channels
+        const { data: channelsData } = await supabase
+          .from('chat_channels')
+          .select('*')
+          .eq('lab_id', teamMember.lab_id)
+          .order('created_at', { ascending: false });
+
+        if (channelsData && channelsData.length > 0) {
+          setChannels(channelsData);
+          setSelectedChannelId(channelsData[0].id);
+        } else {
+          // Create a default General channel if none exists
+          const { data: newChannel } = await supabase
+            .from('chat_channels')
+            .insert({
+              name: 'General',
+              description: 'General discussion channel',
+              lab_id: teamMember.lab_id,
+              type: 'general',
+              created_by: user.id
+            })
+            .select()
+            .single();
+
+          if (newChannel) {
+            setChannels([newChannel]);
+            setSelectedChannelId(newChannel.id);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error initializing collaboration:', error);
+      sonnerToast.error('Failed to load collaboration data');
+    } finally {
+      setLoadingData(false);
+    }
+  };
+
+  const handleInviteMember = async () => {
+    if (!inviteEmail || !labId) return;
+
+    try {
+      await teamService.inviteMember(inviteEmail, inviteRole, labId);
+      sonnerToast.success("Invitation sent successfully!");
+      setIsInviteDialogOpen(false);
+      setInviteEmail("");
+      setInviteRole("researcher");
+    } catch (error) {
+      console.error('Error inviting member:', error);
+      sonnerToast.error("Failed to send invitation");
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -160,83 +150,102 @@ const Collaboration = () => {
 
   return (
     <AuthGuard>
-      <div className="flex min-h-screen bg-background">
-        <Sidebar />
-        
-        <div className="flex-1 md:ml-64 pb-16 md:pb-0">
-          <TopBar />
-          
-          <main className="p-4 md:p-8">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-8">
-              <div>
-                <h1 className="text-3xl font-bold text-foreground mb-2">Collaboration</h1>
-                <p className="text-muted-foreground">Work together with your team members</p>
-              </div>
-              <Dialog open={isInviteDialogOpen} onOpenChange={setIsInviteDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button className="gap-2">
-                    <Plus className="w-4 h-4" />
-                    Invite Member
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Invite Team Member</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email Address</Label>
-                      <Input id="email" type="email" placeholder="colleague@example.com" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="role">Role</Label>
-                      <Select>
-                        <SelectTrigger id="role">
-                          <SelectValue placeholder="Select role" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="admin">Administrator</SelectItem>
-                          <SelectItem value="researcher">Researcher</SelectItem>
-                          <SelectItem value="analyst">Data Analyst</SelectItem>
-                          <SelectItem value="viewer">Viewer</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <Button onClick={handleInviteMember} className="w-full gap-2">
-                      <Mail className="w-4 h-4" />
-                      Send Invitation
-                    </Button>
+      <MainLayout>
+        <main className="p-4 md:p-8">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h1 className="text-3xl font-bold text-foreground mb-2">Collaboration</h1>
+              <p className="text-muted-foreground">Work together with your team members</p>
+            </div>
+            <Dialog open={isInviteDialogOpen} onOpenChange={setIsInviteDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="gap-2">
+                  <Plus className="w-4 h-4" />
+                  Invite Member
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Invite Team Member</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email Address</Label>
+                    <Input id="email" type="email" placeholder="colleague@example.com" />
                   </div>
-                </DialogContent>
-              </Dialog>
-            </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="role">Role</Label>
+                    <Select>
+                      <SelectTrigger id="role">
+                        <SelectValue placeholder="Select role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="admin">Administrator</SelectItem>
+                        <SelectItem value="researcher">Researcher</SelectItem>
+                        <SelectItem value="analyst">Data Analyst</SelectItem>
+                        <SelectItem value="viewer">Viewer</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button onClick={handleInviteMember} className="w-full gap-2">
+                    <Mail className="w-4 h-4" />
+                    Send Invitation
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
 
-            {/* Search */}
-            <div className="relative mb-6">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Search team members..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
+          {/* Search */}
+          <div className="relative mb-6">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search team members..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
 
-            <Tabs defaultValue="team" className="space-y-6">
-              <TabsList>
-                <TabsTrigger value="team">Team Members</TabsTrigger>
-                <TabsTrigger value="projects">Shared Projects</TabsTrigger>
-                <TabsTrigger value="chat">
-                  Real-Time Chat
-                  {subscription?.tier === "free" && <Badge variant="secondary" className="ml-2 text-xs">Pro</Badge>}
-                </TabsTrigger>
-                <TabsTrigger value="activity">Activity Feed</TabsTrigger>
-              </TabsList>
+          <Tabs defaultValue="team" className="space-y-6">
+            <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6">
+              <TabsTrigger value="team">
+                <Users className="w-4 h-4 mr-2" />
+                <span className="hidden sm:inline">Team</span>
+              </TabsTrigger>
+              <TabsTrigger value="projects">
+                <FileText className="w-4 h-4 mr-2" />
+                <span className="hidden sm:inline">Projects</span>
+              </TabsTrigger>
+              <TabsTrigger value="chat">
+                <MessageSquare className="w-4 h-4 mr-2" />
+                <span className="hidden sm:inline">Chat</span>
+                {subscription?.tier === "free" && <Badge variant="secondary" className="ml-2 text-xs hidden lg:inline">Pro</Badge>}
+              </TabsTrigger>
+              <TabsTrigger value="comments">
+                <MessageCircle className="w-4 h-4 mr-2" />
+                <span className="hidden sm:inline">Comments</span>
+              </TabsTrigger>
+              <TabsTrigger value="files">
+                <Upload className="w-4 h-4 mr-2" />
+                <span className="hidden sm:inline">Files</span>
+              </TabsTrigger>
+              <TabsTrigger value="activity">
+                <Activity className="w-4 h-4 mr-2" />
+                <span className="hidden sm:inline">Activity</span>
+              </TabsTrigger>
+            </TabsList>
 
-              {/* Team Members Tab */}
-              <TabsContent value="team">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Team Members Tab */}
+            {/* Team Members Tab */}
+            <TabsContent value="team">
+              <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                {/* Member List (2 cols wide) */}
+                <div className="xl:col-span-2 space-y-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold">Team Members ({filteredMembers.length})</h3>
+                  </div>
                   {filteredMembers.map((member) => (
                     <Card key={member.id} className="p-6">
                       <div className="flex items-start justify-between">
@@ -274,96 +283,119 @@ const Collaboration = () => {
                     </Card>
                   ))}
                 </div>
-              </TabsContent>
 
-              {/* Shared Projects Tab */}
-              <TabsContent value="projects">
-                <div className="space-y-4">
-                  {sharedProjects.map((project) => (
-                    <Card key={project.id} className="p-6">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4 flex-1">
-                          <div className="p-3 rounded-lg bg-primary/10">
-                            <FileText className="w-6 h-6 text-primary" />
-                          </div>
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-2">
-                              <h3 className="text-lg font-semibold">{project.name}</h3>
-                              <Badge variant={project.status === "active" ? "default" : "secondary"}>
-                                {project.status}
-                              </Badge>
-                            </div>
-                            <div className="flex items-center gap-6 text-sm text-muted-foreground">
-                              <span>Owner: {project.owner}</span>
-                              <div className="flex items-center gap-2">
-                                <Users className="w-4 h-4" />
-                                {project.members} members
-                              </div>
-                              <span>Updated {project.lastUpdate}</span>
-                            </div>
-                          </div>
-                        </div>
-                        <Button>View Project</Button>
-                      </div>
-                    </Card>
-                  ))}
+                {/* Leaderboard (1 col wide) */}
+                <div className="xl:col-span-1">
+                  <TeamLeaderboard />
                 </div>
-              </TabsContent>
+              </div>
+            </TabsContent>
 
-              {/* Real-Time Chat Tab */}
-              <TabsContent value="chat">
-                {subscription?.tier === "free" ? (
-                  <Card className="p-8 text-center">
-                    <MessageSquare className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-                    <h3 className="text-xl font-semibold mb-2">Real-Time Chat</h3>
-                    <p className="text-muted-foreground mb-4">
-                      Collaborate in real-time with your team members using our integrated chat feature.
-                    </p>
-                    <Button onClick={() => setUpgradeOpen(true)}>
-                      Upgrade to Pro
-                    </Button>
-                  </Card>
-                ) : (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <ChatPanel projectName="Protein Analysis Discussion" />
-                    <ChatPanel projectName="General Lab Updates" />
-                  </div>
-                )}
-              </TabsContent>
-
-              {/* Activity Feed Tab */}
-              <TabsContent value="activity">
-                <Card className="p-6">
-                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                    <Activity className="w-5 h-5" />
-                    Recent Activity
-                  </h3>
-                  <div className="space-y-4">
-                    {recentActivity.map((activity) => (
-                      <div key={activity.id} className="flex items-start gap-4 py-3 border-b border-border last:border-0">
-                        <Avatar className="w-10 h-10">
-                          <AvatarFallback>{activity.user.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                        </Avatar>
+            {/* Shared Projects Tab */}
+            <TabsContent value="projects">
+              <div className="space-y-4">
+                {sharedProjects.map((project) => (
+                  <Card key={project.id} className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4 flex-1">
+                        <div className="p-3 rounded-lg bg-primary/10">
+                          <FileText className="w-6 h-6 text-primary" />
+                        </div>
                         <div className="flex-1">
-                          <p className="text-sm">
-                            <span className="font-medium">{activity.user}</span>
-                            {" "}{activity.action}{" "}
-                            <span className="font-medium">{activity.target}</span>
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-1">{activity.time}</p>
+                          <div className="flex items-center gap-3 mb-2">
+                            <h3 className="text-lg font-semibold">{project.name}</h3>
+                            <Badge variant={project.status === "active" ? "default" : "secondary"}>
+                              {project.status}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-6 text-sm text-muted-foreground">
+                            <span>Owner: {project.owner}</span>
+                            <div className="flex items-center gap-2">
+                              <Users className="w-4 h-4" />
+                              {project.members} members
+                            </div>
+                            <span>Updated {project.lastUpdate}</span>
+                          </div>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                </Card>
-              </TabsContent>
-            </Tabs>
+                      <Button>View Project</Button>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </TabsContent>
 
-            <UpgradeDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} />
-          </main>
-        </div>
-        <MobileNav />
-      </div>
+            {/* Real-Time Chat Tab */}
+            <TabsContent value="chat">
+              {false && subscription?.tier === "free" ? (
+                <Card className="p-8 text-center">
+                  <MessageSquare className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+                  <h3 className="text-xl font-semibold mb-2">Real-Time Chat</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Collaborate in real-time with your team members using our integrated chat feature.
+                  </p>
+                  <Button onClick={() => setUpgradeOpen(true)}>
+                    Upgrade to Pro
+                  </Button>
+                </Card>
+              ) : (
+                <div className="flex gap-0 h-[calc(100vh-280px)] border rounded-lg overflow-hidden">
+                  {loadingData ? (
+                    <div className="flex items-center justify-center p-12 flex-1">
+                      <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                      <p className="ml-4 text-muted-foreground">Loading chat...</p>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Channel Sidebar */}
+                      {labId && (
+                        <ChannelSidebar
+                          labId={labId}
+                          selectedChannelId={selectedChannelId}
+                          onChannelSelect={setSelectedChannelId}
+                          className="w-64 flex-shrink-0"
+                        />
+                      )}
+
+                      {/* Chat Panel */}
+                      <div className="flex-1 min-w-0">
+                        <ChatPanel
+                          channelId={selectedChannelId}
+                          projectName={channels.find(c => c.id === selectedChannelId)?.display_name || channels.find(c => c.id === selectedChannelId)?.name || "General"}
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Comments Tab */}
+            <TabsContent value="comments">
+              <CommentsSystem
+                entityId="project-1"
+                entityType="experiment"
+                entityName="Protein Structure Analysis"
+              />
+            </TabsContent>
+
+            {/* File Sharing Tab */}
+            <TabsContent value="files">
+              <FileSharing
+                projectId="project-1"
+                projectName="Protein Structure Analysis"
+              />
+            </TabsContent>
+
+            {/* Activity Feed Tab */}
+            <TabsContent value="activity">
+              <ActivityTimeline />
+            </TabsContent>
+          </Tabs>
+
+          <UpgradeDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} />
+        </main>
+      </MainLayout>
     </AuthGuard>
   );
 };
