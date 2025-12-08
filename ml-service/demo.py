@@ -12,7 +12,7 @@ async def demo_classification():
     print("DEMO 1: Classification - Iris Dataset")
     print("=" * 70)
     
-    # Load sample data
+    # Load sample data ## the sample data will be replaced with real data uploaded by the user 
     from sklearn.datasets import load_iris
     iris = load_iris()
     df = pd.DataFrame(iris.data, columns=iris.feature_names)
@@ -28,7 +28,7 @@ async def demo_classification():
         "problem_type": "classification"
     }
     
-    # Run AutoML
+    # Run AutoML(runs the auto machine learning  through an ochestrator agent  to enable machine leaning to take place )
     orchestrator = OrchestratorAgent()
     result = await orchestrator.execute(data, context)
     
