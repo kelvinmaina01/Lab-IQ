@@ -224,7 +224,7 @@ interface TourGuideProps {
 }
 
 export const TourGuide = ({ isOpen, onClose, onComplete }: TourGuideProps) => {
-  const [currentStep, setCurrentStep] = useState(0);
+  const [currentStep, setCurrentStep] = useState(-1); // -1 = welcome screen, 0+ = tour steps
   const [cardPosition, setCardPosition] = useState({ top: "50%", left: "50%", transform: "translate(-50%, -50%)" });
   const [arrowStyle, setArrowStyle] = useState<React.CSSProperties>({});
   const [isNavigating, setIsNavigating] = useState(false);
@@ -232,8 +232,8 @@ export const TourGuide = ({ isOpen, onClose, onComplete }: TourGuideProps) => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const step = fullTourSteps[currentStep];
-  const progress = ((currentStep + 1) / fullTourSteps.length) * 100;
+  const step = currentStep >= 0 ? fullTourSteps[currentStep] : null;
+  const progress = currentStep >= 0 ? ((currentStep + 1) / fullTourSteps.length) * 100 : 0;
 
   // Navigate to step's route
   useEffect(() => {
@@ -340,8 +340,8 @@ export const TourGuide = ({ isOpen, onClose, onComplete }: TourGuideProps) => {
             transform: "translate3d(-12px, -50%, 0px)",
             width: "16px",
             height: "16px",
-            background: "white",
-            border: "2px solid #3b82f6",
+            background: "hsl(var(--card))",
+            border: "2px solid hsl(183 90% 45%)",
             borderRight: "none",
             borderBottom: "none",
             rotate: "-45deg",
@@ -362,8 +362,8 @@ export const TourGuide = ({ isOpen, onClose, onComplete }: TourGuideProps) => {
             transform: "translate3d(12px, -50%, 0px)",
             width: "16px",
             height: "16px",
-            background: "white",
-            border: "2px solid #3b82f6",
+            background: "hsl(var(--card))",
+            border: "2px solid hsl(183 90% 45%)",
             borderLeft: "none",
             borderTop: "none",
             rotate: "-45deg",
@@ -384,8 +384,8 @@ export const TourGuide = ({ isOpen, onClose, onComplete }: TourGuideProps) => {
             transform: "translate3d(-50%, 12px, 0px)",
             width: "16px",
             height: "16px",
-            background: "white",
-            border: "2px solid #3b82f6",
+            background: "hsl(var(--card))",
+            border: "2px solid hsl(183 90% 45%)",
             borderTop: "none",
             borderRight: "none",
             rotate: "-45deg",
@@ -406,8 +406,8 @@ export const TourGuide = ({ isOpen, onClose, onComplete }: TourGuideProps) => {
             transform: "translate3d(-50%, -12px, 0px)",
             width: "16px",
             height: "16px",
-            background: "white",
-            border: "2px solid #3b82f6",
+            background: "hsl(var(--card))",
+            border: "2px solid hsl(183 90% 45%)",
             borderBottom: "none",
             borderLeft: "none",
             rotate: "-45deg",
@@ -480,7 +480,81 @@ export const TourGuide = ({ isOpen, onClose, onComplete }: TourGuideProps) => {
     onClose();
   };
 
-  if (!isOpen || !step) return null;
+  if (!isOpen) return null;
+
+  // Welcome screen - Show before tour starts
+  if (currentStep === -1) {
+    return (
+      <>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]" onClick={onClose} />
+        <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[101]">
+          <Card className="w-[450px] shadow-2xl border-2 border-primary/30 bg-card">
+            <div className="p-8 space-y-6">
+              {/* Assistant Avatar */}
+              <div className="flex flex-col items-center gap-4 text-center">
+                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[hsl(183,90%,45%)] via-[hsl(190,80%,45%)] to-[hsl(280,65%,60%)] flex items-center justify-center shadow-lg animate-pulse">
+                  <Bot className="w-11 h-11 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-2xl mb-2">Welcome to Lab-IQ!</h3>
+                  <p className="text-sm text-muted-foreground">Your intelligent research companion</p>
+                </div>
+              </div>
+
+              {/* Welcome Message */}
+              <div className="space-y-3 text-center">
+                <p className="text-base leading-relaxed text-foreground">
+                  Let me show you around! I'll guide you through every feature of Lab-IQ in an interactive tour.
+                </p>
+                <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                  <Sparkles className="w-4 h-4 text-[hsl(280,65%,60%)]" />
+                  <span>{fullTourSteps.length} steps · ~5 minutes</span>
+                </div>
+              </div>
+
+              {/* Tour Features */}
+              <div className="space-y-2 bg-primary/10 dark:bg-primary/20 rounded-lg p-4 border border-primary/20">
+                <p className="text-xs font-semibold text-primary mb-2">TOUR INCLUDES:</p>
+                <div className="grid grid-cols-2 gap-2 text-xs text-foreground/80">
+                  <div>✓ Dashboard</div>
+                  <div>✓ Upload & Datasets</div>
+                  <div>✓ Experiments</div>
+                  <div>✓ AI Models</div>
+                  <div>✓ Analytics</div>
+                  <div>✓ Automation</div>
+                  <div>✓ Insights</div>
+                  <div>✓ AI Assistant</div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="space-y-3 pt-2">
+                <Button
+                  onClick={() => setCurrentStep(0)}
+                  className="w-full h-12 text-base gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-xl transition-all"
+                >
+                  <Sparkles className="w-5 h-5" />
+                  Start Tour
+                  <ArrowRight className="w-5 h-5" />
+                </Button>
+
+                <Button
+                  variant="ghost"
+                  onClick={onClose}
+                  className="w-full text-muted-foreground hover:text-foreground"
+                >
+                  Skip for now
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      </>
+    );
+  }
+
+  // Tour hasn't started yet or invalid step
+  if (!step) return null;
 
   return (
     <>
@@ -498,7 +572,7 @@ export const TourGuide = ({ isOpen, onClose, onComplete }: TourGuideProps) => {
           isNavigating && "opacity-75"
         )}
       >
-        <Card className="w-[380px] shadow-2xl border-2 border-blue-500 bg-white dark:bg-gray-900 relative">
+        <Card className="w-[380px] shadow-2xl border-2 border-primary bg-card relative">
           {/* Arrow protruding from card border */}
           {step.targetSelector && (
             <>
@@ -521,13 +595,13 @@ export const TourGuide = ({ isOpen, onClose, onComplete }: TourGuideProps) => {
             {/* Header */}
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3 flex-1">
-                <div className="w-11 h-11 rounded-full bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600 flex items-center justify-center shadow-lg flex-shrink-0">
+                <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[hsl(183,90%,45%)] via-[hsl(190,80%,45%)] to-[hsl(280,65%,60%)] flex items-center justify-center shadow-lg flex-shrink-0">
                   <Bot className="w-6 h-6 text-white" />
                 </div>
                 <div className="flex-1">
                   <h3 className="font-bold text-base text-center flex items-center justify-center gap-2">
                     {step.title}
-                    {step.id === "complete" && <Sparkles className="w-4 h-4 text-yellow-500" />}
+                    {step.id === "complete" && <Sparkles className="w-4 h-4 text-[hsl(280,65%,60%)]" />}
                   </h3>
                 </div>
               </div>
@@ -542,21 +616,21 @@ export const TourGuide = ({ isOpen, onClose, onComplete }: TourGuideProps) => {
             </div>
 
             {/* Description - Centered */}
-            <p className="text-sm text-gray-600 dark:text-gray-300 text-center leading-relaxed px-2">
+            <p className="text-sm text-foreground/80 text-center leading-relaxed px-2">
               {step.description}
             </p>
 
             {/* Progress Bar */}
             <div className="space-y-2">
-              <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span className="font-medium">Progress</span>
                 <span>
                   {currentStep + 1} / {fullTourSteps.length}
                 </span>
               </div>
-              <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 transition-all duration-500"
+                  className="h-full bg-gradient-to-r from-[hsl(183,90%,45%)] to-[hsl(280,65%,60%)] transition-all duration-500"
                   style={{ width: `${progress}%` }}
                 />
               </div>
@@ -582,7 +656,7 @@ export const TourGuide = ({ isOpen, onClose, onComplete }: TourGuideProps) => {
               <Button
                 size="sm"
                 onClick={handleNext}
-                className="gap-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700"
+                className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
               >
                 {currentStep === fullTourSteps.length - 1 ? (
                   <>
@@ -604,20 +678,20 @@ export const TourGuide = ({ isOpen, onClose, onComplete }: TourGuideProps) => {
       {/* Global Styles */}
       <style>{`
         .popover-arrow {
-          background: white;
+          background: hsl(var(--card));
         }
 
         .dark .popover-arrow {
-          background: rgb(17, 24, 39);
+          background: hsl(var(--card));
         }
 
         .tour-guide-highlight {
           position: relative;
           z-index: 998 !important;
           box-shadow:
-            0 0 0 4px rgba(59, 130, 246, 0.5),
-            0 0 0 8px rgba(59, 130, 246, 0.2),
-            0 0 30px rgba(59, 130, 246, 0.4) !important;
+            0 0 0 4px hsl(183 90% 45% / 0.5),
+            0 0 0 8px hsl(183 90% 45% / 0.2),
+            0 0 30px hsl(183 90% 45% / 0.4) !important;
           border-radius: 8px;
           transition: all 0.3s ease;
           animation: pulse-glow 2s infinite;
@@ -626,15 +700,15 @@ export const TourGuide = ({ isOpen, onClose, onComplete }: TourGuideProps) => {
         @keyframes pulse-glow {
           0%, 100% {
             box-shadow:
-              0 0 0 4px rgba(59, 130, 246, 0.5),
-              0 0 0 8px rgba(59, 130, 246, 0.2),
-              0 0 30px rgba(59, 130, 246, 0.4);
+              0 0 0 4px hsl(183 90% 45% / 0.5),
+              0 0 0 8px hsl(183 90% 45% / 0.2),
+              0 0 30px hsl(183 90% 45% / 0.4);
           }
           50% {
             box-shadow:
-              0 0 0 4px rgba(59, 130, 246, 0.7),
-              0 0 0 8px rgba(59, 130, 246, 0.3),
-              0 0 40px rgba(59, 130, 246, 0.5);
+              0 0 0 4px hsl(183 90% 45% / 0.7),
+              0 0 0 8px hsl(183 90% 45% / 0.3),
+              0 0 40px hsl(280 65% 60% / 0.3);
           }
         }
       `}</style>
