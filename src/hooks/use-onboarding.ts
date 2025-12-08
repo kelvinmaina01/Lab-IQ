@@ -35,9 +35,10 @@ export const useOnboarding = () => {
 
       const hasCompletedOnboarding = preferences?.onboarding_completed || localOnboardingComplete === 'true';
 
+      // Don't auto-show tour - let user start it manually
       if (!hasCompletedOnboarding) {
         setIsFirstVisit(true);
-        setShowOnboarding(true);
+        // Removed: setShowOnboarding(true);
       }
 
       setLoading(false);
