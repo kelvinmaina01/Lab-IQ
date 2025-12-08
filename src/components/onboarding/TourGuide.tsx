@@ -227,6 +227,7 @@ export const TourGuide = ({ isOpen, onClose, onComplete }: TourGuideProps) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [cardPosition, setCardPosition] = useState({ top: "50%", left: "50%", transform: "translate(-50%, -50%)" });
   const [arrowStyle, setArrowStyle] = useState<React.CSSProperties>({});
+  const [isNavigating, setIsNavigating] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const location = useLocation();
@@ -239,13 +240,31 @@ export const TourGuide = ({ isOpen, onClose, onComplete }: TourGuideProps) => {
     if (!isOpen || !step) return;
 
     if (step.route !== location.pathname) {
+      setIsNavigating(true);
+      // Center card during navigation
+      setCardPosition({
+        top: "50%",
+        left: "50%",
+        transform: "translate(-50%, -50%)",
+      });
+      setArrowStyle({ display: "none" });
+
       navigate(step.route);
+
+      // Reset navigating state after navigation completes
+      const timeout = setTimeout(() => {
+        setIsNavigating(false);
+      }, 300);
+
+      return () => clearTimeout(timeout);
+    } else {
+      setIsNavigating(false);
     }
   }, [currentStep, step, location.pathname, navigate, isOpen]);
 
   // Position card and arrow
   useEffect(() => {
-    if (!isOpen || !step) return;
+    if (!isOpen || !step || isNavigating) return;
 
     // Start with card centered while positioning
     setCardPosition({
@@ -293,9 +312,17 @@ export const TourGuide = ({ isOpen, onClose, onComplete }: TourGuideProps) => {
       let newPosition: any = {};
       let newArrowStyle: React.CSSProperties = {};
 
-      // Highlight target
+      // Highlight target with smooth scroll
       target.classList.add("tour-guide-highlight");
-      target.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+
+      // Use requestAnimationFrame for smoother scroll
+      requestAnimationFrame(() => {
+        target.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+          inline: "center"
+        });
+      });
 
       // Calculate position based on arrow side
       switch (step.arrowSide) {
@@ -432,7 +459,7 @@ export const TourGuide = ({ isOpen, onClose, onComplete }: TourGuideProps) => {
         el.classList.remove("tour-guide-highlight");
       });
     };
-  }, [currentStep, step, isOpen]);
+  }, [currentStep, step, isOpen, isNavigating, location.pathname]);
 
   const handleNext = () => {
     if (currentStep < fullTourSteps.length - 1) {
@@ -464,8 +491,12 @@ export const TourGuide = ({ isOpen, onClose, onComplete }: TourGuideProps) => {
           position: "fixed",
           ...cardPosition,
           zIndex: 1000,
+          transition: "all 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
         }}
-        className="animate-in fade-in zoom-in duration-300"
+        className={cn(
+          "animate-in fade-in zoom-in duration-300",
+          isNavigating && "opacity-75"
+        )}
       >
         <Card className="w-[380px] shadow-2xl border-2 border-blue-500 bg-white dark:bg-gray-900 relative">
           {/* Arrow protruding from card border */}
@@ -476,6 +507,7 @@ export const TourGuide = ({ isOpen, onClose, onComplete }: TourGuideProps) => {
                 style={{
                   ...arrowStyle,
                   filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.1))",
+                  transition: "all 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
                 }}
               />
               <div
