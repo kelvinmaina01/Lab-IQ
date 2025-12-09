@@ -23,6 +23,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { getDeviceContextForAI } from '@/lib/services/deviceDataService';
 
 interface Section {
   type: 'heading' | 'paragraph' | 'list' | 'chart' | 'insight';
@@ -186,6 +187,16 @@ export const AIAssistantChat = ({ mode = 'analysis', onModeChange, onImmersiveCh
     setThinking('Analyzing your data...');
 
     try {
+      // Get device context for AI
+      let deviceContext = null;
+      if (userId) {
+        try {
+          deviceContext = await getDeviceContextForAI(userId, 50);
+        } catch (err) {
+          console.warn('Could not fetch device context:', err);
+        }
+      }
+
       // Use local ML service
       const response = await fetch('http://localhost:8002/api/ml/chat', {
         method: 'POST',
@@ -195,7 +206,8 @@ export const AIAssistantChat = ({ mode = 'analysis', onModeChange, onImmersiveCh
         body: JSON.stringify({
           messages: [...messages, userMessage].map(m => ({ role: m.role, content: m.content })),
           mode,
-          datasetId: selectedDataset
+          datasetId: selectedDataset,
+          deviceContext // Include device streaming data context
         }),
       }
       );

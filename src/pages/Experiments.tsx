@@ -1,4 +1,8 @@
+import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -11,7 +15,9 @@ import { ExperimentTemplates } from "@/components/experiments/ExperimentTemplate
 import { useSubscription } from "@/hooks/useSubscription";
 import { UpgradeDialog } from "@/components/UpgradeDialog";
 import { useActivityTracker } from "@/hooks/useActivityTracker";
-import { useState, useEffect } from "react";
+import { AuthGuard } from "@/components/auth/AuthGuard";
+import { MainLayout } from "@/components/layout/MainLayout";
+import { supabase } from "@/integrations/supabase/client";
 
 const Experiments = () => {
   const location = useLocation();
@@ -57,9 +63,8 @@ const Experiments = () => {
         .from('experiments')
         .select('*')
         .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false});
 
-      if (error) throw error;
       if (error) throw error;
 
       const formattedExperiments = (data || []).map(exp => ({

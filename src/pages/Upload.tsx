@@ -19,6 +19,9 @@ import { SampleDatasetCTA } from "@/components/upload/SampleDatasetCTA";
 import { supabase } from "@/integrations/supabase/client";
 import { TemplateSuggestions } from "@/components/upload/TemplateSuggestions";
 import { suggestTemplates } from "@/lib/utils/templateSuggestions";
+import { EnhancedFileUpload } from "@/components/upload/EnhancedFileUpload";
+import { UploadJobMonitor } from "@/components/upload/UploadJobMonitor";
+import { UploadStatistics } from "@/components/upload/UploadStatistics";
 
 export default function Upload() {
   const { toast } = useToast();
@@ -330,14 +333,26 @@ export default function Upload() {
           </Card>
 
           <Tabs defaultValue="upload" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="upload">File Upload</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-5">
+              <TabsTrigger value="upload">Enhanced Upload</TabsTrigger>
+              <TabsTrigger value="legacy">Legacy Upload</TabsTrigger>
               <TabsTrigger value="devices">Live Devices</TabsTrigger>
               <TabsTrigger value="connect">Cloud Sources</TabsTrigger>
               <TabsTrigger value="metadata">Dataset Registry</TabsTrigger>
             </TabsList>
 
             <TabsContent value="upload" className="space-y-6 mt-6">
+              {/* Upload Statistics */}
+              <UploadStatistics />
+
+              {/* Enhanced File Upload with Real-time Progress */}
+              <EnhancedFileUpload />
+
+              {/* Upload Job Monitor */}
+              <UploadJobMonitor />
+            </TabsContent>
+
+            <TabsContent value="legacy" className="space-y-6 mt-6">
               <Card className="border-border/50 shadow-sm">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">

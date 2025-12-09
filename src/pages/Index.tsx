@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import Navigation from "@/components/Navigation";
+import { ScrollToTop } from "@/components/ScrollToTop";
 import {
   FlaskConical,
   Brain,
@@ -28,7 +29,11 @@ import {
   Smartphone,
   Server,
   HardDrive,
-  Activity
+  Activity,
+  Mail,
+  Github,
+  Twitter,
+  Linkedin
 } from "lucide-react";
 
 const Index = () => {
@@ -216,6 +221,71 @@ const Index = () => {
         </div>
       </section>
 
+      {/* What If... Section - Professional & Subtle */}
+      <section className="relative py-24 px-4 bg-muted/20">
+        <div className="container mx-auto max-w-6xl">
+          <div className="space-y-16">
+            {/* Main headline - Clean & Professional */}
+            <div className="text-center space-y-6">
+              <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight text-foreground">
+                What if every experiment<br />taught you something you didn't expect?
+              </h2>
+            </div>
+
+            {/* Three scenarios - Clean cards without flashy colors */}
+            <div className="grid md:grid-cols-3 gap-6">
+              {[
+                {
+                  icon: TrendingUp,
+                  question: "What if AI could predict",
+                  answer: "your experiment outcomes before you run them?"
+                },
+                {
+                  icon: Zap,
+                  question: "What if analysis took",
+                  answer: "seconds instead of hours?"
+                },
+                {
+                  icon: Database,
+                  question: "What if data from every source",
+                  answer: "just... worked together?"
+                }
+              ].map((item, idx) => {
+                const Icon = item.icon;
+                return (
+                  <div
+                    key={idx}
+                    className="p-6 rounded-lg border border-border bg-card hover:border-primary/50 transition-all duration-300 animate-fade-in-up"
+                    style={{ animationDelay: `${idx * 0.1}s` }}
+                  >
+                    <div className="space-y-4">
+                      <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <Icon className="w-6 h-6 text-primary" />
+                      </div>
+                      <div className="space-y-2">
+                        <p className="text-sm text-muted-foreground">
+                          {item.question}
+                        </p>
+                        <p className="text-lg font-semibold text-foreground">
+                          {item.answer}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Bottom tagline - Simple */}
+            <div className="text-center space-y-6 pt-8">
+              <p className="text-xl text-muted-foreground">
+                Stop wondering. <span className="text-foreground font-semibold">Start discovering.</span>
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Data Sources Integration Section - NEW */}
       <section className="py-24 px-4 bg-gradient-to-b from-background to-muted/30">
         <div className="container mx-auto max-w-7xl">
@@ -359,6 +429,48 @@ const Index = () => {
                 Explore the Platform
               </Button>
             </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Value Proposition Section - Clean & Professional */}
+      <section className="py-24 px-4">
+        <div className="container mx-auto max-w-5xl">
+          <div className="text-center space-y-12">
+            {/* Main Statement */}
+            <div className="space-y-6">
+              <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight text-foreground">
+                Every second counts.<br />Every insight matters.
+              </h2>
+              <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+                Lab-IQ delivers real-time intelligence for modern research teams.
+              </p>
+            </div>
+
+            {/* Stats - Clean version */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 pt-8">
+              {[
+                { value: "10x", label: "Faster Analysis" },
+                { value: "99.9%", label: "Accuracy" },
+                { value: "24/7", label: "AI Assistant" },
+                { value: "10+", label: "Data Sources" }
+              ].map((stat, idx) => (
+                <div
+                  key={stat.label}
+                  className="p-6 rounded-lg border border-border bg-card hover:border-primary/50 transition-all duration-300 animate-fade-in-up"
+                  style={{ animationDelay: `${idx * 0.1}s` }}
+                >
+                  <div className="space-y-2 text-center">
+                    <div className="text-4xl font-bold text-primary">
+                      {stat.value}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {stat.label}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
@@ -674,30 +786,99 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="py-12 px-4 border-t border-border">
+      {/* Footer - Enhanced */}
+      <footer className="py-16 px-4 border-t border-border bg-muted/30">
         <div className="container mx-auto max-w-7xl">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-                <FlaskConical className="w-5 h-5 text-white" />
+          <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-12 mb-12">
+            {/* Brand Section */}
+            <div className="lg:col-span-2 space-y-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-lg">
+                  <FlaskConical className="w-6 h-6 text-white" />
+                </div>
+                <span className="text-2xl font-black bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+                  Lab-IQ
+                </span>
               </div>
-              <span className="text-xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                Lab-IQ
-              </span>
+              <p className="text-muted-foreground leading-relaxed max-w-sm">
+                AI-powered laboratory intelligence platform transforming how researchers analyze data and make discoveries.
+              </p>
+              {/* Social Links */}
+              <div className="flex gap-3">
+                <Button size="icon" variant="outline" className="rounded-lg hover:bg-primary/10 hover:border-primary transition-all">
+                  <Twitter className="w-4 h-4" />
+                </Button>
+                <Button size="icon" variant="outline" className="rounded-lg hover:bg-primary/10 hover:border-primary transition-all">
+                  <Github className="w-4 h-4" />
+                </Button>
+                <Button size="icon" variant="outline" className="rounded-lg hover:bg-primary/10 hover:border-primary transition-all">
+                  <Linkedin className="w-4 h-4" />
+                </Button>
+                <Button size="icon" variant="outline" className="rounded-lg hover:bg-primary/10 hover:border-primary transition-all">
+                  <Mail className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
-            <div className="flex gap-8 text-sm text-muted-foreground">
-              <Link to="/dashboard" className="hover:text-foreground transition-colors">Dashboard</Link>
-              <Link to="/upload" className="hover:text-foreground transition-colors">Upload</Link>
-              <Link to="/insights" className="hover:text-foreground transition-colors">Insights</Link>
-              <Link to="/collaboration" className="hover:text-foreground transition-colors">Collaborate</Link>
+
+            {/* Product Links */}
+            <div className="space-y-4">
+              <h4 className="font-bold text-foreground text-sm uppercase tracking-wider">Product</h4>
+              <ul className="space-y-3">
+                <li><Link to="/dashboard" className="text-muted-foreground hover:text-primary transition-colors font-medium">Dashboard</Link></li>
+                <li><Link to="/upload" className="text-muted-foreground hover:text-primary transition-colors font-medium">Upload Data</Link></li>
+                <li><Link to="/datasets" className="text-muted-foreground hover:text-primary transition-colors font-medium">Datasets</Link></li>
+                <li><Link to="/experiments" className="text-muted-foreground hover:text-primary transition-colors font-medium">Experiments</Link></li>
+                <li><Link to="/models" className="text-muted-foreground hover:text-primary transition-colors font-medium">AI Models</Link></li>
+                <li><Link to="/automation" className="text-muted-foreground hover:text-primary transition-colors font-medium">Automation</Link></li>
+              </ul>
             </div>
-            <div className="text-sm text-muted-foreground">
-              © 2025 Lab-IQ. All rights reserved.
+
+            {/* Features Links */}
+            <div className="space-y-4">
+              <h4 className="font-bold text-foreground text-sm uppercase tracking-wider">Features</h4>
+              <ul className="space-y-3">
+                <li><Link to="/analytics" className="text-muted-foreground hover:text-primary transition-colors font-medium">Analytics</Link></li>
+                <li><Link to="/insights" className="text-muted-foreground hover:text-primary transition-colors font-medium">AI Insights</Link></li>
+                <li><Link to="/assistant" className="text-muted-foreground hover:text-primary transition-colors font-medium">AI Assistant</Link></li>
+                <li><Link to="/collaboration" className="text-muted-foreground hover:text-primary transition-colors font-medium">Collaboration</Link></li>
+                <li><Link to="/reports" className="text-muted-foreground hover:text-primary transition-colors font-medium">Reports</Link></li>
+                <li><Link to="/pricing" className="text-muted-foreground hover:text-primary transition-colors font-medium">Pricing</Link></li>
+              </ul>
+            </div>
+
+            {/* Company Links */}
+            <div className="space-y-4">
+              <h4 className="font-bold text-foreground text-sm uppercase tracking-wider">Company</h4>
+              <ul className="space-y-3">
+                <li><a href="#" className="text-muted-foreground hover:text-primary transition-colors font-medium">About Us</a></li>
+                <li><a href="#" className="text-muted-foreground hover:text-primary transition-colors font-medium">Blog</a></li>
+                <li><a href="#" className="text-muted-foreground hover:text-primary transition-colors font-medium">Careers</a></li>
+                <li><a href="#" className="text-muted-foreground hover:text-primary transition-colors font-medium">Contact</a></li>
+                <li><a href="#" className="text-muted-foreground hover:text-primary transition-colors font-medium">Privacy Policy</a></li>
+                <li><a href="#" className="text-muted-foreground hover:text-primary transition-colors font-medium">Terms of Service</a></li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Bottom Bar */}
+          <div className="pt-8 border-t border-border">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+              <p className="text-sm text-muted-foreground">
+                © 2025 <span className="font-bold text-foreground">Lab-IQ</span>. All rights reserved.
+              </p>
+              <div className="flex items-center gap-6 text-sm text-muted-foreground">
+                <a href="#" className="hover:text-foreground transition-colors font-medium">Privacy</a>
+                <a href="#" className="hover:text-foreground transition-colors font-medium">Terms</a>
+                <a href="#" className="hover:text-foreground transition-colors font-medium">Security</a>
+                <a href="#" className="hover:text-foreground transition-colors font-medium">Status</a>
+              </div>
             </div>
           </div>
         </div>
       </footer>
+
+      {/* Scroll to Top Button */}
+      <ScrollToTop />
     </div>
   );
 };

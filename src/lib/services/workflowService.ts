@@ -12,7 +12,7 @@ export interface Workflow {
   description: string | null;
   category?: string;
   icon?: string;
-  trigger_type: 'dataset_upload' | 'manual' | 'schedule' | 'threshold' | 'event';
+  trigger_type: 'dataset_upload' | 'manual' | 'schedule' | 'threshold' | 'event' | 'device_stream';
   trigger_config: Record<string, any>;
   steps: WorkflowStep[];
   status: 'active' | 'paused' | 'disabled';
