@@ -13,6 +13,29 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      // Polyfill node modules for browser
+      "node-fetch": "isomorphic-fetch",
     },
   },
+  optimizeDeps: {
+    exclude: ['pyodide', '@duckdb/duckdb-wasm', 'webr'],
+    esbuildOptions: {
+      define: {
+        global: 'globalThis'
+      }
+    }
+  },
+  worker: {
+    format: 'es',
+  },
+  build: {
+    target: 'esnext',
+    rollupOptions: {
+      external: ['node-fetch', 'fs', 'path', 'crypto', 'stream']
+    }
+  },
+  define: {
+    'process.env.NODE_ENV': JSON.stringify(mode),
+    'global': 'globalThis'
+  }
 }));

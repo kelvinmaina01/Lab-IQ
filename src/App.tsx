@@ -25,6 +25,14 @@ import DataAnonymization from "./pages/DataAnonymization";
 import Models from "./pages/Models";
 import Pricing from "./pages/Pricing";
 import Datasets from "./pages/Datasets";
+import { HackathonHub } from "./pages/HackathonHub";
+import { ChallengeBrowser } from "./pages/ChallengeBrowser";
+import { HackathonLeaderboard } from "./pages/HackathonLeaderboard";
+import { ChallengeIDE } from "./components/hackathon/ChallengeIDE";
+import { HackathonTest } from "./pages/HackathonTest";
+import AnalystIQHub from "./pages/AnalystIQHub";
+import AnalystIQChallenge from "./pages/AnalystIQChallenge";
+import AnalystIQLeaderboard from "./pages/AnalystIQLeaderboard";
 
 const queryClient = new QueryClient();
 
@@ -75,6 +83,11 @@ const App = () => {
               <Route path="/device-streams" element={<DeviceStreams />} />
               <Route path="/data-anonymization" element={<DataAnonymization />} />
               <Route path="/models" element={<Models />} />
+              {/* Hackathon Routes - Analyst IQ System */}
+              <Route path="/hackathons" element={<AnalystIQHub />} />
+              <Route path="/hackathons/challenge" element={<AnalystIQChallenge />} />
+              <Route path="/hackathons/leaderboard" element={<AnalystIQLeaderboard />} />
+              <Route path="/hackathons/test" element={<HackathonTest />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
