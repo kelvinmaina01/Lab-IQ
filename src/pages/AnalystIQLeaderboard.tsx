@@ -54,16 +54,14 @@ const AnalystIQLeaderboard = () => {
 
         if (error) throw error;
 
-        // Get user emails
-        const userIds = profiles?.map(p => p.user_id) || [];
-        const { data: users } = await supabase.auth.admin.listUsers();
-
+        // Map profiles to leaderboard entries (email will be anonymized)
         data = profiles?.map((profile, index) => {
-          const userEmail = users?.users.find(u => u.id === profile.user_id)?.email || 'Anonymous';
+          // Generate anonymous display name from user_id
+          const displayName = `Analyst_${profile.user_id.substring(0, 8)}`;
           return {
             rank: index + 1,
             user_id: profile.user_id,
-            email: userEmail,
+            email: displayName,
             iq_score: profile.overall_iq,
             wins: profile.total_challenges_completed,
             total_matches: profile.total_challenges_completed,
