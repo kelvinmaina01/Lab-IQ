@@ -12,14 +12,22 @@ export interface Workflow {
   description: string | null;
   category?: string;
   icon?: string;
-  trigger_type: 'dataset_upload' | 'manual' | 'schedule' | 'threshold' | 'event' | 'device_stream';
+  trigger_type: 'dataset_upload' | 'manual' | 'schedule' | 'threshold' | 'event' | 'device_stream' | 'webhook';
   trigger_config: Record<string, any>;
   steps: WorkflowStep[];
   status: 'active' | 'paused' | 'disabled';
+  enabled?: boolean;
   last_run_at: string | null;
+  last_run_status?: string | null;
+  // Database fields (snake_case)
+  total_runs: number;
+  successful_runs: number;
+  failed_runs: number;
+  // Alias for backward compatibility
   success_count: number;
   failure_count: number;
   estimated_time_saved?: string;
+  tags?: string[];
   created_at: string;
   updated_at: string;
 }
@@ -89,7 +97,17 @@ class WorkflowService {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data as Workflow[];
+
+      // Map database fields to interface (handle both naming conventions)
+      return (data || []).map(w => ({
+        ...w,
+        // Ensure backward compatibility - map DB fields to code fields
+        success_count: w.successful_runs || 0,
+        failure_count: w.failed_runs || 0,
+        successful_runs: w.successful_runs || 0,
+        failed_runs: w.failed_runs || 0,
+        total_runs: w.total_runs || 0,
+      })) as Workflow[];
     } catch (error) {
       console.error('Error fetching workflows:', error);
       throw error;
@@ -104,20 +122,22 @@ class WorkflowService {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('No user logged in');
 
-      // Transform camelCase to snake_case for database
-      // Explicitly map ONLY the fields we want, excluding any extras
+      // Transform to database schema - use correct column names
       const dbWorkflow: any = {
         user_id: user.id,
         name: workflow.name,
         description: workflow.description || null,
-        category: workflow.category || 'General',
-        icon: workflow.icon || '⚙️',
         trigger_type: workflow.trigger_type,
         trigger_config: workflow.trigger_config || {},
         steps: workflow.steps,
         status: workflow.status || 'active',
-        success_count: 0,
-        failure_count: 0,
+        enabled: true,
+        // Use correct database column names
+        total_runs: 0,
+        successful_runs: 0,
+        failed_runs: 0,
+        // Store category/icon in tags as JSON (database uses tags field)
+        tags: JSON.stringify({ category: workflow.category || 'General', icon: workflow.icon || '⚙️' }),
       };
 
       // Add estimated_time_saved if provided (handle both camelCase and snake_case)
@@ -239,26 +259,22 @@ class WorkflowService {
 
       if (fetchError) throw fetchError;
 
-      // Create execution record
-      const execution: Omit<WorkflowExecution, 'id'> = {
+      // Create execution record in workflow_runs table (correct table name)
+      const runRecord = {
         workflow_id: workflowId,
+        user_id: user.id,
+        trigger_source: 'manual',
+        input_data: datasetId ? { dataset_id: datasetId } : {},
         status: 'running',
+        current_step: 0,
+        completed_steps: [],
+        step_outputs: {},
         started_at: new Date().toISOString(),
-        completed_at: null,
-        duration_ms: null,
-        logs: [{
-          timestamp: new Date().toISOString(),
-          step: 'init',
-          message: 'Workflow execution started',
-          level: 'info'
-        }],
-        result: null,
-        error: null
       };
 
       const { data: executionData, error: executionError } = await supabase
-        .from('workflow_executions')
-        .insert(execution)
+        .from('workflow_runs')
+        .insert(runRecord)
         .select()
         .single();
 
@@ -305,22 +321,25 @@ class WorkflowService {
       // Update execution as successful
       const duration = Date.now() - startTime;
       await supabase
-        .from('workflow_executions')
+        .from('workflow_runs')
         .update({
-          status: 'success',
+          status: 'completed',
           completed_at: new Date().toISOString(),
-          duration_ms: duration,
-          logs,
-          result: { steps_completed: workflow.steps.length }
+          execution_time_ms: duration,
+          current_step: workflow.steps.length,
+          completed_steps: logs,
+          output_data: { steps_completed: workflow.steps.length }
         })
         .eq('id', executionId);
 
-      // Update workflow stats
+      // Update workflow stats (use correct column names)
       await supabase
         .from('workflows')
         .update({
           last_run_at: new Date().toISOString(),
-          success_count: workflow.success_count + 1
+          last_run_status: 'completed',
+          total_runs: (workflow.total_runs || 0) + 1,
+          successful_runs: (workflow.successful_runs || 0) + 1
         })
         .eq('id', workflow.id);
 
@@ -335,22 +354,24 @@ class WorkflowService {
 
       // Update execution as failed
       await supabase
-        .from('workflow_executions')
+        .from('workflow_runs')
         .update({
           status: 'failed',
           completed_at: new Date().toISOString(),
-          duration_ms: duration,
-          logs,
-          error: String(error)
+          execution_time_ms: duration,
+          completed_steps: logs,
+          error_message: String(error)
         })
         .eq('id', executionId);
 
-      // Update workflow stats
+      // Update workflow stats (use correct column names)
       await supabase
         .from('workflows')
         .update({
           last_run_at: new Date().toISOString(),
-          failure_count: workflow.failure_count + 1
+          last_run_status: 'failed',
+          total_runs: (workflow.total_runs || 0) + 1,
+          failed_runs: (workflow.failed_runs || 0) + 1
         })
         .eq('id', workflow.id);
 
@@ -510,14 +531,28 @@ class WorkflowService {
   async fetchExecutions(workflowId: string, limit: number = 10): Promise<WorkflowExecution[]> {
     try {
       const { data, error } = await supabase
-        .from('workflow_executions')
+        .from('workflow_runs')
         .select('*')
         .eq('workflow_id', workflowId)
         .order('started_at', { ascending: false })
         .limit(limit);
 
       if (error) throw error;
-      return data as WorkflowExecution[];
+
+      // Map workflow_runs fields to WorkflowExecution interface
+      return (data || []).map(run => ({
+        id: run.id,
+        workflow_id: run.workflow_id,
+        status: run.status === 'completed' ? 'success' : run.status,
+        started_at: run.started_at,
+        completed_at: run.completed_at,
+        duration_ms: run.execution_time_ms,
+        logs: run.completed_steps || [],
+        result: run.output_data,
+        error: run.error_message,
+        current_step: run.current_step,
+        total_steps: run.completed_steps?.length || 0,
+      })) as WorkflowExecution[];
     } catch (error) {
       console.error('Error fetching executions:', error);
       throw error;
@@ -531,29 +566,30 @@ class WorkflowService {
     try {
       const { data: workflow, error: workflowError } = await supabase
         .from('workflows')
-        .select('success_count, failure_count, last_run_at')
+        .select('total_runs, successful_runs, failed_runs, last_run_at, last_run_status')
         .eq('id', workflowId)
         .single();
 
       if (workflowError) throw workflowError;
 
-      const { count: totalRuns, error: countError } = await supabase
-        .from('workflow_executions')
+      const { count: runCount, error: countError } = await supabase
+        .from('workflow_runs')
         .select('*', { count: 'exact', head: true })
         .eq('workflow_id', workflowId);
 
       if (countError) throw countError;
 
-      const successRate = workflow.success_count + workflow.failure_count > 0
-        ? (workflow.success_count / (workflow.success_count + workflow.failure_count)) * 100
+      const successRate = workflow.successful_runs + workflow.failed_runs > 0
+        ? (workflow.successful_runs / (workflow.successful_runs + workflow.failed_runs)) * 100
         : 0;
 
       return {
-        totalRuns: totalRuns || 0,
-        successCount: workflow.success_count,
-        failureCount: workflow.failure_count,
+        totalRuns: workflow.total_runs || runCount || 0,
+        successCount: workflow.successful_runs || 0,
+        failureCount: workflow.failed_runs || 0,
         successRate: successRate.toFixed(1),
-        lastRunAt: workflow.last_run_at
+        lastRunAt: workflow.last_run_at,
+        lastRunStatus: workflow.last_run_status
       };
     } catch (error) {
       console.error('Error fetching workflow stats:', error);
