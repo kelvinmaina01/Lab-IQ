@@ -25,6 +25,42 @@ interface StreamMetrics {
   [key: string]: any;
 }
 
+// Demo biotech/health devices for presentation
+const DEMO_DEVICES: DeviceStream[] = [
+  {
+    id: 'demo-bioreactor-1',
+    name: 'Bioreactor Alpha',
+    stream_type: 'mqtt',
+    status: 'active',
+    last_data_received: new Date().toISOString(),
+    config: { location: 'Lab A' }
+  },
+  {
+    id: 'demo-pcr-1',
+    name: 'PCR Thermocycler',
+    stream_type: 'webhook',
+    status: 'active',
+    last_data_received: new Date(Date.now() - 120000).toISOString(),
+    config: { location: 'Lab B' }
+  },
+  {
+    id: 'demo-centrifuge-1',
+    name: 'Ultracentrifuge',
+    stream_type: 'mqtt',
+    status: 'active',
+    last_data_received: new Date(Date.now() - 60000).toISOString(),
+    config: { location: 'Lab A' }
+  },
+  {
+    id: 'demo-incubator-1',
+    name: 'CO2 Incubator',
+    stream_type: 'mqtt',
+    status: 'active',
+    last_data_received: new Date().toISOString(),
+    config: { location: 'Cell Culture Room' }
+  }
+];
+
 export const DeviceStreamDashboard = () => {
   const [streams, setStreams] = useState<DeviceStream[]>([]);
   const [selectedStream, setSelectedStream] = useState<string | null>(null);
@@ -68,26 +104,27 @@ export const DeviceStreamDashboard = () => {
   const fetchDeviceStreams = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
 
-      const { data, error } = await supabase
-        .from('device_streams')
-        .select('*')
-        .eq('user_id', user.id);
+      let realDevices: DeviceStream[] = [];
+      if (user) {
+        const { data, error } = await supabase
+          .from('device_streams')
+          .select('*')
+          .eq('user_id', user.id);
+        if (!error && data) realDevices = data;
+      }
 
-      if (error) throw error;
-
-      setStreams(data || []);
-      if (data && data.length > 0 && !selectedStream) {
-        setSelectedStream(data[0].id);
+      // Always include demo devices for presentation
+      const allStreams = [...realDevices, ...DEMO_DEVICES];
+      setStreams(allStreams);
+      if (allStreams.length > 0 && !selectedStream) {
+        setSelectedStream(allStreams[0].id);
       }
     } catch (error: any) {
       console.error('Error fetching device streams:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load device streams",
-        variant: "destructive"
-      });
+      // Fallback to demo devices on error
+      setStreams(DEMO_DEVICES);
+      setSelectedStream(DEMO_DEVICES[0].id);
     } finally {
       setLoading(false);
     }

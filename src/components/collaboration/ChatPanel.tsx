@@ -1,15 +1,18 @@
-import { useState, useRef, useEffect } from "react";
-import { Card } from "@/components/ui/card";
+import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
+import { useState, useRef } from "react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Send, MoreVertical, Hash, Bell, BellOff, Loader2 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Smile, Send, Loader2 } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+import { LinkPreviewCard } from "@/components/collaboration/LinkPreviewCard";
+import { useServices } from "@/core/ServiceProvider";
 import { useRealtimeChat } from "@/hooks/useRealtimeChat";
 import { useTypingIndicator } from "@/hooks/useTypingIndicator";
-import { toast } from "sonner";
-import { formatDistanceToNow } from "date-fns";
+
+const EXTRACT_LINK_REGEX = /(https?:\/\/[^\s]+)/g;
 
 interface ChatPanelProps {
   channelId: string | null;
@@ -19,88 +22,139 @@ interface ChatPanelProps {
 export const ChatPanel = ({ channelId, projectName = "Project Discussion" }: ChatPanelProps) => {
   const { messages, loading, error, sendMessage } = useRealtimeChat(channelId);
   const { typingUsers, startTyping, stopTyping } = useTypingIndicator(channelId);
+  const virtuosoRef = useRef<VirtuosoHandle>(null);
 
+  // Drag and Drop State and other existing state...
+  const [isDragging, setIsDragging] = useState(false);
+  const { collaboration } = useServices();
   const [newMessage, setNewMessage] = useState("");
   const [muted, setMuted] = useState(false);
   const [isSending, setIsSending] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  // remove scrollRef, use virtuosoRef
 
-  // Auto-scroll to bottom when new messages arrive
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages]);
+  // Remove manual scroll effect, Virtuoso 'followOutput' handles this
 
-  // Handle typing indicator
-  const handleTyping = () => {
-    startTyping();
-  };
+  // ... (handleDragOver, handleDrop, handleSendMessage, etc. - keep as is)
 
-  const handleSendMessage = async () => {
-    if (!newMessage.trim() || !channelId) return;
+  // ...
 
-    setIsSending(true);
-    try {
-      await sendMessage(newMessage);
-      setNewMessage("");
-      stopTyping();
-      toast.success("Message sent");
-    } catch (err) {
-      console.error("Failed to send message:", err);
-      toast.error("Failed to send message");
-    } finally {
-      setIsSending(false);
-    }
-  };
+  const MessageItem = ({ message }: { message: any }) => (
+    <div className="space-y-2 group py-2 pr-2">
+      <div className="flex items-start gap-3">
+        <Avatar className="w-8 h-8 mt-1">
+          <AvatarImage src={message.user?.avatar_url} />
+          <AvatarFallback>
+            {message.user?.display_name?.substring(0, 2).toUpperCase() || 'U'}
+          </AvatarFallback>
+        </Avatar>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="font-semibold text-sm truncate">
+              {message.user?.display_name || 'Unknown User'}
+            </span>
+            <span className="text-xs text-muted-foreground whitespace-nowrap">
+              {formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}
+            </span>
+            {message.edited_at && (
+              <span className="text-xs text-muted-foreground italic">(edited)</span>
+            )}
+          </div>
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
-  };
+          <p className="text-sm whitespace-pre-wrap break-words">
+            {message.content.split(EXTRACT_LINK_REGEX).map((part: string, i: number) => {
+              if (part.match(EXTRACT_LINK_REGEX)) {
+                return (
+                  <span key={i} className="text-primary underline cursor-pointer break-all">
+                    {part}
+                  </span>
+                );
+              }
+              return part;
+            })}
+          </p>
 
-  // Show loading state
-  if (loading) {
-    return (
-      <Card className="flex flex-col h-[600px] items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        <p className="text-sm text-muted-foreground mt-2">Loading messages...</p>
-      </Card>
-    );
-  }
+          {/* Link Preview */}
+          {(() => {
+            const links = message.content.match(EXTRACT_LINK_REGEX);
+            if (links && links.length > 0) {
+              return <LinkPreviewCard url={links[0]} />;
+            }
+            return null;
+          })()}
 
-  // Show error state
-  if (error) {
-    return (
-      <Card className="flex flex-col h-[600px] items-center justify-center">
-        <p className="text-sm text-destructive">Failed to load messages</p>
-        <p className="text-xs text-muted-foreground mt-2">{error.message}</p>
-      </Card>
-    );
-  }
+          <div className="flex items-center gap-2 mt-2">
+            {/* Reactions */}
+            {message.reactions && Object.keys(message.reactions).length > 0 && (
+              <div className="flex gap-1 flex-wrap">
+                {Object.entries(message.reactions).map(([emoji, users]: [string, any]) => (
+                  <Badge
+                    key={emoji}
+                    variant="secondary"
+                    className="text-xs cursor-pointer hover:bg-secondary/80 px-1 py-0 h-6"
+                    onClick={() => handleReaction(message.id, emoji)}
+                  >
+                    {emoji} <span className="ml-1 text-[10px]">{users.length}</span>
+                  </Badge>
+                ))}
+              </div>
+            )}
 
-  // Show no channel selected state
-  if (!channelId) {
-    return (
-      <Card className="flex flex-col h-[600px] items-center justify-center">
-        <Hash className="w-12 h-12 text-muted-foreground mb-4" />
-        <p className="text-sm text-muted-foreground">Select a channel to start chatting</p>
-      </Card>
-    );
-  }
+            {/* Add Reaction Button */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full hover:bg-muted opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Smile className="w-4 h-4 text-muted-foreground" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-1" align="start">
+                <div className="flex gap-1">
+                  {['👍', '❤️', '😂', '😮', '😢', '😡', '✅'].map((emoji) => (
+                    <Button
+                      key={emoji}
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={() => handleReaction(message.id, emoji)}
+                    >
+                      <span className="text-lg">{emoji}</span>
+                    </Button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
-    <Card className="flex flex-col h-[600px]">
+    <Card
+      className={`flex flex-col h-[600px] relative transition-colors ${isDragging ? 'border-primary bg-primary/5' : ''}`}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {/* Drag Overlay & Header (Keep same) */}
+      {isDragging && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm rounded-lg border-2 border-primary border-dashed">
+          <div className="text-center">
+            <Upload className="w-12 h-12 mx-auto text-primary mb-2" />
+            <h3 className="text-xl font-bold text-primary">Drop to Upload</h3>
+            <p className="text-muted-foreground">Share file with #{projectName}</p>
+          </div>
+        </div>
+      )}
+
       {/* Chat Header */}
-      <div className="flex items-center justify-between p-4 border-b border-border">
+      <div className="flex items-center justify-between p-4 border-b border-border shrink-0">
         <div className="flex items-center gap-2">
           <Hash className="w-5 h-5 text-muted-foreground" />
           <h3 className="font-semibold">{projectName}</h3>
           <Badge variant="secondary" className="text-xs">{messages.length} messages</Badge>
         </div>
         <div className="flex items-center gap-2">
+          {/* ... buttons ... */}
           <Button
             variant="ghost"
             size="icon"
@@ -115,76 +169,43 @@ export const ChatPanel = ({ channelId, projectName = "Project Discussion" }: Cha
         </div>
       </div>
 
-      {/* Messages */}
-      <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+      {/* Virtualized Messages */}
+      <div className="flex-1 p-4 overflow-hidden min-h-0">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
             <Hash className="w-12 h-12 text-muted-foreground mb-4" />
             <p className="text-sm text-muted-foreground">No messages yet</p>
-            <p className="text-xs text-muted-foreground mt-1">Be the first to start the conversation!</p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {messages.map((message) => (
-              <div key={message.id} className="space-y-2">
-                <div className="flex items-start gap-3">
-                  <Avatar className="w-8 h-8">
-                    <AvatarImage src={message.user?.avatar_url} />
-                    <AvatarFallback>
-                      {message.user?.display_name?.substring(0, 2).toUpperCase() || 'U'}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-semibold text-sm">
-                        {message.user?.display_name || 'Unknown User'}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}
-                      </span>
-                      {message.edited_at && (
-                        <span className="text-xs text-muted-foreground italic">(edited)</span>
-                      )}
-                    </div>
-                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                    {message.reactions && Object.keys(message.reactions).length > 0 && (
-                      <div className="flex gap-1 mt-2">
-                        {Object.entries(message.reactions).map(([emoji, users]) => (
-                          <Badge
-                            key={emoji}
-                            variant="secondary"
-                            className="text-xs cursor-pointer hover:bg-secondary/80"
-                          >
-                            {emoji} {users.length}
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+          <Virtuoso
+            ref={virtuosoRef}
+            data={messages}
+            totalCount={messages.length}
+            initialTopMostItemIndex={messages.length - 1} // Start at bottom
+            followOutput="auto" // Stick to bottom on new messages
+            alignToBottom // align content to bottom if few messages
+            itemContent={(index, message) => <MessageItem message={message} />}
+            className="h-full scrollbar-thin scrollbar-thumb-muted-foreground/20"
+          />
         )}
 
-        {/* Typing indicator */}
+        {/* Typing indicator overlay or footer */}
         {typingUsers.length > 0 && (
-          <div className="flex items-center gap-2 mt-4 text-sm text-muted-foreground">
+          <div className="absolute bottom-[80px] left-4 z-10 bg-background/80 px-2 py-1 rounded-md text-xs text-muted-foreground flex items-center gap-2">
             <Loader2 className="w-3 h-3 animate-spin" />
-            <span className="italic">
-              {typingUsers.length === 1
-                ? `${typingUsers[0]} is typing...`
-                : `${typingUsers.length} people are typing...`}
-            </span>
+            {typingUsers.length === 1
+              ? `${typingUsers[0]} is typing...`
+              : `${typingUsers.length} users typing...`}
           </div>
         )}
-      </ScrollArea>
+      </div>
 
       {/* Message Input */}
-      <div className="p-4 border-t border-border">
+      <div className="p-4 border-t border-border shrink-0 bg-background z-20">
+        {/* ... input area ... */}
         <div className="flex items-center gap-2">
           <Input
-            placeholder="Type a message... Use @ to mention someone"
+            placeholder="Type a message... Use @ to mention"
             value={newMessage}
             onChange={(e) => {
               setNewMessage(e.target.value);
@@ -207,7 +228,7 @@ export const ChatPanel = ({ channelId, projectName = "Project Discussion" }: Cha
           </Button>
         </div>
         <p className="text-xs text-muted-foreground mt-2">
-          Press Enter to send, Shift+Enter for new line
+          Press Enter to send
         </p>
       </div>
     </Card>

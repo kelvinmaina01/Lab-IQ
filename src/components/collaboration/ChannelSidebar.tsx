@@ -14,19 +14,9 @@ import {
   FolderKanban,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { supabase } from "@/integrations/supabase/client";
+import { useServices } from "@/core/ServiceProvider";
+import { ChatChannel } from "@/core/interfaces";
 import { ChannelDialog } from "./ChannelDialog";
-
-interface Channel {
-  id: string;
-  name: string;
-  display_name: string;
-  description?: string;
-  type: "general" | "project" | "announcement";
-  is_private: boolean;
-  unread_count?: number;
-  created_at: string;
-}
 
 interface ChannelSidebarProps {
   labId: string;
@@ -119,7 +109,7 @@ export const ChannelSidebar = ({
     }));
   };
 
-  const getChannelIcon = (type: Channel["type"], isPrivate: boolean) => {
+  const getChannelIcon = (type: ChatChannel["type"], isPrivate: boolean) => {
     if (isPrivate) return <Lock className="h-4 w-4" />;
     if (type === "announcement") return <Megaphone className="h-4 w-4" />;
     if (type === "project") return <FolderKanban className="h-4 w-4" />;
@@ -134,7 +124,7 @@ export const ChannelSidebar = ({
 
   const renderChannelGroup = (
     title: string,
-    channels: Channel[],
+    channels: ChatChannel[],
     sectionKey: keyof typeof expandedSections
   ) => {
     if (channels.length === 0) return null;

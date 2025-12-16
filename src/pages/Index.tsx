@@ -221,6 +221,31 @@ const Index = () => {
         </div>
       </section>
 
+      {/* Student Discount - Elegant Inline */}
+      <section className="border-y border-border/40 bg-muted/20">
+        <div className="container mx-auto max-w-7xl">
+          <Link
+            to="/pricing"
+            className="group flex items-center justify-between py-4 px-4 md:px-8 hover:bg-muted/40 transition-colors"
+          >
+            <div className="flex items-center gap-6">
+              <span className="text-sm tracking-wide text-muted-foreground">
+                For students & researchers
+              </span>
+              <span className="hidden sm:block w-px h-4 bg-border" />
+              <span className="text-sm font-medium">
+                Pro at <span className="text-foreground">$3.90/mo</span>
+                <span className="text-muted-foreground ml-1.5">— 90% off with .edu</span>
+              </span>
+            </div>
+            <span className="flex items-center gap-2 text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">
+              Verify
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </span>
+          </Link>
+        </div>
+      </section>
+
       {/* What If... Section - Professional & Subtle */}
       <section className="relative py-24 px-4 bg-muted/20">
         <div className="container mx-auto max-w-6xl">

@@ -8,11 +8,14 @@ interface MainLayoutProps {
     children: React.ReactNode;
 }
 
+import { GlobalCommandPalette } from "@/components/layout/GlobalCommandPalette";
+
 export const MainLayout = ({ children }: MainLayoutProps) => {
     const { isCollapsed } = useSidebar();
 
     return (
         <div className="min-h-screen bg-background flex flex-col">
+            <GlobalCommandPalette />
             <Sidebar />
             <div
                 className={cn(

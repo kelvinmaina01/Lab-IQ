@@ -57,7 +57,6 @@ class DataAgent(BaseAgent):
             "statistical_summary": stats_summary,
             "outliers": outliers,
             "quality_score": quality_score,
-            "quality_score": quality_score,
             "recommendations": recommendations,
             "domain_analysis": domain_analysis
         }

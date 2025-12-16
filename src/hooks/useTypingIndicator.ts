@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { TypingIndicator } from '@/types/collaboration';
+import { useServices } from "@/core/ServiceProvider";
 
 export const useTypingIndicator = (channelId: string | null) => {
+  const { collaboration } = useServices();
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
 
@@ -10,59 +10,19 @@ export const useTypingIndicator = (channelId: string | null) => {
   useEffect(() => {
     if (!channelId) return;
 
-    const channel = supabase
-      .channel(`typing:${channelId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'chat_typing',
-          filter: `channel_id=eq.${channelId}`
-        },
-        async (payload) => {
-          const userId = payload.new.user_id;
-
-          // Fetch user name
-          const { data: userData } = await supabase
-            .from('team_members')
-            .select('display_name')
-            .eq('user_id', userId)
-            .single();
-
-          if (userData) {
-            setTypingUsers((prev) => [...new Set([...prev, userData.display_name])]);
-
-            // Remove after 3 seconds
-            setTimeout(() => {
-              setTypingUsers((prev) => prev.filter((name) => name !== userData.display_name));
-            }, 3000);
-          }
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'DELETE',
-          schema: 'public',
-          table: 'chat_typing',
-          filter: `channel_id=eq.${channelId}`
-        },
-        async (payload) => {
-          const userId = payload.old.user_id;
-
-          const { data: userData } = await supabase
-            .from('team_members')
-            .select('display_name')
-            .eq('user_id', userId)
-            .single();
-
-          if (userData) {
-            setTypingUsers((prev) => prev.filter((name) => name !== userData.display_name));
-          }
-        }
-      )
-      .subscribe();
+    const channel = collaboration.subscribeToTyping(
+      channelId,
+      (userName) => {
+        setTypingUsers((prev) => [...new Set([...prev, userName])]);
+        // Auto-remove helper in hook level too for safety, but mostly rely on stream
+        setTimeout(() => {
+          setTypingUsers((prev) => prev.filter((name) => name !== userName));
+        }, 3000);
+      },
+      (userName) => {
+        setTypingUsers((prev) => prev.filter((name) => name !== userName));
+      }
+    );
 
     return () => {
       channel.unsubscribe();
@@ -73,30 +33,16 @@ export const useTypingIndicator = (channelId: string | null) => {
   const startTyping = useCallback(async () => {
     if (!channelId) return;
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
     // Clear previous timeout
     if (typingTimeout) {
       clearTimeout(typingTimeout);
     }
 
-    // Insert typing indicator
-    await supabase
-      .from('chat_typing')
-      .upsert({
-        channel_id: channelId,
-        user_id: user.id,
-        started_at: new Date().toISOString()
-      });
+    await collaboration.startTyping(channelId);
 
-    // Auto-remove after 3 seconds
+    // Auto-remove local "stop" call after 3 seconds to clean up DB
     const timeout = setTimeout(async () => {
-      await supabase
-        .from('chat_typing')
-        .delete()
-        .eq('channel_id', channelId)
-        .eq('user_id', user.id);
+      await collaboration.stopTyping(channelId);
     }, 3000);
 
     setTypingTimeout(timeout);
@@ -105,19 +51,12 @@ export const useTypingIndicator = (channelId: string | null) => {
   const stopTyping = useCallback(async () => {
     if (!channelId) return;
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
     if (typingTimeout) {
       clearTimeout(typingTimeout);
       setTypingTimeout(null);
     }
 
-    await supabase
-      .from('chat_typing')
-      .delete()
-      .eq('channel_id', channelId)
-      .eq('user_id', user.id);
+    await collaboration.stopTyping(channelId);
   }, [channelId, typingTimeout]);
 
   return { typingUsers, startTyping, stopTyping };

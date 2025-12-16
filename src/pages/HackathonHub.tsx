@@ -1,5 +1,4 @@
-// Hackathon Hub - Main landing page for the hackathon feature
-
+// Hackathon Hub - Main landing page for the hackathon feature } 1
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Code2, Trophy, TrendingUp, BookOpen, Play, Star, Clock, Users } from 'lucide-react';

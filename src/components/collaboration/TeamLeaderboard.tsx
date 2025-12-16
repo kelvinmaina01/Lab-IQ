@@ -10,43 +10,22 @@ import {
     Medal,
     Award,
     TrendingUp,
-    Database,
-    FlaskConical,
-    Brain,
-    MessageSquare,
-    Search,
     Flame,
     Zap,
-    Loader2
+    Loader2,
+    Search
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-
-export interface LeaderboardEntry {
-    id: string;
-    name: string;
-    email: string;
-    avatar?: string;
-    stats: {
-        datasetsUploaded: number;
-        experimentsCreated: number;
-        modelsTrained: number;
-        commentsPosted: number;
-        filesShared: number;
-    };
-    totalScore: number;
-    rank: number;
-    trend: 'up' | 'down' | 'same';
-    streak: number;
-    badges: string[];
-}
+import { useServices } from "@/core/ServiceProvider";
+import { LeaderboardEntry } from "@/core/interfaces";
 
 interface TeamLeaderboardProps {
     entries?: LeaderboardEntry[];
 }
 
 export const TeamLeaderboard = ({ entries: providedEntries }: TeamLeaderboardProps) => {
+    const { collaboration } = useServices();
     const [timeRange, setTimeRange] = useState("monthly");
     const [searchQuery, setSearchQuery] = useState("");
     const [category, setCategory] = useState("overall");
@@ -62,104 +41,8 @@ export const TeamLeaderboard = ({ entries: providedEntries }: TeamLeaderboardPro
     const fetchLeaderboardData = async () => {
         try {
             setLoading(true);
-
-            // Calculate start date based on timeRange
-            const now = new Date();
-            let startTime = new Date(0).toISOString(); // Default all time
-
-            if (timeRange === 'weekly') {
-                const date = new Date();
-                date.setDate(now.getDate() - 7);
-                startTime = date.toISOString();
-            } else if (timeRange === 'monthly') {
-                const date = new Date();
-                date.setDate(now.getDate() - 30);
-                startTime = date.toISOString();
-            }
-
-            // Fetch Profiles
-            const { data: profiles, error: profilesError } = await supabase
-                .from('profiles')
-                .select('*');
-
-            if (profilesError) throw profilesError;
-
-            // Fetch Activities (Experiments, Datasets, Models)
-            const { data: experiments, error: expError } = await supabase
-                .from('experiments')
-                .select('user_id, created_at')
-                .gte('created_at', startTime);
-
-            const { data: datasets, error: dsError } = await supabase
-                .from('datasets')
-                .select('user_id, created_at')
-                .gte('created_at', startTime);
-
-            // Fetch Models if table exists, otherwise empty
-            // Using try-catch for tables that might not exist in all envs yet
-            let models: any[] = [];
-            try {
-                const { data, error } = await supabase
-                    .from('models') // Assuming 'models' table
-                    .select('user_id, created_at')
-                    .gte('created_at', startTime);
-                if (!error) models = data || [];
-            } catch (e) {
-                console.warn("Models table fetch failed", e);
-            }
-
-            if (expError) throw expError;
-            if (dsError) throw dsError;
-
-            // Aggregate Data
-            const leaderboardData = profiles?.map(profile => {
-                const userExperiments = experiments?.filter(e => e.user_id === profile.id).length || 0;
-                const userDatasets = datasets?.filter(d => d.user_id === profile.id).length || 0;
-                const userModels = models?.filter(m => m.user_id === profile.id).length || 0;
-
-                // Scoring Logic
-                // Dataset: 10 pts, Experiment: 20 pts, Model: 30 pts
-                const score = (userDatasets * 10) + (userExperiments * 20) + (userModels * 30);
-
-                // Badges Logic
-                const badges = [];
-                if (score > 1000) badges.push('🏆');
-                if (userExperiments > 10) badges.push('⚡');
-                if (userModels > 5) badges.push('🧠');
-                if (userDatasets > 10) badges.push('📚');
-
-                return {
-                    id: profile.id,
-                    name: (profile.first_name && profile.last_name)
-                        ? `${profile.first_name} ${profile.last_name}`
-                        : profile.email || 'Unknown User',
-                    email: profile.email || '',
-                    avatar: profile.avatar_url,
-                    stats: {
-                        datasetsUploaded: userDatasets,
-                        experimentsCreated: userExperiments,
-                        modelsTrained: userModels,
-                        commentsPosted: 0, // Placeholder
-                        filesShared: 0 // Placeholder
-                    },
-                    totalScore: score,
-                    rank: 0, // To be assigned after sort
-                    trend: 'same' as const, // Placeholder trend
-                    streak: Math.floor(Math.random() * 10), // Placeholder streak
-                    badges: badges
-                };
-            }) || [];
-
-            // Sort and Assign Rank
-            leaderboardData.sort((a, b) => b.totalScore - a.totalScore);
-
-            const rankedData = leaderboardData.map((entry, index) => ({
-                ...entry,
-                rank: index + 1
-            }));
-
-            setEntries(rankedData);
-
+            const data = await collaboration.getLeaderboard(timeRange);
+            setEntries(data);
         } catch (error) {
             console.error('Error fetching leaderboard:', error);
             toast.error("Failed to load leaderboard data");
@@ -192,11 +75,7 @@ export const TeamLeaderboard = ({ entries: providedEntries }: TeamLeaderboardPro
                     default: return b.totalScore - a.totalScore;
                 }
             });
-            // Re-assign rank for the view? 
-            // Usually leaderboard rank is absolute (Overall), but if filtering by category, 
-            // we might want to show "Rank in Category". 
-            // For now, let's keep the original rank to show their overall standing, 
-            // OR re-rank for the view. Let's re-rank for the view to show who is best in that category.
+            // Re-rank for view
             result = result.map((entry, index) => ({ ...entry, rank: index + 1 }));
         }
 
@@ -222,7 +101,7 @@ export const TeamLeaderboard = ({ entries: providedEntries }: TeamLeaderboardPro
     const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
 
     return (
-        <Card className="border-border/50 shadow-sm">
+        <Card className="border-border/50 shadow-sm h-full flex flex-col">
             <CardHeader className="pb-4">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
@@ -233,12 +112,6 @@ export const TeamLeaderboard = ({ entries: providedEntries }: TeamLeaderboardPro
                         <CardDescription>
                             Track contribution and engagement
                         </CardDescription>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="gap-1.5 py-1 px-3 bg-primary/5 border-primary/20">
-                            <Flame className="h-3.5 w-3.5 text-orange-500 fill-orange-500" />
-                            Season Ends in 4d
-                        </Badge>
                     </div>
                 </div>
 
@@ -276,7 +149,7 @@ export const TeamLeaderboard = ({ entries: providedEntries }: TeamLeaderboardPro
                 </div>
             </CardHeader>
 
-            <CardContent>
+            <CardContent className="flex-1 overflow-y-auto max-h-[600px] pr-2">
                 {loading ? (
                     <div className="flex items-center justify-center py-12">
                         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -344,25 +217,7 @@ export const TeamLeaderboard = ({ entries: providedEntries }: TeamLeaderboardPro
                                                         <Zap className="h-3 w-3 text-yellow-500 fill-yellow-500" />
                                                         {entry.streak} day streak
                                                     </span>
-                                                    <span>•</span>
-                                                    <span className="truncate">{entry.email}</span>
                                                 </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Score Breakdown (Hidden on small screens) */}
-                                        <div className="hidden lg:flex items-center gap-6 px-4">
-                                            <div className="text-center group-hover:scale-105 transition-transform">
-                                                <div className="text-xs text-muted-foreground mb-0.5">Exp</div>
-                                                <div className="font-semibold text-sm">{entry.stats.experimentsCreated}</div>
-                                            </div>
-                                            <div className="text-center group-hover:scale-105 transition-transform">
-                                                <div className="text-xs text-muted-foreground mb-0.5">Data</div>
-                                                <div className="font-semibold text-sm">{entry.stats.datasetsUploaded}</div>
-                                            </div>
-                                            <div className="text-center group-hover:scale-105 transition-transform">
-                                                <div className="text-xs text-muted-foreground mb-0.5">AI</div>
-                                                <div className="font-semibold text-sm">{entry.stats.modelsTrained}</div>
                                             </div>
                                         </div>
 

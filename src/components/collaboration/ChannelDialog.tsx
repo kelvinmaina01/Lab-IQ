@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Hash, Lock, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { useServices } from "@/core/ServiceProvider";
 
 interface ChannelDialogProps {
   open: boolean;
@@ -18,6 +18,7 @@ interface ChannelDialogProps {
 }
 
 export const ChannelDialog = ({ open, onOpenChange, labId, onChannelCreated }: ChannelDialogProps) => {
+  const { collaboration } = useServices();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [type, setType] = useState<"general" | "project" | "announcement">("general");
@@ -40,27 +41,17 @@ export const ChannelDialog = ({ open, onOpenChange, labId, onChannelCreated }: C
     try {
       setIsCreating(true);
 
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast.error("You must be logged in to create a channel");
-        return;
-      }
+      // Create channel via service
+      const newChannel = {
+        name: channelName,
+        display_name: name.trim(),
+        description: description.trim() || undefined,
+        type,
+        is_private: isPrivate,
+        lab_id: labId,
+      };
 
-      // Create channel in Supabase
-      const { data: channel, error } = await supabase
-        .from('chat_channels')
-        .insert({
-          name: channelName,
-          display_name: name.trim(),
-          description: description.trim() || null,
-          type,
-          is_private: isPrivate,
-          lab_id: labId,
-          created_by: user.id,
-        })
-        .select()
-        .single();
+      const { data: channel, error } = await collaboration.createChannel(newChannel);
 
       if (error) {
         console.error("Error creating channel:", error);

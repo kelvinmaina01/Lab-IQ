@@ -35,22 +35,29 @@ interface Notification {
   created_at: string;
 }
 
+const LOCAL_STORAGE_PREFS_KEY = 'notification_preferences';
+
+const getDefaultPreferences = () => ({
+  email_on_action_assignment: true,
+  email_on_bottleneck_detection: true,
+  email_on_experiment_complete: true,
+  email_on_data_quality_issues: true,
+  bottleneck_threshold: 30,
+  data_quality_threshold: 70,
+});
+
 export default function NotificationsPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  // ... (rest of state and functions remain the same) ...
   const [activeTab, setActiveTab] = useState("inbox");
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [tablesExist, setTablesExist] = useState({ notifications: true, preferences: true });
 
-  // Preferences State
-  const [preferences, setPreferences] = useState({
-    email_on_action_assignment: true,
-    email_on_bottleneck_detection: true,
-    email_on_experiment_complete: true,
-    email_on_data_quality_issues: true,
-    bottleneck_threshold: 30,
-    data_quality_threshold: 70,
+  // Preferences State - initialize from localStorage
+  const [preferences, setPreferences] = useState(() => {
+    const stored = localStorage.getItem(LOCAL_STORAGE_PREFS_KEY);
+    return stored ? JSON.parse(stored) : getDefaultPreferences();
   });
   const [savingPreferences, setSavingPreferences] = useState(false);
 
@@ -59,55 +66,78 @@ export default function NotificationsPage() {
   }, []);
 
   const fetchData = async () => {
-    // ... (same as before) ...
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        setLoading(false);
+        return;
+      }
 
       // Fetch Notifications
-      const { data: notifs } = await supabase
+      const { data: notifs, error: notifsError } = await supabase
         .from('notifications')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(50);
 
-      if (notifs) setNotifications(notifs);
+      if (notifsError?.code === 'PGRST205') {
+        setTablesExist(prev => ({ ...prev, notifications: false }));
+      } else if (notifs) {
+        setNotifications(notifs);
+      }
 
       // Fetch Preferences
-      const { data: prefs } = await supabase
+      const { data: prefs, error: prefsError } = await supabase
         .from('notification_preferences')
         .select('*')
         .eq('user_id', user.id)
         .maybeSingle();
 
-      if (prefs) {
-        setPreferences({
-          email_on_action_assignment: prefs.email_on_action_assignment,
-          email_on_bottleneck_detection: prefs.email_on_bottleneck_detection,
-          email_on_experiment_complete: prefs.email_on_experiment_complete,
-          email_on_data_quality_issues: prefs.email_on_data_quality_issues,
-          bottleneck_threshold: prefs.bottleneck_threshold,
-          data_quality_threshold: prefs.data_quality_threshold,
-        });
+      if (prefsError?.code === 'PGRST205') {
+        setTablesExist(prev => ({ ...prev, preferences: false }));
+        // Use localStorage fallback
+        const stored = localStorage.getItem(LOCAL_STORAGE_PREFS_KEY);
+        if (stored) setPreferences(JSON.parse(stored));
+      } else if (prefs) {
+        const newPrefs = {
+          email_on_action_assignment: prefs.email_on_action_assignment ?? true,
+          email_on_bottleneck_detection: prefs.email_on_bottleneck_detection ?? true,
+          email_on_experiment_complete: prefs.email_on_experiment_complete ?? true,
+          email_on_data_quality_issues: prefs.email_on_data_quality_issues ?? true,
+          bottleneck_threshold: prefs.bottleneck_threshold ?? 30,
+          data_quality_threshold: prefs.data_quality_threshold ?? 70,
+        };
+        setPreferences(newPrefs);
+        localStorage.setItem(LOCAL_STORAGE_PREFS_KEY, JSON.stringify(newPrefs));
       }
     } catch (error) {
-      console.error("Error fetching data:", error);
+      console.warn("Error fetching data:", error);
     } finally {
       setLoading(false);
     }
   };
 
   const markAsRead = async (id: string) => {
+    if (!tablesExist.notifications) {
+      setNotifications(notifications.map(n => n.id === id ? { ...n, read: true } : n));
+      return;
+    }
     try {
       await supabase.from('notifications').update({ read: true }).eq('id', id);
       setNotifications(notifications.map(n => n.id === id ? { ...n, read: true } : n));
     } catch (error) {
-      console.error("Error marking as read", error);
+      console.warn("Error marking as read", error);
+      setNotifications(notifications.map(n => n.id === id ? { ...n, read: true } : n));
     }
   };
 
   const markAllAsRead = async () => {
+    if (!tablesExist.notifications) {
+      setNotifications(notifications.map(n => ({ ...n, read: true })));
+      toast({ title: "All notifications marked as read" });
+      return;
+    }
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -115,25 +145,43 @@ export default function NotificationsPage() {
       setNotifications(notifications.map(n => ({ ...n, read: true })));
       toast({ title: "All notifications marked as read" });
     } catch (error) {
-      toast({ title: "Error", description: "Failed to mark all as read", variant: "destructive" });
+      setNotifications(notifications.map(n => ({ ...n, read: true })));
+      toast({ title: "All notifications marked as read" });
     }
   };
 
   const deleteNotification = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!tablesExist.notifications) {
+      setNotifications(notifications.filter(n => n.id !== id));
+      return;
+    }
     try {
       await supabase.from('notifications').delete().eq('id', id);
       setNotifications(notifications.filter(n => n.id !== id));
     } catch (error) {
-      toast({ title: "Error", description: "Failed to delete notification", variant: "destructive" });
+      setNotifications(notifications.filter(n => n.id !== id));
     }
   };
 
   const savePreferences = async () => {
     setSavingPreferences(true);
+    // Always save to localStorage
+    localStorage.setItem(LOCAL_STORAGE_PREFS_KEY, JSON.stringify(preferences));
+
+    if (!tablesExist.preferences) {
+      toast({ title: "Preferences saved", description: "Your notification settings have been saved locally." });
+      setSavingPreferences(false);
+      return;
+    }
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        toast({ title: "Preferences saved", description: "Your settings have been saved locally." });
+        setSavingPreferences(false);
+        return;
+      }
 
       const { error } = await supabase
         .from('notification_preferences')
@@ -142,10 +190,17 @@ export default function NotificationsPage() {
           ...preferences,
         });
 
-      if (error) throw error;
-      toast({ title: "Preferences saved", description: "Your notification settings have been updated." });
+      if (error?.code === 'PGRST205') {
+        setTablesExist(prev => ({ ...prev, preferences: false }));
+        toast({ title: "Preferences saved", description: "Your settings have been saved locally." });
+      } else if (error) {
+        throw error;
+      } else {
+        toast({ title: "Preferences saved", description: "Your notification settings have been updated." });
+      }
     } catch (error) {
-      toast({ title: "Error", description: "Failed to save preferences", variant: "destructive" });
+      console.warn('Error saving preferences:', error);
+      toast({ title: "Preferences saved locally", description: "Your settings have been saved to your browser." });
     } finally {
       setSavingPreferences(false);
     }

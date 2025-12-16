@@ -45,10 +45,17 @@ import {
   CheckCircle2,
   XCircle,
   Loader2,
+  Crown,
+  Lock,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { WorkflowBuilder } from "@/components/workflows/WorkflowBuilder";
 import { workflowService, Workflow } from "@/lib/services/workflowService";
+import { useSubscription } from "@/hooks/use-subscription";
+import { UpgradePrompt } from "@/components/subscription/UpgradePrompt";
+
+// Free tier limits
+const FREE_WORKFLOW_LIMIT = 3;
 
 const Automation = () => {
   const location = useLocation();
@@ -63,6 +70,7 @@ const Automation = () => {
   const [workflowToDelete, setWorkflowToDelete] = useState<string | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [workflowToEdit, setWorkflowToEdit] = useState<Workflow | null>(null);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const { toast} = useToast();
   const [initialDatasetId, setInitialDatasetId] = useState<string>();
   const [stats, setStats] = useState({
@@ -71,6 +79,12 @@ const Automation = () => {
     successRate: 0,
     timeSaved: 0,
   });
+
+  // Subscription check
+  const { subscription, isPro, canUseFeature, loading: subscriptionLoading } = useSubscription();
+  const hasWorkflowAccess = canUseFeature('workflowAutomation');
+  const workflowLimit = isPro ? -1 : FREE_WORKFLOW_LIMIT; // -1 means unlimited
+  const hasReachedLimit = !isPro && workflows.length >= FREE_WORKFLOW_LIMIT;
 
   useEffect(() => {
     // Check if coming from QuickActions
@@ -218,6 +232,12 @@ const Automation = () => {
   };
 
   const handleCreateWorkflow = async (workflow: any) => {
+    // Check workflow limit for free users
+    if (hasReachedLimit) {
+      setShowUpgradeModal(true);
+      return;
+    }
+
     try {
       await workflowService.createWorkflow(workflow);
 
@@ -236,6 +256,14 @@ const Automation = () => {
         description: "Failed to create workflow",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleCreateClick = () => {
+    if (hasReachedLimit) {
+      setShowUpgradeModal(true);
+    } else {
+      setIsCreateDialogOpen(true);
     }
   };
 
@@ -427,8 +455,14 @@ const Automation = () => {
                 onOpenChange={setIsCreateDialogOpen}
               >
                 <DialogTrigger asChild>
-                  <Button className="gap-2">
-                    <Plus className="w-4 h-4" />
+                  <Button className="gap-2" onClick={(e) => {
+                    if (hasReachedLimit) {
+                      e.preventDefault();
+                      setShowUpgradeModal(true);
+                    }
+                  }}>
+                    {hasReachedLimit && <Lock className="w-4 h-4" />}
+                    {!hasReachedLimit && <Plus className="w-4 h-4" />}
                     Create Workflow
                   </Button>
                 </DialogTrigger>
@@ -731,6 +765,47 @@ const Automation = () => {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+
+          {/* Upgrade Modal */}
+          <UpgradePrompt
+            feature="Unlimited Workflows"
+            description={`You've reached the free tier limit of ${FREE_WORKFLOW_LIMIT} workflows. Upgrade to Pro for unlimited workflow automation.`}
+            requiredPlan="pro"
+            variant="modal"
+            isOpen={showUpgradeModal}
+            onClose={() => setShowUpgradeModal(false)}
+          />
+
+          {/* Workflow limit banner for free users */}
+          {!isPro && workflows.length > 0 && (
+            <div className="fixed bottom-4 right-4 z-40">
+              <Card className="p-4 border-violet-500/30 bg-gradient-to-br from-violet-500/5 to-fuchsia-500/5 shadow-lg max-w-sm">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center flex-shrink-0">
+                    <Zap className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">
+                      {workflows.length}/{FREE_WORKFLOW_LIMIT} workflows used
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {hasReachedLimit ? 'Upgrade for unlimited' : `${FREE_WORKFLOW_LIMIT - workflows.length} remaining`}
+                    </p>
+                  </div>
+                  {hasReachedLimit && (
+                    <Button
+                      size="sm"
+                      onClick={() => setShowUpgradeModal(true)}
+                      className="bg-gradient-to-r from-violet-500 to-fuchsia-500"
+                    >
+                      <Crown className="w-3 h-3 mr-1" />
+                      Upgrade
+                    </Button>
+                  )}
+                </div>
+              </Card>
+            </div>
+          )}
         </main>
       </MainLayout>
     </AuthGuard>

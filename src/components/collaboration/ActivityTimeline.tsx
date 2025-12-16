@@ -1,272 +1,134 @@
-import React from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { useState, useEffect } from "react";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
     Activity,
-    Upload,
     MessageSquare,
-    FileText,
+    FlaskConical,
+    Upload,
     UserPlus,
-    GitBranch,
-    CheckCircle,
+    CheckCircle2,
     AlertCircle,
-    Zap,
-    GitCommit,
-    Calendar
-} from 'lucide-react';
+    Bot
+} from "lucide-react";
+import { useServices } from "@/core/ServiceProvider";
+import { ActivityItem } from "@/core/interfaces";
 
-interface TimelineEvent {
-    id: string;
-    type: 'upload' | 'comment' | 'share' | 'invite' | 'experiment' | 'success' | 'warning' | 'automation';
-    user: string;
-    userAvatar: string;
-    action: string;
-    target?: string;
-    timestamp: string;
-    metadata?: {
-        size?: string;
-        count?: number;
-        status?: string;
-    };
-}
+export const ActivityTimeline = () => {
+    const { collaboration } = useServices();
+    const [activities, setActivities] = useState<ActivityItem[]>([]);
+    const [loading, setLoading] = useState(true);
 
-interface ActivityTimelineProps {
-    events?: TimelineEvent[];
-    maxHeight?: string;
-}
+    useEffect(() => {
+        fetchActivities();
+    }, []);
 
-export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
-    events: customEvents,
-    maxHeight = '600px'
-}) => {
-    const defaultEvents: TimelineEvent[] = [
-        {
-            id: '1',
-            type: 'upload',
-            user: 'Dr. Sarah Chen',
-            userAvatar: '/placeholder.svg',
-            action: 'uploaded',
-            target: 'Protein Analysis Dataset v3.csv',
-            timestamp: '5 minutes ago',
-            metadata: { size: '2.4 MB' }
-        },
-        {
-            id: '2',
-            type: 'comment',
-            user: 'John Smith',
-            userAvatar: '/placeholder.svg',
-            action: 'commented on',
-            target: 'Chemical Screening Experiment',
-            timestamp: '15 minutes ago',
-            metadata: { count: 3 }
-        },
-        {
-            id: '3',
-            type: 'success',
-            user: 'Emma Wilson',
-            userAvatar: '/placeholder.svg',
-            action: 'completed',
-            target: 'ML Model Training #45',
-            timestamp: '1 hour ago',
-            metadata: { status: '94.2% accuracy' }
-        },
-        {
-            id: '4',
-            type: 'invite',
-            user: 'Dr. Mike Ross',
-            userAvatar: '/placeholder.svg',
-            action: 'invited',
-            target: 'Alex Turner to Climate Data Project',
-            timestamp: '2 hours ago'
-        },
-        {
-            id: '5',
-            type: 'automation',
-            user: 'System',
-            userAvatar: '/placeholder.svg',
-            action: 'triggered automation',
-            target: 'Weekly Data Quality Check',
-            timestamp: '3 hours ago',
-            metadata: { status: 'Passed' }
-        },
-        {
-            id: '6',
-            type: 'share',
-            user: 'Dr. Sarah Chen',
-            userAvatar: '/placeholder.svg',
-            action: 'shared',
-            target: 'Monthly Research Report',
-            timestamp: '5 hours ago'
-        },
-        {
-            id: '7',
-            type: 'experiment',
-            user: 'John Smith',
-            userAvatar: '/placeholder.svg',
-            action: 'started',
-            target: 'Compound Synthesis Trial #12',
-            timestamp: '8 hours ago'
-        },
-        {
-            id: '8',
-            type: 'warning',
-            user: 'System',
-            userAvatar: '/placeholder.svg',
-            action: 'detected anomaly in',
-            target: 'Temperature Sensor Stream',
-            timestamp: '1 day ago',
-            metadata: { status: 'Resolved' }
+    const fetchActivities = async () => {
+        setLoading(true);
+        try {
+            // Hardcoded labId for consistency with Collaboration.tsx
+            // Ideally should be dynamic based on current lab
+            const labId = '00000000-0000-0000-0000-000000000001';
+            const { data } = await collaboration.getActivities(labId);
+            if (data) setActivities(data);
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setLoading(false);
         }
-    ];
+    };
 
-    const events = customEvents || defaultEvents;
-
-    const getEventIcon = (type: string) => {
+    const getActivityIcon = (type: ActivityItem['type']) => {
         switch (type) {
-            case 'upload':
-                return Upload;
-            case 'comment':
-                return MessageSquare;
-            case 'share':
-                return FileText;
-            case 'invite':
-                return UserPlus;
-            case 'experiment':
-                return GitBranch;
-            case 'success':
-                return CheckCircle;
-            case 'warning':
-                return AlertCircle;
-            case 'automation':
-                return Zap;
-            default:
-                return GitCommit;
+            case 'upload': return <Upload className="h-4 w-4 text-blue-500" />;
+            case 'comment': return <MessageSquare className="h-4 w-4 text-green-500" />;
+            case 'experiment': return <FlaskConical className="h-4 w-4 text-purple-500" />;
+            case 'invite': return <UserPlus className="h-4 w-4 text-orange-500" />;
+            case 'success': return <CheckCircle2 className="h-4 w-4 text-emerald-500" />;
+            case 'warning': return <AlertCircle className="h-4 w-4 text-yellow-500" />;
+            case 'automation': return <Bot className="h-4 w-4 text-pink-500" />;
+            default: return <Activity className="h-4 w-4 text-gray-500" />;
         }
     };
 
-    const getEventColor = (type: string) => {
+    const getActionColor = (type: ActivityItem['type']) => {
         switch (type) {
-            case 'upload':
-                return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
-            case 'comment':
-                return 'bg-purple-500/10 text-purple-500 border-purple-500/20';
-            case 'share':
-                return 'bg-cyan-500/10 text-cyan-500 border-cyan-500/20';
-            case 'invite':
-                return 'bg-green-500/10 text-green-500 border-green-500/20';
-            case 'experiment':
-                return 'bg-orange-500/10 text-orange-500 border-orange-500/20';
-            case 'success':
-                return 'bg-green-500/10 text-green-500 border-green-500/20';
-            case 'warning':
-                return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20';
-            case 'automation':
-                return 'bg-violet-500/10 text-violet-500 border-violet-500/20';
-            default:
-                return 'bg-gray-500/10 text-gray-500 border-gray-500/20';
+            case 'upload': return 'text-blue-500';
+            case 'comment': return 'text-green-500';
+            case 'experiment': return 'text-purple-500';
+            case 'invite': return 'text-orange-500';
+            case 'automation': return 'text-pink-500';
+            default: return 'text-foreground';
         }
     };
+
+    if (loading && activities.length === 0) {
+        return <div className="p-8 text-center text-muted-foreground">Loading activity...</div>;
+    }
 
     return (
-        <Card>
-            <CardHeader className="border-b">
-                <div className="flex items-center gap-2">
-                    <Activity className="w-5 h-5 text-primary" />
-                    <CardTitle>Activity Timeline</CardTitle>
-                    <Badge variant="secondary">Live</Badge>
-                </div>
-            </CardHeader>
+        <div className="h-full flex flex-col">
+            <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <Activity className="w-5 h-5" />
+                    Activity Feed
+                </h3>
+                <Badge variant="outline">{activities.length} recent</Badge>
+            </div>
 
-            <CardContent className="p-6">
-                <ScrollArea style={{ height: maxHeight }}>
-                    <div className="relative">
-                        {/* Vertical Timeline Line */}
-                        <div className="absolute left-8 top-2 bottom-2 w-0.5 bg-border" />
+            <ScrollArea className="flex-1 pr-4">
+                <div className="relative border-l border-border ml-4 space-y-8">
+                    {activities.length === 0 ? (
+                        <div className="ml-6 text-muted-foreground text-sm">No recent activity</div>
+                    ) : (
+                        activities.map((item) => (
+                            <div key={item.id} className="relative ml-6">
+                                {/* Timeline Dot */}
+                                <div className="absolute -left-[31px] top-1 h-2.5 w-2.5 rounded-full border border-primary bg-background ring-4 ring-background" />
 
-                        <div className="space-y-6">
-                            {events.map((event, index) => {
-                                const EventIcon = getEventIcon(event.type);
-                                const isSystem = event.user === 'System';
-
-                                return (
-                                    <div
-                                        key={event.id}
-                                        className="relative pl-16 animate-in fade-in-50 slide-in-from-left-3"
-                                        style={{
-                                            animationDelay: `${index * 50}ms`,
-                                            animationFillMode: 'backwards'
-                                        }}
-                                    >
-                                        {/* Timeline Node */}
-                                        <div
-                                            className={`absolute left-0 w-16 h-16 rounded-xl border-2 flex items-center justify-center ${getEventColor(event.type)}`}
-                                        >
-                                            <EventIcon className="w-6 h-6" />
-                                        </div>
-
-                                        {/* Event Content */}
-                                        <div className="bg-muted/50 rounded-lg p-4 hover:bg-muted transition-colors">
-                                            <div className="flex items-start justify-between gap-3 mb-2">
-                                                <div className="flex items-center gap-2 flex-1 min-w-0">
-                                                    {!isSystem && (
-                                                        <Avatar className="w-6 h-6">
-                                                            <AvatarImage src={event.userAvatar} />
-                                                            <AvatarFallback className="text-xs">
-                                                                {event.user.split(' ').map(n => n[0]).join('')}
-                                                            </AvatarFallback>
-                                                        </Avatar>
-                                                    )}
-                                                    <div className="flex-1 min-w-0">
-                                                        <p className="text-sm">
-                                                            <span className={`font-semibold ${isSystem ? 'text-primary' : ''}`}>
-                                                                {event.user}
-                                                            </span>
-                                                            {' '}{event.action}{' '}
-                                                            {event.target && (
-                                                                <span className="font-medium text-foreground">
-                                                                    {event.target}
-                                                                </span>
-                                                            )}
-                                                        </p>
-                                                    </div>
-                                                </div>
-
-                                                <div className="flex items-center gap-2 text-xs text-muted-foreground flex-shrink-0">
-                                                    <Calendar className="w-3 h-3" />
-                                                    {event.timestamp}
-                                                </div>
+                                <div className="flex flex-col gap-2">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex items-center gap-2">
+                                                <Avatar className="h-6 w-6">
+                                                    <AvatarImage src={item.userAvatar} />
+                                                    <AvatarFallback className="text-[10px]">
+                                                        {item.user.substring(0, 2).toUpperCase()}
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                                <span className="text-sm font-medium">{item.user}</span>
                                             </div>
+                                            <span className="text-sm text-muted-foreground">
+                                                <span className={getActionColor(item.type)}>{item.action}</span>
+                                                {' '}
+                                                {item.target && <span className="font-medium text-foreground">{item.target}</span>}
+                                            </span>
+                                        </div>
+                                        <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                            {item.timestamp}
+                                        </span>
+                                    </div>
 
-                                            {/* Metadata */}
-                                            {event.metadata && (
-                                                <div className="flex flex-wrap items-center gap-2 mt-2">
-                                                    {event.metadata.size && (
-                                                        <Badge variant="outline" className="text-xs">
-                                                            {event.metadata.size}
-                                                        </Badge>
-                                                    )}
-                                                    {event.metadata.count !== undefined && (
-                                                        <Badge variant="outline" className="text-xs">
-                                                            {event.metadata.count} {event.metadata.count === 1 ? 'reply' : 'replies'}
-                                                        </Badge>
-                                                    )}
-                                                    {event.metadata.status && (
-                                                        <Badge variant="outline" className="text-xs">
-                                                            {event.metadata.status}
-                                                        </Badge>
-                                                    )}
-                                                </div>
-                                            )}
+                                    <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 text-sm">
+                                        <div className="mt-0.5 p-1.5 rounded-md bg-background shadow-sm">
+                                            {getActivityIcon(item.type)}
+                                        </div>
+                                        <div className="flex-1">
+                                            {/* Placeholder description based on type - could come from metadata later */}
+                                            <p className="text-muted-foreground text-xs">
+                                                {item.type === 'comment' ? 'Posted a new comment' :
+                                                    item.type === 'upload' ? 'Uploaded a new file' :
+                                                        'Activity logged'}
+                                            </p>
                                         </div>
                                     </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                </ScrollArea>
-            </CardContent>
-        </Card>
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
+            </ScrollArea>
+        </div>
     );
 };

@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
+const LOCAL_STORAGE_KEY = 'onboarding_completed';
+
 export const useOnboarding = () => {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [isFirstVisit, setIsFirstVisit] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [tableExists, setTableExists] = useState(true);
 
   useEffect(() => {
     checkOnboardingStatus();
@@ -15,6 +18,11 @@ export const useOnboarding = () => {
       const { data: { user } } = await supabase.auth.getUser();
 
       if (!user) {
+        // Check localStorage for non-authenticated users
+        const localOnboardingComplete = localStorage.getItem(LOCAL_STORAGE_KEY);
+        if (!localOnboardingComplete) {
+          setIsFirstVisit(true);
+        }
         setLoading(false);
         return;
       }
@@ -24,26 +32,41 @@ export const useOnboarding = () => {
         .from('user_preferences')
         .select('onboarding_completed, onboarding_completed_at')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
+
+      // Handle table not existing (PGRST205) or other schema errors (406)
+      if (error?.code === 'PGRST205' || error?.code === '406' || error?.message?.includes('schema cache')) {
+        setTableExists(false);
+        // Fall back to localStorage only
+        const localOnboardingComplete = localStorage.getItem(LOCAL_STORAGE_KEY);
+        if (!localOnboardingComplete) {
+          setIsFirstVisit(true);
+        }
+        setLoading(false);
+        return;
+      }
 
       if (error && error.code !== 'PGRST116') { // PGRST116 = no rows found
-        console.error('Error checking onboarding status:', error);
+        console.warn('Onboarding status check warning:', error.message);
       }
 
       // Check localStorage as fallback
-      const localOnboardingComplete = localStorage.getItem('onboarding_completed');
+      const localOnboardingComplete = localStorage.getItem(LOCAL_STORAGE_KEY);
 
       const hasCompletedOnboarding = preferences?.onboarding_completed || localOnboardingComplete === 'true';
 
       // Don't auto-show tour - let user start it manually
       if (!hasCompletedOnboarding) {
         setIsFirstVisit(true);
-        // Removed: setShowOnboarding(true);
       }
 
       setLoading(false);
     } catch (error) {
-      console.error('Error in checkOnboardingStatus:', error);
+      console.warn('Error in checkOnboardingStatus, using localStorage fallback');
+      const localOnboardingComplete = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (!localOnboardingComplete) {
+        setIsFirstVisit(true);
+      }
       setLoading(false);
     }
   };
@@ -57,12 +80,19 @@ export const useOnboarding = () => {
   };
 
   const completeOnboarding = async () => {
+    // Always save to localStorage first
+    localStorage.setItem(LOCAL_STORAGE_KEY, 'true');
+    setShowOnboarding(false);
+    setIsFirstVisit(false);
+
+    if (!tableExists) return;
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
 
       if (user) {
         // Save to database
-        await supabase
+        const { error } = await supabase
           .from('user_preferences')
           .upsert({
             user_id: user.id,
@@ -71,41 +101,41 @@ export const useOnboarding = () => {
           }, {
             onConflict: 'user_id'
           });
+
+        if (error?.code === 'PGRST205' || error?.code === '406') {
+          setTableExists(false);
+        }
       }
-
-      // Save to localStorage as backup
-      localStorage.setItem('onboarding_completed', 'true');
-
-      setShowOnboarding(false);
-      setIsFirstVisit(false);
     } catch (error) {
-      console.error('Error completing onboarding:', error);
-      // Still save locally even if database fails
-      localStorage.setItem('onboarding_completed', 'true');
-      setShowOnboarding(false);
+      console.warn('Error completing onboarding in DB, saved locally');
     }
   };
 
   const resetOnboarding = async () => {
+    localStorage.removeItem(LOCAL_STORAGE_KEY);
+    setIsFirstVisit(true);
+    setShowOnboarding(true);
+
+    if (!tableExists) return;
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
 
       if (user) {
-        await supabase
+        const { error } = await supabase
           .from('user_preferences')
           .update({
             onboarding_completed: false,
             onboarding_completed_at: null
           })
           .eq('user_id', user.id);
+
+        if (error?.code === 'PGRST205' || error?.code === '406') {
+          setTableExists(false);
+        }
       }
-
-      localStorage.removeItem('onboarding_completed');
-
-      setIsFirstVisit(true);
-      setShowOnboarding(true);
     } catch (error) {
-      console.error('Error resetting onboarding:', error);
+      console.warn('Error resetting onboarding in DB');
     }
   };
 

@@ -1,44 +1,58 @@
-import React from "react";
+import React, { Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
-
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
-import Dashboard from "./pages/Dashboard";
-import Upload from "./pages/Upload";
-import DatasetDetail from "./pages/DatasetDetail";
-import Insights from "./pages/Insights";
-import Analytics from "./pages/Analytics";
-import Experiments from "./pages/Experiments";
-import Automation from "./pages/Automation";
-import WorkflowExecution from "./pages/WorkflowExecution";
-import Collaboration from "./pages/Collaboration";
-import Reports from "./pages/Reports";
-import Assistant from "./pages/Assistant";
-import NotFound from "./pages/NotFound";
-import NotificationPreferences from "./pages/NotificationPreferences";
-import Profile from "./pages/Profile";
-import SettingsPage from "./pages/Settings";
-import DeviceStreams from "./pages/DeviceStreams";
-import DataAnonymization from "./pages/DataAnonymization";
-import Models from "./pages/Models";
-import Pricing from "./pages/Pricing";
-import Datasets from "./pages/Datasets";
-import { HackathonHub } from "./pages/HackathonHub";
-import { ChallengeBrowser } from "./pages/ChallengeBrowser";
-import { HackathonLeaderboard } from "./pages/HackathonLeaderboard";
-import { ChallengeIDE } from "./components/hackathon/ChallengeIDE";
-import { HackathonTest } from "./pages/HackathonTest";
-import AnalystIQHub from "./pages/AnalystIQHub";
-import AnalystIQChallenge from "./pages/AnalystIQChallenge";
-import AnalystIQLeaderboard from "./pages/AnalystIQLeaderboard";
+import { ErrorBoundary } from "react-error-boundary";
 
-const queryClient = new QueryClient();
-
+// Core Services & Layout
 import { SidebarProvider } from "@/components/layout/SidebarContext";
+import { ServiceProvider } from "@/core/ServiceProvider";
 import { TourGuide } from "@/components/onboarding/TourGuide";
 import { useOnboarding } from "@/hooks/use-onboarding";
+import { GlobalErrorFallback } from "@/components/ui/GlobalErrorFallback";
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+
+// Lazy Loaded Pages
+const Index = React.lazy(() => import("./pages/Index"));
+const Dashboard = React.lazy(() => import("./pages/Dashboard"));
+const Upload = React.lazy(() => import("./pages/Upload"));
+const DatasetDetail = React.lazy(() => import("./pages/DatasetDetail"));
+const Insights = React.lazy(() => import("./pages/Insights"));
+const Analytics = React.lazy(() => import("./pages/Analytics"));
+const Experiments = React.lazy(() => import("./pages/Experiments"));
+const Automation = React.lazy(() => import("./pages/Automation"));
+const WorkflowExecution = React.lazy(() => import("./pages/WorkflowExecution"));
+const Collaboration = React.lazy(() => import("./pages/Collaboration"));
+const Reports = React.lazy(() => import("./pages/Reports"));
+const Assistant = React.lazy(() => import("./pages/Assistant"));
+const Pricing = React.lazy(() => import("./pages/Pricing"));
+const SettingsPage = React.lazy(() => import("./pages/Settings"));
+const NotificationPreferences = React.lazy(() => import("./pages/NotificationPreferences"));
+const Profile = React.lazy(() => import("./pages/Profile"));
+const DeviceStreams = React.lazy(() => import("./pages/DeviceStreams"));
+const DataAnonymization = React.lazy(() => import("./pages/DataAnonymization"));
+const Models = React.lazy(() => import("./pages/Models"));
+const Datasets = React.lazy(() => import("./pages/Datasets"));
+const Dashboards = React.lazy(() => import("./pages/Dashboards"));
+const Login = React.lazy(() => import("./pages/Login"));
+const Signup = React.lazy(() => import("./pages/Signup"));
+const NotFound = React.lazy(() => import("./pages/NotFound"));
+
+// Hackathon Pages
+const AnalystIQHub = React.lazy(() => import("./pages/AnalystIQHub"));
+const AnalystIQChallenge = React.lazy(() => import("./pages/AnalystIQChallenge"));
+const AnalystIQLeaderboard = React.lazy(() => import("./pages/AnalystIQLeaderboard"));
+const HackathonTest = React.lazy(() => import("./pages/HackathonTest"));
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 const App = () => {
   const { showOnboarding, closeOnboarding, completeOnboarding, loading: onboardingLoading } = useOnboarding();
@@ -53,57 +67,65 @@ const App = () => {
     }
   }, []);
 
-  console.log("App rendering...");
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <SidebarProvider>
-          <Toaster />
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/datasets" element={<Datasets />} />
-              <Route path="/dashboard/datasets/:id" element={<DatasetDetail />} />
-              <Route path="/upload" element={<Upload />} />
-              <Route path="/insights" element={<Insights />} />
-              <Route path="/analytics" element={<Analytics />} />
-              <Route path="/experiments" element={<Experiments />} />
-              <Route path="/automation" element={<Automation />} />
-              <Route path="/automation/execution/:executionId" element={<WorkflowExecution />} />
-              <Route path="/collaboration" element={<Collaboration />} />
-              <Route path="/reports" element={<Reports />} />
-              <Route path="/assistant" element={<Assistant />} />
-              <Route path="/pricing" element={<Pricing />} />
-              <Route path="/settings" element={<SettingsPage />} />
-              <Route path="/settings/notifications" element={<NotificationPreferences />} />
-              <Route path="/notifications" element={<NotificationPreferences />} />
-              <Route path="/settings/profile" element={<Profile />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/device-streams" element={<DeviceStreams />} />
-              <Route path="/data-anonymization" element={<DataAnonymization />} />
-              <Route path="/models" element={<Models />} />
-              {/* Hackathon Routes - Analyst IQ System */}
-              <Route path="/hackathons" element={<AnalystIQHub />} />
-              <Route path="/hackathons/challenge" element={<AnalystIQChallenge />} />
-              <Route path="/hackathons/leaderboard" element={<AnalystIQLeaderboard />} />
-              <Route path="/hackathons/test" element={<HackathonTest />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+    <ServiceProvider>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <SidebarProvider>
+            <Toaster />
+            <BrowserRouter>
+              <ErrorBoundary FallbackComponent={GlobalErrorFallback} onReset={() => window.location.replace('/')}>
+                <Suspense fallback={<LoadingSpinner fullScreen text="Loading Lab-IQ..." />}>
+                  <Routes>
+                    <Route path="/" element={<Index />} />
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/signup" element={<Signup />} />
+                    <Route path="/dashboard" element={<Dashboard />} />
+                    <Route path="/datasets" element={<Datasets />} />
+                    <Route path="/dashboard/datasets/:id" element={<DatasetDetail />} />
+                    <Route path="/upload" element={<Upload />} />
+                    <Route path="/insights" element={<Insights />} />
+                    <Route path="/analytics" element={<Analytics />} />
+                    <Route path="/experiments" element={<Experiments />} />
+                    <Route path="/automation" element={<Automation />} />
+                    <Route path="/automation/execution/:executionId" element={<WorkflowExecution />} />
+                    <Route path="/collaboration" element={<Collaboration />} />
+                    <Route path="/reports" element={<Reports />} />
+                    <Route path="/assistant" element={<Assistant />} />
+                    <Route path="/pricing" element={<Pricing />} />
+                    <Route path="/settings" element={<SettingsPage />} />
+                    <Route path="/settings/notifications" element={<NotificationPreferences />} />
+                    <Route path="/notifications" element={<NotificationPreferences />} />
+                    <Route path="/settings/profile" element={<Profile />} />
+                    <Route path="/profile" element={<Profile />} />
+                    <Route path="/device-streams" element={<DeviceStreams />} />
+                    <Route path="/data-anonymization" element={<DataAnonymization />} />
+                    <Route path="/models" element={<Models />} />
+                    <Route path="/dashboards" element={<Dashboards />} />
 
-            {/* Global Tour Guide - Persists across all routes */}
-            {!onboardingLoading && (
-              <TourGuide
-                isOpen={showOnboarding}
-                onClose={closeOnboarding}
-                onComplete={completeOnboarding}
-              />
-            )}
-          </BrowserRouter>
-        </SidebarProvider>
-      </TooltipProvider>
-    </QueryClientProvider>
+                    {/* Hackathon Routes */}
+                    <Route path="/hackathons" element={<AnalystIQHub />} />
+                    <Route path="/hackathons/challenge" element={<AnalystIQChallenge />} />
+                    <Route path="/hackathons/leaderboard" element={<AnalystIQLeaderboard />} />
+                    <Route path="/hackathons/test" element={<HackathonTest />} />
+
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </Suspense>
+              </ErrorBoundary>
+
+              {!onboardingLoading && (
+                <TourGuide
+                  isOpen={showOnboarding}
+                  onClose={closeOnboarding}
+                  onComplete={completeOnboarding}
+                />
+              )}
+            </BrowserRouter>
+          </SidebarProvider>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </ServiceProvider>
   );
 };
 

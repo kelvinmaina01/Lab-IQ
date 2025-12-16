@@ -29,18 +29,11 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
+import { useServices } from '@/core/ServiceProvider';
+import { SharedFile } from '@/core/interfaces';
+import { Loader2 } from 'lucide-react';
 
-interface SharedFile {
-    id: string;
-    name: string;
-    type: string;
-    size: string;
-    uploadedBy: string;
-    uploadedByAvatar: string;
-    uploadedAt: string;
-    downloads: number;
-    category: 'dataset' | 'report' | 'code' | 'image' | 'other';
-}
+
 
 interface FileSharingProps {
     projectId?: string;
@@ -51,134 +44,99 @@ export const FileSharing: React.FC<FileSharingProps> = ({
     projectId,
     projectName
 }) => {
-    const [files, setFiles] = useState<SharedFile[]>([
-        {
-            id: '1',
-            name: 'protein_analysis_v3.csv',
-            type: 'text/csv',
-            size: '2.4 MB',
-            uploadedBy: 'Dr. Sarah Chen',
-            uploadedByAvatar: '/placeholder.svg',
-            uploadedAt: '2 hours ago',
-            downloads: 12,
-            category: 'dataset'
-        },
-        {
-            id: '2',
-            name: 'monthly_report_november.pdf',
-            type: 'application/pdf',
-            size: '856 KB',
-            uploadedBy: 'John Smith',
-            uploadedByAvatar: '/placeholder.svg',
-            uploadedAt: '1 day ago',
-            downloads: 8,
-            category: 'report'
-        },
-        {
-            id: '3',
-            name: 'data_pipeline.py',
-            type: 'text/x-python',
-            size: '45 KB',
-            uploadedBy: 'Emma Wilson',
-            uploadedByAvatar: '/placeholder.svg',
-            uploadedAt: '3 days ago',
-            downloads: 5,
-            category: 'code'
-        },
-        {
-            id: '4',
-            name: 'experiment_results.xlsx',
-            type: 'application/vnd.ms-excel',
-            size: '1.2 MB',
-            uploadedBy: 'Dr. Mike Ross',
-            uploadedByAvatar: '/placeholder.svg',
-            uploadedAt: '5 days ago',
-            downloads: 15,
-            category: 'dataset'
-        }
-    ]);
+    const { collaboration } = useServices(); // Use Service
+    const [files, setFiles] = useState<SharedFile[]>([]);
+    const [loading, setLoading] = useState(true);
 
     const [searchQuery, setSearchQuery] = useState('');
     const [filterCategory, setFilterCategory] = useState<string>('all');
     const [uploading, setUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
 
+    // Fetch Files
+    useEffect(() => {
+        if (!projectId) return;
+        fetchFiles();
+    }, [projectId]);
+
+    const fetchFiles = async () => {
+        setLoading(true);
+        try {
+            const { data } = await collaboration.getFiles(projectId!);
+            if (data) setFiles(data);
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to load files");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const getFileIcon = (category: string) => {
         switch (category) {
-            case 'dataset':
-                return FileSpreadsheet;
-            case 'report':
-                return FileText;
-            case 'code':
-                return FileCode;
-            case 'image':
-                return ImageIcon;
-            default:
-                return File;
+            case 'dataset': return FileSpreadsheet;
+            case 'report': return FileText;
+            case 'code': return FileCode;
+            case 'image': return ImageIcon;
+            default: return File;
         }
     };
 
     const getCategoryColor = (category: string) => {
         switch (category) {
-            case 'dataset':
-                return 'bg-blue-500/10 text-blue-500';
-            case 'report':
-                return 'bg-purple-500/10 text-purple-500';
-            case 'code':
-                return 'bg-green-500/10 text-green-500';
-            case 'image':
-                return 'bg-orange-500/10 text-orange-500';
-            default:
-                return 'bg-gray-500/10 text-gray-500';
+            case 'dataset': return 'bg-blue-500/10 text-blue-500';
+            case 'report': return 'bg-purple-500/10 text-purple-500';
+            case 'code': return 'bg-green-500/10 text-green-500';
+            case 'image': return 'bg-orange-500/10 text-orange-500';
+            default: return 'bg-gray-500/10 text-gray-500';
         }
     };
 
-    const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
-        if (!file) return;
+        if (!file || !projectId) return;
 
         setUploading(true);
-        setUploadProgress(0);
+        setUploadProgress(0); // Indeterminate for now
 
-        // Simulate upload progress
-        const interval = setInterval(() => {
-            setUploadProgress(prev => {
-                if (prev >= 100) {
-                    clearInterval(interval);
-                    setUploading(false);
+        try {
+            // Hardcoded labId for consistency with Collaboration.tsx 
+            // Ideally passed as prop or context
+            const labId = '00000000-0000-0000-0000-000000000001';
 
-                    // Add file to list
-                    const newFile: SharedFile = {
-                        id: Date.now().toString(),
-                        name: file.name,
-                        type: file.type,
-                        size: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
-                        uploadedBy: 'You',
-                        uploadedByAvatar: '/placeholder.svg',
-                        uploadedAt: 'Just now',
-                        downloads: 0,
-                        category: 'other'
-                    };
+            const { data, error } = await collaboration.uploadFile(file, projectId, labId);
 
-                    setFiles([newFile, ...files]);
-                    toast.success(`${file.name} uploaded successfully`);
-                    return 0;
-                }
-                return prev + 10;
-            });
-        }, 200);
+            if (error) throw error;
+
+            if (data) {
+                setFiles([data, ...files]);
+                toast.success(`${file.name} uploaded successfully`);
+            }
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to upload file");
+        } finally {
+            setUploading(false);
+            setUploadProgress(0);
+        }
     };
 
     const handleDownload = (file: SharedFile) => {
-        setFiles(files.map(f =>
-            f.id === file.id ? { ...f, downloads: f.downloads + 1 } : f
-        ));
-        toast.success(`Downloading ${file.name}`);
+        // Implement real download later using signed URLs
+        toast.info(`Downloading ${file.name}... (Simulated)`);
     };
 
-    const handleDelete = (fileId: string) => {
-        setFiles(files.filter(f => f.id !== fileId));
-        toast.success('File deleted successfully');
+    const handleDelete = async (fileId: string) => {
+        try {
+            const { error } = await collaboration.deleteFile(fileId);
+            if (error) throw error;
+
+            setFiles(files.filter(f => f.id !== fileId));
+            toast.success('File deleted successfully');
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to delete file");
+        }
     };
 
     const filteredFiles = files.filter(file => {
@@ -186,6 +144,10 @@ export const FileSharing: React.FC<FileSharingProps> = ({
         const matchesCategory = filterCategory === 'all' || file.category === filterCategory;
         return matchesSearch && matchesCategory;
     });
+
+    if (loading && files.length === 0) {
+        return <div className="p-8 text-center text-muted-foreground">Loading files...</div>;
+    }
 
     return (
         <Card>
@@ -205,9 +167,9 @@ export const FileSharing: React.FC<FileSharingProps> = ({
                     </div>
 
                     <label htmlFor="file-upload">
-                        <Button className="gap-2 cursor-pointer" asChild>
+                        <Button className="gap-2 cursor-pointer" asChild disabled={uploading}>
                             <span>
-                                <Upload className="w-4 h-4" />
+                                {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
                                 Upload File
                             </span>
                         </Button>
@@ -216,23 +178,13 @@ export const FileSharing: React.FC<FileSharingProps> = ({
                             type="file"
                             className="hidden"
                             onChange={handleFileUpload}
+                            disabled={uploading}
                         />
                     </label>
                 </div>
             </CardHeader>
 
             <CardContent className="p-6">
-                {/* Upload Progress */}
-                {uploading && (
-                    <div className="mb-6 p-4 bg-muted/50 rounded-lg animate-in fade-in-50">
-                        <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-medium">Uploading...</span>
-                            <span className="text-sm text-muted-foreground">{uploadProgress}%</span>
-                        </div>
-                        <Progress value={uploadProgress} className="h-2" />
-                    </div>
-                )}
-
                 {/* Search and Filter */}
                 <div className="flex gap-3 mb-6">
                     <div className="relative flex-1">
@@ -335,10 +287,6 @@ export const FileSharing: React.FC<FileSharingProps> = ({
                                                 <DropdownMenuItem onClick={() => handleDownload(file)}>
                                                     <Download className="w-4 h-4 mr-2" />
                                                     Download
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem>
-                                                    <Eye className="w-4 h-4 mr-2" />
-                                                    Preview
                                                 </DropdownMenuItem>
                                                 <DropdownMenuSeparator />
                                                 <DropdownMenuItem

@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Users, Mail, Search, MoreVertical, FileText, MessageSquare, Activity, Upload, MessageCircle, Loader2 } from "lucide-react";
@@ -20,90 +20,99 @@ import { ActivityTimeline } from "@/components/collaboration/ActivityTimeline";
 import { TeamLeaderboard } from "@/components/collaboration/TeamLeaderboard";
 import { useSubscription } from "@/hooks/useSubscription";
 import { UpgradeDialog } from "@/components/UpgradeDialog";
-import { usePresence } from "@/hooks/usePresence";
-import { teamService } from "@/services/teamService";
-import { supabase } from "@/integrations/supabase/client";
+import { useServices } from "@/core/ServiceProvider";
+import { teamService } from "@/services/teamService"; // Legacy service, to be removed eventually
 import { toast as sonnerToast } from "sonner";
+import { TeamMember } from "@/core/interfaces";
 
 const Collaboration = () => {
+  const { collaboration, auth } = useServices();
   const [searchQuery, setSearchQuery] = useState("");
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<"admin" | "researcher" | "analyst" | "viewer">("researcher");
+  const [isInviting, setIsInviting] = useState(false);
 
   // Real data state
-  const [teamMembers, setTeamMembers] = useState<any[]>([]);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [channels, setChannels] = useState<any[]>([]);
   const [sharedProjects, setSharedProjects] = useState<any[]>([]);
   const [labId, setLabId] = useState<string | null>(null);
   const [loadingData, setLoadingData] = useState(true);
 
   const { toast } = useToast();
-  const { subscription, loading } = useSubscription();
-
-  // Track user presence (online/offline)
-  usePresence();
+  const { subscription } = useSubscription();
 
   // Initialize collaboration data
   useEffect(() => {
     initializeCollaboration();
   }, []);
 
+  // Real-time Presence
+  useEffect(() => {
+    if (!labId) return;
+
+    // Use the Service Layer for Presence
+    const channel = collaboration.subscribeToPresence(labId, (users) => {
+      // Update online status in local state for UI
+      setTeamMembers(prev => prev.map(member => {
+        const isOnline = users.some((u: any) => u.user_id === member.user_id);
+        return isOnline ? { ...member, status: 'online' } : member;
+      }));
+    });
+
+    return () => {
+      channel.unsubscribe();
+    };
+  }, [labId, collaboration]);
+
   const initializeCollaboration = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await auth.getUser();
       if (!user) return;
 
       // Get or create user's team member record
-      let { data: teamMember } = await teamService.getCurrentUserTeamMember();
-
-      // If user doesn't have a team member record, create one
-      if (!teamMember) {
-        const defaultLabId = '00000000-0000-0000-0000-000000000001'; // Default lab for testing
-        await teamService.upsertTeamMember({
-          lab_id: defaultLabId,
-          role: 'researcher',
-          display_name: user.email?.split('@')[0] || 'User',
-          status: 'online'
-        });
-
-        teamMember = (await teamService.getCurrentUserTeamMember()).data;
-      }
+      let { data: teamMember } = await collaboration.upsertTeamMember({
+        display_name: user.email.split('@')[0],
+        status: 'online',
+        lab_id: '00000000-0000-0000-0000-000000000001', // Default lab for testing
+        role: 'researcher'
+      });
 
       if (teamMember) {
         setLabId(teamMember.lab_id);
 
         // Load team members
-        const { data: members } = await teamService.getTeamMembers(teamMember.lab_id);
+        const { data: members } = await collaboration.getTeamMembers(teamMember.lab_id);
         if (members) {
           setTeamMembers(members);
         }
 
-        // Load chat channels
-        const { data: channelsData } = await supabase
-          .from('chat_channels')
-          .select('*')
-          .eq('lab_id', teamMember.lab_id)
-          .order('created_at', { ascending: false });
+        // [NEW] Load Projects
+        const { data: projects } = await collaboration.getProjects(teamMember.lab_id);
+        if (projects) {
+          setSharedProjects(projects);
+        }
+
+        // Load chat channels via Service
+        // This replaces the direct supabase call which was causing TS errors and architectural violations
+        const { data: channelsData } = await collaboration.getChannels(teamMember.lab_id);
 
         if (channelsData && channelsData.length > 0) {
           setChannels(channelsData);
           setSelectedChannelId(channelsData[0].id);
         } else {
-          // Create a default General channel if none exists
-          const { data: newChannel } = await supabase
-            .from('chat_channels')
-            .insert({
-              name: 'General',
-              description: 'General discussion channel',
-              lab_id: teamMember.lab_id,
-              type: 'general',
-              created_by: user.id
-            })
-            .select()
-            .single();
+          // Create default channel via Service if none exist
+          const { data: newChannel } = await collaboration.createChannel({
+            name: 'general',
+            display_name: 'General',
+            description: 'General discussion channel',
+            type: 'general',
+            lab_id: teamMember.lab_id,
+            is_private: false
+          });
 
           if (newChannel) {
             setChannels([newChannel]);
@@ -119,18 +128,55 @@ const Collaboration = () => {
     }
   };
 
+  const handleCreateProject = async () => {
+    // Placeholder for project creation logic (could add a dialog for this)
+    if (!labId) return;
+    const { data, error } = await collaboration.createProject({
+      name: "New Research Project",
+      description: "Created via Quick Action",
+      lab_id: labId,
+      owner_id: (await auth.getUser())?.id
+    });
+    if (!error && data) {
+      setSharedProjects([data, ...sharedProjects]);
+      sonnerToast.success("Project created!");
+    } else {
+      sonnerToast.error("Failed to create project");
+    }
+  };
+
   const handleInviteMember = async () => {
-    if (!inviteEmail || !labId) return;
+    if (!inviteEmail) {
+      sonnerToast.error("Please enter an email address");
+      return;
+    }
+
+    if (!labId) {
+      sonnerToast.error("No active team found. Please refresh the page.");
+      return;
+    }
 
     try {
-      await teamService.inviteMember(inviteEmail, inviteRole, labId);
+      setIsInviting(true);
+      console.log("Starting invite...", { inviteEmail, inviteRole, labId });
+
+      const { error } = await collaboration.inviteMember(inviteEmail, inviteRole, labId);
+
+      if (error) {
+        console.error("Invite error:", error);
+        throw error;
+      }
+
       sonnerToast.success("Invitation sent successfully!");
       setIsInviteDialogOpen(false);
       setInviteEmail("");
       setInviteRole("researcher");
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error inviting member:', error);
-      sonnerToast.error("Failed to send invitation");
+      const message = error?.message || error?.context?.message || "Failed to send invitation";
+      sonnerToast.error(message);
+    } finally {
+      setIsInviting(false);
     }
   };
 
@@ -144,8 +190,7 @@ const Collaboration = () => {
   };
 
   const filteredMembers = teamMembers.filter(member =>
-    member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    member.email.toLowerCase().includes(searchQuery.toLowerCase())
+    member.display_name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -168,15 +213,20 @@ const Collaboration = () => {
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Invite Team Member</DialogTitle>
+                  <DialogDescription>
+                    Send an invitation to a new member to join your research lab.
+                  </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                   <div className="space-y-2">
                     <Label htmlFor="email">Email Address</Label>
-                    <Input id="email" type="email" placeholder="colleague@example.com" />
+                    <Input id="email" type="email" placeholder="colleague@example.com"
+                      value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="role">Role</Label>
-                    <Select>
+                    <Select value={inviteRole} onValueChange={(v: any) => setInviteRole(v)}>
                       <SelectTrigger id="role">
                         <SelectValue placeholder="Select role" />
                       </SelectTrigger>
@@ -188,9 +238,9 @@ const Collaboration = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  <Button onClick={handleInviteMember} className="w-full gap-2">
-                    <Mail className="w-4 h-4" />
-                    Send Invitation
+                  <Button onClick={handleInviteMember} disabled={isInviting} className="w-full gap-2">
+                    {isInviting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
+                    {isInviting ? "Sending..." : "Send Invitation"}
                   </Button>
                 </div>
               </DialogContent>
@@ -223,10 +273,7 @@ const Collaboration = () => {
                 <span className="hidden sm:inline">Chat</span>
                 {subscription?.tier === "free" && <Badge variant="secondary" className="ml-2 text-xs hidden lg:inline">Pro</Badge>}
               </TabsTrigger>
-              <TabsTrigger value="comments">
-                <MessageCircle className="w-4 h-4 mr-2" />
-                <span className="hidden sm:inline">Comments</span>
-              </TabsTrigger>
+              {/* Comments tab removed - now contextual in Experiments/Projects */}
               <TabsTrigger value="files">
                 <Upload className="w-4 h-4 mr-2" />
                 <span className="hidden sm:inline">Files</span>
@@ -237,7 +284,6 @@ const Collaboration = () => {
               </TabsTrigger>
             </TabsList>
 
-            {/* Team Members Tab */}
             {/* Team Members Tab */}
             <TabsContent value="team" data-tour="team-section">
               <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
@@ -252,18 +298,14 @@ const Collaboration = () => {
                         <div className="flex items-start gap-4 flex-1">
                           <div className="relative">
                             <Avatar className="w-12 h-12">
-                              <AvatarImage src={member.avatar} alt={member.name} />
-                              <AvatarFallback>{member.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                              {member.avatar_url ? <AvatarImage src={member.avatar_url} alt={member.display_name} /> : null}
+                              <AvatarFallback>{member.display_name.split(' ').map((n: string) => n[0]).join('')}</AvatarFallback>
                             </Avatar>
                             <div className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-background ${getStatusColor(member.status)}`} />
                           </div>
                           <div className="flex-1">
-                            <h3 className="font-semibold mb-1">{member.name}</h3>
-                            <p className="text-sm text-muted-foreground mb-2">{member.role}</p>
-                            <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
-                              <span>{member.projects} projects</span>
-                              <span>{member.lastActive}</span>
-                            </div>
+                            <h3 className="font-semibold mb-1">{member.display_name}</h3>
+                            <p className="text-sm text-muted-foreground mb-2 capitalize">{member.role}</p>
                             <div className="flex items-center gap-2">
                               <Button size="sm" variant="outline" className="gap-2">
                                 <MessageSquare className="w-3 h-3" />
@@ -370,14 +412,7 @@ const Collaboration = () => {
               )}
             </TabsContent>
 
-            {/* Comments Tab */}
-            <TabsContent value="comments">
-              <CommentsSystem
-                entityId="project-1"
-                entityType="experiment"
-                entityName="Protein Structure Analysis"
-              />
-            </TabsContent>
+            {/* Comments content removed - now contextual in Experiments/Projects */}
 
             {/* File Sharing Tab */}
             <TabsContent value="files">

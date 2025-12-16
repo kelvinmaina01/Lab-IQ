@@ -4,9 +4,15 @@ import { FlaskConical, Microscope, Dna, Cpu, GraduationCap } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
+const LOCAL_STORAGE_KEY = 'lab_profile_type';
+
 export const LabProfileSelector = () => {
-  const [selectedProfile, setSelectedProfile] = useState<string>("clinical");
+  const [selectedProfile, setSelectedProfile] = useState<string>(() => {
+    // Initialize from localStorage
+    return localStorage.getItem(LOCAL_STORAGE_KEY) || "clinical";
+  });
   const [loading, setLoading] = useState(true);
+  const [tableExists, setTableExists] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -16,7 +22,10 @@ export const LabProfileSelector = () => {
   const fetchProfile = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        setLoading(false);
+        return;
+      }
 
       const { data, error } = await supabase
         .from('lab_profiles')
@@ -24,10 +33,26 @@ export const LabProfileSelector = () => {
         .eq('user_id', user.id)
         .maybeSingle();
 
-      if (error) throw error;
-      if (data) setSelectedProfile(data.profile_type);
+      // Check if table doesn't exist (PGRST205 error)
+      if (error?.code === 'PGRST205') {
+        setTableExists(false);
+        // Use localStorage fallback
+        const localProfile = localStorage.getItem(LOCAL_STORAGE_KEY);
+        if (localProfile) setSelectedProfile(localProfile);
+        setLoading(false);
+        return;
+      }
+
+      if (error && error.code !== 'PGRST116') {
+        console.warn('Lab profile fetch warning:', error.message);
+      }
+
+      if (data) {
+        setSelectedProfile(data.profile_type);
+        localStorage.setItem(LOCAL_STORAGE_KEY, data.profile_type);
+      }
     } catch (error) {
-      console.error('Error fetching profile:', error);
+      console.warn('Error fetching profile, using localStorage fallback');
     } finally {
       setLoading(false);
     }
@@ -35,6 +60,18 @@ export const LabProfileSelector = () => {
 
   const handleProfileChange = async (value: string) => {
     setSelectedProfile(value);
+    // Always save to localStorage as backup
+    localStorage.setItem(LOCAL_STORAGE_KEY, value);
+
+    // If table doesn't exist, just use localStorage
+    if (!tableExists) {
+      toast({
+        title: "Profile updated",
+        description: "Your lab profile preference has been saved locally.",
+      });
+      return;
+    }
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -43,18 +80,26 @@ export const LabProfileSelector = () => {
         .from('lab_profiles')
         .upsert({ user_id: user.id, profile_type: value }, { onConflict: 'user_id' });
 
+      if (error?.code === 'PGRST205') {
+        setTableExists(false);
+        toast({
+          title: "Profile updated",
+          description: "Your lab profile preference has been saved locally.",
+        });
+        return;
+      }
+
       if (error) throw error;
-      
+
       toast({
         title: "Profile updated",
         description: "Your lab profile has been saved successfully.",
       });
-    } catch (error) {
-      console.error('Error updating profile:', error);
+    } catch (error: any) {
+      console.warn('Error updating profile:', error?.message);
       toast({
-        title: "Error",
-        description: "Failed to save lab profile.",
-        variant: "destructive",
+        title: "Profile saved locally",
+        description: "Your preference has been saved to your browser.",
       });
     }
   };
