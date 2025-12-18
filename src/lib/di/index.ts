@@ -30,18 +30,6 @@ export {
   type ICache,
   type IAIProvider,
   type IDatabaseClient,
-  type IForensicAI,
-  type IReverseAI,
-  type IRacerAI,
-  type IAnalystIQService,
-  type IDatasetChallengeService,
-  type ICodeExecutor,
-  type IForensicChallenge,
-  type IReverseChallenge,
-  type IRacerChallenge,
-  type ValidationResult,
-  type ChallengeSession,
-  type ExecutionResult,
   type AIGenerationOptions,
 } from './types';
 
@@ -70,4 +58,3 @@ export { Logger } from './services/Logger';
 export { EventBus, LabIQEvents, TypedChannel } from './services/EventBus';
 export { Cache, LRUCache } from './services/Cache';
 export { GeminiAIProvider, createGeminiProvider } from './services/GeminiAIProvider';
-export { ForensicAIService } from './services/ForensicAIService';

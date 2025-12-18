@@ -22,7 +22,7 @@ export interface TeamInvitation {
   invited_by: string;
   lab_id: string;
   status: 'pending' | 'accepted' | 'declined' | 'expired';
-  token: string;
+  invitation_token: string;
   expires_at: string;
   created_at: string;
   accepted_at?: string;

@@ -162,6 +162,7 @@ CREATE TABLE chat_channels (
 #### 3. **Missing API Endpoints**
 ```typescript
 // Need these:
+POST /api/team
 POST /api/team/invite
 GET /api/team/members
 PATCH /api/team/member/:id/status

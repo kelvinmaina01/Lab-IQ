@@ -9,7 +9,6 @@ import { Logger } from './services/Logger';
 import { EventBus } from './services/EventBus';
 import { Cache } from './services/Cache';
 import { GeminiAIProvider } from './services/GeminiAIProvider';
-import { ForensicAIService } from './services/ForensicAIService';
 import { supabase } from '@/integrations/supabase/client';
 
 /**
@@ -73,18 +72,8 @@ function registerAIProvider(): void {
 }
 
 function registerDomainServices(): void {
-  // Forensic AI Service
-  container.registerSingleton(SERVICE_IDENTIFIERS.ForensicAI, () => {
-    const aiProvider = container.resolve<IAIProvider>(SERVICE_IDENTIFIERS.AIProvider);
-    const database = container.resolve<IDatabaseClient>(SERVICE_IDENTIFIERS.DatabaseClient);
-    const logger = container.resolve<ILogger>(SERVICE_IDENTIFIERS.Logger);
-    return new ForensicAIService(aiProvider, database, logger);
-  });
-
-  // Note: Add more service registrations as they're refactored
-  // container.registerSingleton(SERVICE_IDENTIFIERS.ReverseAI, () => { ... });
-  // container.registerSingleton(SERVICE_IDENTIFIERS.RacerAI, () => { ... });
-  // container.registerSingleton(SERVICE_IDENTIFIERS.AnalystIQService, () => { ... });
+  // Domain-specific services can be registered here as needed
+  // Example: CollaborationService, WorkflowService, etc.
 }
 
 /**

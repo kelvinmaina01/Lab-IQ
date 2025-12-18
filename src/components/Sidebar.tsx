@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { FlaskConical, Home, Upload, Brain, BarChart3, FlaskConicalIcon, Boxes, Users, FileText, Cpu, Database, ChevronLeft, ChevronRight, Settings, Trophy, LayoutDashboard } from "lucide-react";
+import { FlaskConical, Home, Upload, Brain, BarChart3, FlaskConicalIcon, Boxes, Users, FileText, Cpu, Database, ChevronLeft, ChevronRight, Settings, LayoutDashboard } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "@/components/layout/SidebarContext";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,6 @@ const Sidebar = () => {
     { path: "/analytics", label: "Analytics", icon: BarChart3 },
     { path: "/experiments", label: "Experiments", icon: FlaskConicalIcon },
     { path: "/automation", label: "Automation", icon: Boxes },
-    { path: "/hackathons", label: "Analyst IQ", icon: Trophy },
     { path: "/collaboration", label: "Collaboration", icon: Users },
     { path: "/reports", label: "Reports", icon: FileText },
   ];

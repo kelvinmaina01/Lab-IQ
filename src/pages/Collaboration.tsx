@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { AuthGuard } from "@/components/auth/AuthGuard";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -197,15 +198,19 @@ const Collaboration = () => {
     <AuthGuard>
       <MainLayout>
         <main className="p-4 md:p-8">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h1 className="text-3xl font-bold text-foreground mb-2">Collaboration</h1>
-              <p className="text-muted-foreground">Work together with your team members</p>
-            </div>
-            <Dialog open={isInviteDialogOpen} onOpenChange={setIsInviteDialogOpen}>
+          {/* Header with Glassmorphism */}
+          <div className="relative overflow-hidden rounded-2xl mb-8 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20 backdrop-blur-sm">
+            <div className="absolute inset-0 bg-grid-white/10 [mask-image:radial-gradient(white,transparent_70%)]" />
+            <div className="relative flex items-center justify-between p-6 md:p-8">
+              <div>
+                <h1 className="text-4xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent mb-2">
+                  Collaboration
+                </h1>
+                <p className="text-muted-foreground text-lg">Work together with your team members in real-time</p>
+              </div>
+              <Dialog open={isInviteDialogOpen} onOpenChange={setIsInviteDialogOpen}>
               <DialogTrigger asChild>
-                <Button className="gap-2">
+                <Button className="gap-2 shadow-lg hover:shadow-xl transition-all hover:scale-105">
                   <Plus className="w-4 h-4" />
                   Invite Member
                 </Button>
@@ -245,40 +250,41 @@ const Collaboration = () => {
                 </div>
               </DialogContent>
             </Dialog>
+            </div>
           </div>
 
-          {/* Search */}
+          {/* Search with enhanced styling */}
           <div className="relative mb-6">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="Search team members..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
+              className="pl-10 h-12 bg-background/50 backdrop-blur-sm border-muted-foreground/20 focus:border-primary transition-all"
             />
           </div>
 
           <Tabs defaultValue="team" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6">
-              <TabsTrigger value="team">
+            <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6 bg-muted/30 backdrop-blur-sm p-1 h-auto">
+              <TabsTrigger value="team" className="data-[state=active]:bg-background data-[state=active]:shadow-md transition-all">
                 <Users className="w-4 h-4 mr-2" />
                 <span className="hidden sm:inline">Team</span>
               </TabsTrigger>
-              <TabsTrigger value="projects">
+              <TabsTrigger value="projects" className="data-[state=active]:bg-background data-[state=active]:shadow-md transition-all">
                 <FileText className="w-4 h-4 mr-2" />
                 <span className="hidden sm:inline">Projects</span>
               </TabsTrigger>
-              <TabsTrigger value="chat">
+              <TabsTrigger value="chat" className="data-[state=active]:bg-background data-[state=active]:shadow-md transition-all">
                 <MessageSquare className="w-4 h-4 mr-2" />
                 <span className="hidden sm:inline">Chat</span>
                 {subscription?.tier === "free" && <Badge variant="secondary" className="ml-2 text-xs hidden lg:inline">Pro</Badge>}
               </TabsTrigger>
               {/* Comments tab removed - now contextual in Experiments/Projects */}
-              <TabsTrigger value="files">
+              <TabsTrigger value="files" className="data-[state=active]:bg-background data-[state=active]:shadow-md transition-all">
                 <Upload className="w-4 h-4 mr-2" />
                 <span className="hidden sm:inline">Files</span>
               </TabsTrigger>
-              <TabsTrigger value="activity">
+              <TabsTrigger value="activity" className="data-[state=active]:bg-background data-[state=active]:shadow-md transition-all">
                 <Activity className="w-4 h-4 mr-2" />
                 <span className="hidden sm:inline">Activity</span>
               </TabsTrigger>
@@ -293,34 +299,83 @@ const Collaboration = () => {
                     <h3 className="text-lg font-semibold">Team Members ({filteredMembers.length})</h3>
                   </div>
                   {filteredMembers.map((member) => (
-                    <Card key={member.id} className="p-6">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-start gap-4 flex-1">
-                          <div className="relative">
-                            <Avatar className="w-12 h-12">
-                              {member.avatar_url ? <AvatarImage src={member.avatar_url} alt={member.display_name} /> : null}
-                              <AvatarFallback>{member.display_name.split(' ').map((n: string) => n[0]).join('')}</AvatarFallback>
-                            </Avatar>
-                            <div className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-background ${getStatusColor(member.status)}`} />
-                          </div>
-                          <div className="flex-1">
-                            <h3 className="font-semibold mb-1">{member.display_name}</h3>
-                            <p className="text-sm text-muted-foreground mb-2 capitalize">{member.role}</p>
-                            <div className="flex items-center gap-2">
-                              <Button size="sm" variant="outline" className="gap-2">
-                                <MessageSquare className="w-3 h-3" />
-                                Message
-                              </Button>
-                              <Button size="sm" variant="outline" className="gap-2">
-                                <FileText className="w-3 h-3" />
-                                View Work
-                              </Button>
+                    <Card key={member.id} className="group hover:shadow-lg transition-all duration-300 hover:-translate-y-1 overflow-hidden">
+                      <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <div className="relative p-6">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-start gap-4 flex-1">
+                            <div className="relative">
+                              <Avatar className="w-14 h-14 ring-2 ring-background group-hover:ring-primary/20 transition-all">
+                                {member.avatar_url ? <AvatarImage src={member.avatar_url} alt={member.display_name} /> : null}
+                                <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/5 font-semibold">
+                                  {member.display_name.split(' ').map((n: string) => n[0]).join('')}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-background ${getStatusColor(member.status)} shadow-sm`} />
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <h3 className="font-semibold text-lg">{member.display_name}</h3>
+                                <Badge variant="secondary" className="capitalize text-xs">
+                                  {member.role}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-muted-foreground mb-3 capitalize">{member.status}</p>
+                              <div className="flex items-center gap-2">
+                                <Button size="sm" variant="outline" className="gap-2 hover:bg-primary hover:text-primary-foreground transition-colors">
+                                  <MessageSquare className="w-3 h-3" />
+                                  Message
+                                </Button>
+                                <Button size="sm" variant="outline" className="gap-2 hover:bg-primary hover:text-primary-foreground transition-colors">
+                                  <FileText className="w-3 h-3" />
+                                  View Work
+                                </Button>
+                              </div>
                             </div>
                           </div>
+                          <Select
+                            value={member.status}
+                            onValueChange={async (value) => {
+                              const { error } = await collaboration.updateStatus(value as any);
+                              if (!error) {
+                                setTeamMembers(prev => prev.map(m =>
+                                  m.id === member.id ? { ...m, status: value as any } : m
+                                ));
+                                sonnerToast.success(`Status updated to ${value}`);
+                              }
+                            }}
+                          >
+                            <SelectTrigger className="w-32 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <SelectValue placeholder="Status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="online">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-2 h-2 rounded-full bg-green-500" />
+                                  Online
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="away">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-2 h-2 rounded-full bg-orange-500" />
+                                  Away
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="busy">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-2 h-2 rounded-full bg-red-500" />
+                                  Busy
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="offline">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-2 h-2 rounded-full bg-gray-500" />
+                                  Offline
+                                </div>
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
-                        <Button variant="ghost" size="icon">
-                          <MoreVertical className="w-4 h-4" />
-                        </Button>
                       </div>
                     </Card>
                   ))}
@@ -369,47 +424,49 @@ const Collaboration = () => {
 
             {/* Real-Time Chat Tab */}
             <TabsContent value="chat">
-              {false && subscription?.tier === "free" ? (
-                <Card className="p-8 text-center">
-                  <MessageSquare className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-                  <h3 className="text-xl font-semibold mb-2">Real-Time Chat</h3>
-                  <p className="text-muted-foreground mb-4">
-                    Collaborate in real-time with your team members using our integrated chat feature.
-                  </p>
-                  <Button onClick={() => setUpgradeOpen(true)}>
-                    Upgrade to Pro
-                  </Button>
-                </Card>
-              ) : (
-                <div className="flex gap-0 h-[calc(100vh-280px)] border rounded-lg overflow-hidden">
-                  {loadingData ? (
-                    <div className="flex items-center justify-center p-12 flex-1">
-                      <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                      <p className="ml-4 text-muted-foreground">Loading chat...</p>
-                    </div>
-                  ) : (
-                    <>
-                      {/* Channel Sidebar */}
-                      {labId && (
-                        <ChannelSidebar
-                          labId={labId}
-                          selectedChannelId={selectedChannelId}
-                          onChannelSelect={setSelectedChannelId}
-                          className="w-64 flex-shrink-0"
-                        />
-                      )}
-
-                      {/* Chat Panel */}
-                      <div className="flex-1 min-w-0">
-                        <ChatPanel
-                          channelId={selectedChannelId}
-                          projectName={channels.find(c => c.id === selectedChannelId)?.display_name || channels.find(c => c.id === selectedChannelId)?.name || "General"}
-                        />
+              <ErrorBoundary>
+                {false && subscription?.tier === "free" ? (
+                  <Card className="p-8 text-center">
+                    <MessageSquare className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+                    <h3 className="text-xl font-semibold mb-2">Real-Time Chat</h3>
+                    <p className="text-muted-foreground mb-4">
+                      Collaborate in real-time with your team members using our integrated chat feature.
+                    </p>
+                    <Button onClick={() => setUpgradeOpen(true)}>
+                      Upgrade to Pro
+                    </Button>
+                  </Card>
+                ) : (
+                  <div className="flex gap-0 h-[calc(100vh-280px)] border rounded-lg overflow-hidden">
+                    {loadingData ? (
+                      <div className="flex items-center justify-center p-12 flex-1">
+                        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                        <p className="ml-4 text-muted-foreground">Loading chat...</p>
                       </div>
-                    </>
-                  )}
-                </div>
-              )}
+                    ) : (
+                      <>
+                        {/* Channel Sidebar */}
+                        {labId && (
+                          <ChannelSidebar
+                            labId={labId}
+                            selectedChannelId={selectedChannelId}
+                            onChannelSelect={setSelectedChannelId}
+                            className="w-64 flex-shrink-0"
+                          />
+                        )}
+
+                        {/* Chat Panel */}
+                        <div className="flex-1 min-w-0">
+                          <ChatPanel
+                            channelId={selectedChannelId}
+                            projectName={channels.find(c => c.id === selectedChannelId)?.display_name || channels.find(c => c.id === selectedChannelId)?.name || "General"}
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </ErrorBoundary>
             </TabsContent>
 
             {/* Comments content removed - now contextual in Experiments/Projects */}

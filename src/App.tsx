@@ -39,12 +39,6 @@ const Login = React.lazy(() => import("./pages/Login"));
 const Signup = React.lazy(() => import("./pages/Signup"));
 const NotFound = React.lazy(() => import("./pages/NotFound"));
 
-// Hackathon Pages
-const AnalystIQHub = React.lazy(() => import("./pages/AnalystIQHub"));
-const AnalystIQChallenge = React.lazy(() => import("./pages/AnalystIQChallenge"));
-const AnalystIQLeaderboard = React.lazy(() => import("./pages/AnalystIQLeaderboard"));
-const HackathonTest = React.lazy(() => import("./pages/HackathonTest"));
-
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -102,12 +96,6 @@ const App = () => {
                     <Route path="/data-anonymization" element={<DataAnonymization />} />
                     <Route path="/models" element={<Models />} />
                     <Route path="/dashboards" element={<Dashboards />} />
-
-                    {/* Hackathon Routes */}
-                    <Route path="/hackathons" element={<AnalystIQHub />} />
-                    <Route path="/hackathons/challenge" element={<AnalystIQChallenge />} />
-                    <Route path="/hackathons/leaderboard" element={<AnalystIQLeaderboard />} />
-                    <Route path="/hackathons/test" element={<HackathonTest />} />
 
                     <Route path="*" element={<NotFound />} />
                   </Routes>

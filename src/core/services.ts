@@ -86,84 +86,49 @@ export class PythonMLService implements IMLService {
 }
 
 // === Collaboration Service Implementation ===
+// Import from the new optimized service
+import { collaborationService } from './services/CollaborationService';
+
 export class SupabaseCollaborationService implements ICollaborationService {
 
     async getTeamMembers(labId: string) {
-        const { data, error } = await supabase
-            .from('team_members')
-            .select('*')
-            .eq('lab_id', labId)
-            .order('display_name');
-
-        if (error) {
+        try {
+            const teamMembers = await collaborationService.getTeamMembers(labId);
+            return { data: teamMembers, error: null };
+        } catch (error) {
             return { data: null, error };
         }
-
-        // Map Supabase response to strict TeamMember interface
-        const teamMembers: TeamMember[] = (data || []).map((member: any) => ({
-            id: member.id,
-            user_id: member.user_id,
-            lab_id: member.lab_id,
-            role: member.role as 'admin' | 'researcher' | 'analyst' | 'viewer',
-            display_name: member.display_name || 'Unknown',
-            status: (member.status as 'online' | 'offline' | 'away' | 'busy') || 'offline',
-            last_active: member.last_active,
-            avatar_url: member.avatar_url
-        }));
-
-        return { data: teamMembers, error: null };
     }
 
-    async upsertTeamMember(member: Partial<TeamMember>) {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error('Not authenticated');
-
-        const { data, error } = await supabase
-            .from('team_members')
-            .upsert({
-                user_id: user.id,
-                ...member,
-                last_active: new Date().toISOString()
-            })
-            .select()
-            .single();
-
-        if (error || !data) {
+    async upsertTeamMember(member: Partial<TeamMember> & { lab_id: string }) {
+        try {
+            const teamMember = await collaborationService.upsertTeamMember(member);
+            return { data: teamMember, error: null };
+        } catch (error) {
             return { data: null, error };
         }
-
-        const teamMember: TeamMember = {
-            id: data.id,
-            user_id: data.user_id,
-            lab_id: data.lab_id,
-            role: data.role as 'admin' | 'researcher' | 'analyst' | 'viewer',
-            display_name: data.display_name || 'Unknown',
-            status: (data.status as 'online' | 'offline' | 'away' | 'busy') || 'offline',
-            last_active: data.last_active,
-            avatar_url: data.avatar_url
-        };
-
-        return { data: teamMember, error: null };
     }
 
     async inviteMember(email: string, role: string, labId: string) {
-        const { error } = await supabase.functions.invoke('send_invite_emails', {
-            body: { email, role, lab_id: labId }
-        });
+        try {
+            await collaborationService.inviteMember(email, role, labId);
 
-        if (!error) {
             // [ADVANCED] Integration: Log activity for invite
             const { data: { user } } = await supabase.auth.getUser();
-            await supabase.from('collaboration_activity').insert({
-                lab_id: labId,
-                type: 'invite',
-                user_id: user?.id,
-                entity_type: email, // Target is the email invited
-                metadata: { role }
-            });
-        }
+            if (user) {
+                await supabase.from('activity_feed').insert({
+                    lab_id: labId,
+                    actor_id: user.id,
+                    action: 'invited',
+                    entity_type: 'team_member',
+                    description: `Invited ${email} as ${role}`
+                });
+            }
 
-        return { error };
+            return { error: null };
+        } catch (error: any) {
+            return { error };
+        }
     }
 
     subscribeToPresence(labId: string, onSync: (users: any[]) => void): RealtimeChannel {
@@ -772,10 +737,20 @@ export class SupabaseCollaborationService implements ICollaborationService {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return { error: "No user" };
 
-        await supabase.from('chat_typing').upsert({
+        // Get team_member_id for current user
+        const { data: teamMember } = await supabase
+            .from('team_members')
+            .select('id')
+            .eq('user_id', user.id)
+            .single();
+
+        if (!teamMember) return { error: "Team member not found" };
+
+        await supabase.from('typing_indicators').upsert({
             channel_id: channelId,
-            user_id: user.id,
-            started_at: new Date().toISOString()
+            team_member_id: teamMember.id,
+            is_typing: true,
+            expires_at: new Date(Date.now() + 5000).toISOString()
         });
         return { error: null };
     }
@@ -784,24 +759,31 @@ export class SupabaseCollaborationService implements ICollaborationService {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return { error: "No user" };
 
-        await supabase.from('chat_typing').delete().eq('channel_id', channelId).eq('user_id', user.id);
+        // Get team_member_id for current user
+        const { data: teamMember } = await supabase
+            .from('team_members')
+            .select('id')
+            .eq('user_id', user.id)
+            .single();
+
+        if (!teamMember) return { error: "Team member not found" };
+
+        await supabase.from('typing_indicators').delete().eq('channel_id', channelId).eq('team_member_id', teamMember.id);
         return { error: null };
     }
 
     subscribeToTyping(channelId: string, onTypingStart: (user: string) => void, onTypingStop: (user: string) => void): RealtimeChannel {
         const channel = supabase
             .channel(`typing:${channelId}`)
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_typing', filter: `channel_id=eq.${channelId}` },
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'typing_indicators', filter: `channel_id=eq.${channelId}` },
                 async (payload) => {
-                    const { data: userData } = await supabase.from('team_members').select('display_name').eq('user_id', payload.new.user_id).single();
-                    if (userData) onTypingStart(userData.display_name);
+                    const { data: teamMember } = await supabase.from('team_members').select('display_name').eq('id', payload.new.team_member_id).single();
+                    if (teamMember) onTypingStart(teamMember.display_name);
                 }
             )
-            .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'chat_typing', filter: `channel_id=eq.${channelId}` },
+            .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'typing_indicators', filter: `channel_id=eq.${channelId}` },
                 async (payload) => {
-                    // Note: payload.old only has the ID if REPLICA IDENTITY FULL is not set, but standard deletes might not return user_id if not key, assume user_id is in payload for now or look up logic
-                    // Actually, for delete events, we often only get the PK. If chat_typing PK is (channel_id, user_id), we get both.
-                    if (payload.old.user_id) {
+                    if (payload.old.team_member_id) {
                         const { data: userData } = await supabase.from('team_members').select('display_name').eq('user_id', payload.old.user_id).single();
                         if (userData) onTypingStop(userData.display_name);
                     }
