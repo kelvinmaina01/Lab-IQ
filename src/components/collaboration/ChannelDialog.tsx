@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Hash, Lock, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useServices } from "@/core/ServiceProvider";
+import { sanitizeName } from "@/utils/sanitize";
 
 interface ChannelDialogProps {
   open: boolean;
@@ -26,13 +27,17 @@ export const ChannelDialog = ({ open, onOpenChange, labId, onChannelCreated }: C
   const [isCreating, setIsCreating] = useState(false);
 
   const handleCreate = async () => {
-    if (!name.trim()) {
+    // Sanitize inputs to prevent XSS
+    const sanitizedName = sanitizeName(name);
+    const sanitizedDescription = sanitizeName(description);
+
+    if (!sanitizedName) {
       toast.error("Channel name is required");
       return;
     }
 
     // Validate channel name format
-    const channelName = name.trim().toLowerCase().replace(/\s+/g, '-');
+    const channelName = sanitizedName.toLowerCase().replace(/\s+/g, '-');
     if (channelName.length < 2) {
       toast.error("Channel name must be at least 2 characters");
       return;
@@ -44,8 +49,8 @@ export const ChannelDialog = ({ open, onOpenChange, labId, onChannelCreated }: C
       // Create channel via service
       const newChannel = {
         name: channelName,
-        display_name: name.trim(),
-        description: description.trim() || undefined,
+        display_name: sanitizedName,
+        description: sanitizedDescription || undefined,
         type,
         is_private: isPrivate,
         lab_id: labId,

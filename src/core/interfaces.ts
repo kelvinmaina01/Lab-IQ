@@ -103,12 +103,80 @@ export interface ActivityItem {
     metadata?: any;
 }
 
+export interface Notification {
+    id: string;
+    user_id: string;
+    type: 'mention' | 'reply' | 'reaction' | 'system';
+    title: string;
+    content: string;
+    link?: string;
+    is_read: boolean;
+    created_at: string;
+}
+
+export interface DirectMessage {
+    id: string;
+    sender_id: string;
+    recipient_id: string;
+    content: string;
+    is_read: boolean;
+    created_at: string;
+    reactions?: Record<string, string[]>;
+    user?: {
+        display_name: string;
+        avatar_url?: string;
+    };
+}
+
+export interface SharedCanvas {
+    id: string;
+    title: string;
+    content: any;
+    lab_id: string;
+    created_by: string;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface SharedList {
+    id: string;
+    title: string;
+    description?: string;
+    lab_id: string;
+    created_by: string;
+    created_at: string;
+    items?: ListItem[];
+}
+
+export interface ListItem {
+    id: string;
+    list_id: string;
+    content: string;
+    is_completed: boolean;
+    assigned_to?: string;
+    due_date?: string;
+    created_at: string;
+}
+
+export interface SaaSResource {
+    id: string;
+    type: 'dataset' | 'report' | 'experiment' | 'protocol' | 'inventory';
+    name: string;
+    description?: string;
+    url?: string;
+    metadata?: any;
+    created_at: string;
+    owner_id: string;
+}
+
 export interface ICollaborationService {
     getTeamMembers(labId: string): Promise<{ data: TeamMember[] | null; error: any }>;
+    getTeamMember(userId: string, labId: string): Promise<TeamMember | null>;
     upsertTeamMember(member: Partial<TeamMember>): Promise<{ data: TeamMember | null; error: any }>;
     inviteMember(email: string, role: string, labId: string): Promise<{ error: any }>;
     getLeaderboard(timeRange: string): Promise<LeaderboardEntry[]>;
     subscribeToPresence(labId: string, onSync: (users: any[]) => void): RealtimeChannel;
+    updateStatus(status: 'online' | 'away' | 'busy' | 'offline', statusMessage?: string): Promise<{ error: any }>;
 
     // Projects
     getProjects(labId: string): Promise<{ data: SharedProject[] | null; error: any }>;
@@ -144,10 +212,39 @@ export interface ICollaborationService {
     subscribeToChat(channelId: string, onMessage: (msg: ChatMessage) => void, onUpdate: (msg: ChatMessage) => void, onDelete: (id: string) => void): RealtimeChannel;
     subscribeToChannels(labId: string, onInsert: (ch: ChatChannel) => void, onUpdate: (ch: ChatChannel) => void, onDelete: (id: string) => void): RealtimeChannel;
 
+    // Direct Messages
+    getDirectMessages(otherUserId: string): Promise<{ data: DirectMessage[] | null; error: any }>;
+    sendDirectMessage(recipientId: string, content: string): Promise<{ data: DirectMessage | null; error: any }>;
+    subscribeToDirectMessages(userId: string, onMessage: (msg: DirectMessage) => void): RealtimeChannel;
+
+    // Search
+    searchEverything(query: string, labId: string): Promise<{
+        messages: ChatMessage[];
+        channels: ChatChannel[];
+        files: SharedFile[];
+        projects: SharedProject[];
+    }>;
+
     // Typing Indicators
     startTyping(channelId: string): Promise<{ error: any }>;
     stopTyping(channelId: string): Promise<{ error: any }>;
     subscribeToTyping(channelId: string, onTypingStart: (user: string) => void, onTypingStop: (user: string) => void): RealtimeChannel;
+
+    // Canvases
+    getCanvases(labId: string): Promise<{ data: SharedCanvas[] | null; error: any }>;
+    createCanvas(title: string, labId: string): Promise<{ data: SharedCanvas | null; error: any }>;
+    updateCanvas(id: string, content: any): Promise<{ error: any }>;
+
+    // Lists
+    getLists(labId: string): Promise<{ data: SharedList[] | null; error: any }>;
+    createList(title: string, labId: string): Promise<{ data: SharedList | null; error: any }>;
+    addListItem(listId: string, content: string): Promise<{ data: ListItem | null; error: any }>;
+    toggleListItem(itemId: string, isCompleted: boolean): Promise<{ error: any }>;
+
+    // Scientific Resources & Deep Sync
+    getSharedResources(labId: string, type?: string): Promise<{ data: SaaSResource[] | null; error: any }>;
+    shareResource(resourceId: string, resourceType: string, channelId: string): Promise<{ error: any }>;
+    getLabResources(labId: string, type: 'dataset' | 'report' | 'experiment'): Promise<{ data: any[] | null; error: any }>;
 }
 
 export interface ChatChannel {
@@ -155,7 +252,7 @@ export interface ChatChannel {
     name: string;
     display_name: string;
     description?: string;
-    type: "general" | "project" | "announcement";
+    type: "general" | "project" | "announcement" | "private" | "direct";
     is_private: boolean;
     unread_count?: number;
     created_at: string;

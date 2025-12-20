@@ -1,492 +1,242 @@
 import { useState, useEffect } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { AuthGuard } from "@/components/auth/AuthGuard";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Users, Mail, Search, MoreVertical, FileText, MessageSquare, Activity, Upload, MessageCircle, Loader2 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { ChatPanel } from "@/components/collaboration/ChatPanel";
-import { ChannelSidebar } from "@/components/collaboration/ChannelSidebar";
-import { CommentsSystem } from "@/components/collaboration/CommentsSystem";
-import { FileSharing } from "@/components/collaboration/FileSharing";
-import { ActivityTimeline } from "@/components/collaboration/ActivityTimeline";
-import { TeamLeaderboard } from "@/components/collaboration/TeamLeaderboard";
-import { useSubscription } from "@/hooks/useSubscription";
-import { UpgradeDialog } from "@/components/UpgradeDialog";
+import { CollaborationSidebar } from "@/components/collaboration/CollaborationSidebar";
+import { UnifiedChatPanel } from "@/components/collaboration/UnifiedChatPanel";
+import { AppPanel } from "@/components/collaboration/AppPanel";
+import { WorkspaceActivityLogs } from "@/components/collaboration/WorkspaceActivityLogs";
+import { ThreadPanel } from "@/components/collaboration/ThreadPanel";
+import { WorkspaceSearch } from "@/components/collaboration/WorkspaceSearch";
 import { useServices } from "@/core/ServiceProvider";
-import { teamService } from "@/services/teamService"; // Legacy service, to be removed eventually
-import { toast as sonnerToast } from "sonner";
-import { TeamMember } from "@/core/interfaces";
+import { useLab } from "@/contexts/LabContext";
+import { ChatChannel, TeamMember, ChatMessage } from "@/core/interfaces";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import { Settings, Zap, Users, Info, Shield } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 const Collaboration = () => {
-  const { collaboration, auth } = useServices();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
-  const [upgradeOpen, setUpgradeOpen] = useState(false);
-  const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState<"admin" | "researcher" | "analyst" | "viewer">("researcher");
-  const [isInviting, setIsInviting] = useState(false);
+  const { collaboration } = useServices();
+  const { labId, loading: labLoading, error: labError } = useLab();
+  const [selectedItem, setSelectedItem] = useState<{ id: string | null; type: 'channel' | 'dm' | 'app' | 'activity' | 'canvas' | 'list' }>({
+    id: null,
+    type: 'channel'
+  });
 
-  // Real data state
+  // UI States
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [activeThread, setActiveThread] = useState<ChatMessage | null>(null);
+  const [showInfoSidebar, setShowInfoSidebar] = useState(true);
+
+  const [channels, setChannels] = useState<ChatChannel[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
-  const [channels, setChannels] = useState<any[]>([]);
-  const [sharedProjects, setSharedProjects] = useState<any[]>([]);
-  const [labId, setLabId] = useState<string | null>(null);
-  const [loadingData, setLoadingData] = useState(true);
+  const [canvases, setCanvases] = useState<any[]>([]);
+  const [lists, setLists] = useState<any[]>([]);
 
-  const { toast } = useToast();
-  const { subscription } = useSubscription();
-
-  // Initialize collaboration data
   useEffect(() => {
-    initializeCollaboration();
+    // Command+K listener
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setIsSearchOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Real-time Presence
   useEffect(() => {
-    if (!labId) return;
+    if (labId) loadInitialData();
+  }, [labId]);
 
-    // Use the Service Layer for Presence
-    const channel = collaboration.subscribeToPresence(labId, (users) => {
-      // Update online status in local state for UI
-      setTeamMembers(prev => prev.map(member => {
-        const isOnline = users.some((u: any) => u.user_id === member.user_id);
-        return isOnline ? { ...member, status: 'online' } : member;
-      }));
-    });
-
-    return () => {
-      channel.unsubscribe();
-    };
-  }, [labId, collaboration]);
-
-  const initializeCollaboration = async () => {
+  const loadInitialData = async () => {
     try {
-      const user = await auth.getUser();
-      if (!user) return;
+      const [chRes, tmRes, canvRes, listRes] = await Promise.all([
+        collaboration.getChannels(labId!),
+        collaboration.getTeamMembers(labId!),
+        collaboration.getCanvases(labId!),
+        collaboration.getLists(labId!)
+      ]);
 
-      // Get or create user's team member record
-      let { data: teamMember } = await collaboration.upsertTeamMember({
-        display_name: user.email.split('@')[0],
-        status: 'online',
-        lab_id: '00000000-0000-0000-0000-000000000001', // Default lab for testing
-        role: 'researcher'
-      });
+      setChannels(chRes.data || []);
+      setTeamMembers(tmRes.data || []);
+      setCanvases(canvRes.data || []);
+      setLists(listRes.data || []);
 
-      if (teamMember) {
-        setLabId(teamMember.lab_id);
-
-        // Load team members
-        const { data: members } = await collaboration.getTeamMembers(teamMember.lab_id);
-        if (members) {
-          setTeamMembers(members);
-        }
-
-        // [NEW] Load Projects
-        const { data: projects } = await collaboration.getProjects(teamMember.lab_id);
-        if (projects) {
-          setSharedProjects(projects);
-        }
-
-        // Load chat channels via Service
-        // This replaces the direct supabase call which was causing TS errors and architectural violations
-        const { data: channelsData } = await collaboration.getChannels(teamMember.lab_id);
-
-        if (channelsData && channelsData.length > 0) {
-          setChannels(channelsData);
-          setSelectedChannelId(channelsData[0].id);
-        } else {
-          // Create default channel via Service if none exist
-          const { data: newChannel } = await collaboration.createChannel({
-            name: 'general',
-            display_name: 'General',
-            description: 'General discussion channel',
-            type: 'general',
-            lab_id: teamMember.lab_id,
-            is_private: false
-          });
-
-          if (newChannel) {
-            setChannels([newChannel]);
-            setSelectedChannelId(newChannel.id);
-          }
-        }
+      if (chRes.data && chRes.data.length > 0 && !selectedItem.id) {
+        setSelectedItem({ id: chRes.data[0].id, type: 'channel' });
       }
     } catch (error) {
-      console.error('Error initializing collaboration:', error);
-      sonnerToast.error('Failed to load collaboration data');
-    } finally {
-      setLoadingData(false);
+      console.error("Load error:", error);
+      toast.error("Failed to load collaboration data");
     }
   };
 
-  const handleCreateProject = async () => {
-    // Placeholder for project creation logic (could add a dialog for this)
-    if (!labId) return;
-    const { data, error } = await collaboration.createProject({
-      name: "New Research Project",
-      description: "Created via Quick Action",
-      lab_id: labId,
-      owner_id: (await auth.getUser())?.id
-    });
-    if (!error && data) {
-      setSharedProjects([data, ...sharedProjects]);
-      sonnerToast.success("Project created!");
-    } else {
-      sonnerToast.error("Failed to create project");
-    }
+  const handleSelect = (id: string, type: any) => {
+    setSelectedItem({ id, type });
+    setActiveThread(null); // Clear thread on navigation
   };
 
-  const handleInviteMember = async () => {
-    if (!inviteEmail) {
-      sonnerToast.error("Please enter an email address");
-      return;
-    }
-
-    if (!labId) {
-      sonnerToast.error("No active team found. Please refresh the page.");
-      return;
-    }
-
-    try {
-      setIsInviting(true);
-      console.log("Starting invite...", { inviteEmail, inviteRole, labId });
-
-      const { error } = await collaboration.inviteMember(inviteEmail, inviteRole, labId);
-
-      if (error) {
-        console.error("Invite error:", error);
-        throw error;
-      }
-
-      sonnerToast.success("Invitation sent successfully!");
-      setIsInviteDialogOpen(false);
-      setInviteEmail("");
-      setInviteRole("researcher");
-    } catch (error: any) {
-      console.error('Error inviting member:', error);
-      const message = error?.message || error?.context?.message || "Failed to send invitation";
-      sonnerToast.error(message);
-    } finally {
-      setIsInviting(false);
-    }
+  const getTitle = () => {
+    if (selectedItem.type === 'channel') return channels.find(c => c.id === selectedItem.id)?.display_name || 'Channel';
+    if (selectedItem.type === 'dm') return teamMembers.find(m => m.user_id === selectedItem.id)?.display_name || 'Direct Message';
+    if (selectedItem.type === 'canvas') return canvases.find(c => c.id === selectedItem.id)?.title || 'Scientific Canvas';
+    if (selectedItem.type === 'list') return lists.find(l => l.id === selectedItem.id)?.title || 'Task List';
+    if (selectedItem.type === 'app') return selectedItem.id === 'bioexpert' ? 'BioExpert AI' : selectedItem.id === 'pharma' ? 'PharmaBot' : 'ClinicalScribe';
+    return 'Activity';
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "online": return "bg-green-500";
-      case "away": return "bg-orange-500";
-      case "offline": return "bg-gray-500";
-      default: return "bg-gray-500";
-    }
-  };
+  // Loading state
+  if (labLoading) {
+    return (
+      <AuthGuard>
+        <MainLayout>
+          <div className="flex items-center justify-center h-[calc(100vh-64px)]">
+            <div className="text-center space-y-4">
+              <div className="w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto" />
+              <p className="text-muted-foreground">Loading your lab workspace...</p>
+            </div>
+          </div>
+        </MainLayout>
+      </AuthGuard>
+    );
+  }
 
-  const filteredMembers = teamMembers.filter(member =>
-    member.display_name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Error state
+  if (labError || !labId) {
+    return (
+      <AuthGuard>
+        <MainLayout>
+          <div className="flex items-center justify-center h-[calc(100vh-64px)]">
+            <div className="text-center space-y-4 max-w-md">
+              <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mx-auto">
+                <Shield className="w-8 h-8 text-destructive" />
+              </div>
+              <h2 className="text-2xl font-bold">Lab Access Required</h2>
+              <p className="text-muted-foreground">
+                {labError || "You don't have access to any lab workspace. Please contact your administrator to get invited to a lab."}
+              </p>
+              <Button onClick={() => window.location.reload()} variant="outline">
+                Retry
+              </Button>
+            </div>
+          </div>
+        </MainLayout>
+      </AuthGuard>
+    );
+  }
 
   return (
     <AuthGuard>
       <MainLayout>
-        <main className="p-4 md:p-8">
-          {/* Header with Glassmorphism */}
-          <div className="relative overflow-hidden rounded-2xl mb-8 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20 backdrop-blur-sm">
-            <div className="absolute inset-0 bg-grid-white/10 [mask-image:radial-gradient(white,transparent_70%)]" />
-            <div className="relative flex items-center justify-between p-6 md:p-8">
-              <div>
-                <h1 className="text-4xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent mb-2">
-                  Collaboration
-                </h1>
-                <p className="text-muted-foreground text-lg">Work together with your team members in real-time</p>
-              </div>
-              <Dialog open={isInviteDialogOpen} onOpenChange={setIsInviteDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className="gap-2 shadow-lg hover:shadow-xl transition-all hover:scale-105">
-                  <Plus className="w-4 h-4" />
-                  Invite Member
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Invite Team Member</DialogTitle>
-                  <DialogDescription>
-                    Send an invitation to a new member to join your research lab.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email Address</Label>
-                    <Input id="email" type="email" placeholder="colleague@example.com"
-                      value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)}
-                    />
+        <div className="flex h-[calc(100vh-64px)] overflow-hidden bg-background">
+          {/* Sidebar */}
+          {labId && (
+            <CollaborationSidebar
+              labId={labId}
+              selectedId={selectedItem.id}
+              selectedType={selectedItem.type}
+              onSelect={handleSelect}
+              onSearchOpen={() => setIsSearchOpen(true)}
+              className="w-72 shrink-0 hidden md:flex border-r-0 bg-muted/5 shadow-[1px_0_0_0_rgba(0,0,0,0.05)]"
+            />
+          )}
+
+          {/* Content Section */}
+          <div className="flex-1 flex flex-col min-w-0 bg-background overflow-hidden">
+            <div className="flex-1 flex overflow-hidden">
+              <main className="flex-1 flex flex-col min-w-0 border-r">
+                {['channel', 'dm', 'canvas', 'list'].includes(selectedItem.type) ? (
+                  <UnifiedChatPanel
+                    key={`${selectedItem.type}-${selectedItem.id}`}
+                    id={selectedItem.id}
+                    labId={labId!}
+                    type={selectedItem.type as any}
+                    title={getTitle()}
+                    onThreadOpen={(msg) => setActiveThread(msg)}
+                  />
+                ) : selectedItem.type === 'app' ? (
+                  <AppPanel appId={selectedItem.id as any} key={selectedItem.id} />
+                ) : (
+                  <WorkspaceActivityLogs labId={labId!} />
+                )}
+              </main>
+
+              {/* Thread Panel */}
+              {activeThread && selectedItem.id && (
+                <ThreadPanel
+                  parentMessage={activeThread}
+                  channelId={selectedItem.id}
+                  onClose={() => setActiveThread(null)}
+                />
+              )}
+
+              {/* Info Sidebar */}
+              {showInfoSidebar && !activeThread && (
+                <aside className="w-80 hidden xl:flex flex-col animate-in fade-in slide-in-from-right-5 duration-500">
+                  <div className="p-4 border-b flex items-center justify-between bg-muted/10">
+                    <h4 className="font-bold text-sm flex items-center gap-2"><Info className="h-4 w-4 text-primary" /> Project Context</h4>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground"><Settings className="h-4 w-4" /></Button>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="role">Role</Label>
-                    <Select value={inviteRole} onValueChange={(v: any) => setInviteRole(v)}>
-                      <SelectTrigger id="role">
-                        <SelectValue placeholder="Select role" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="admin">Administrator</SelectItem>
-                        <SelectItem value="researcher">Researcher</SelectItem>
-                        <SelectItem value="analyst">Data Analyst</SelectItem>
-                        <SelectItem value="viewer">Viewer</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <Button onClick={handleInviteMember} disabled={isInviting} className="w-full gap-2">
-                    {isInviting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
-                    {isInviting ? "Sending..." : "Send Invitation"}
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
+                  <ScrollArea className="flex-1">
+                    <div className="p-5 space-y-8">
+                      {selectedItem.type === 'channel' && (
+                        <>
+                          <div className="space-y-3">
+                            <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest border-b pb-2">Topic</p>
+                            <p className="text-sm font-medium leading-relaxed">
+                              {channels.find(c => c.id === selectedItem.id)?.description || 'Exploring new pathways for mRNA delivery systems.'}
+                            </p>
+                          </div>
+                          <div className="space-y-4">
+                            <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest border-b pb-2">Security & Compliance</p>
+                            <div className="p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/20 space-y-2">
+                              <div className="flex items-center gap-2 text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
+                                <Shield className="h-3 w-3" /> HIPAA Compliant
+                              </div>
+                              <p className="text-[10px] text-emerald-600/70 leading-normal">This channel is audited for 21 CFR Part 11. All interactions are immutable.</p>
+                            </div>
+                          </div>
+                          <div className="space-y-3">
+                            <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest border-b pb-2 flex items-center justify-between">
+                              Active Members <Users className="h-3 w-3" />
+                            </p>
+                            <div className="flex -space-x-2 overflow-hidden">
+                              {Array.isArray(teamMembers) && teamMembers.slice(0, 5).map(m => (
+                                <Avatar key={m.id} className="inline-block h-8 w-8 ring-2 ring-background">
+                                  <AvatarImage src={m.avatar_url} />
+                                  <AvatarFallback>{m.display_name.substring(0, 2)}</AvatarFallback>
+                                </Avatar>
+                              ))}
+                              {Array.isArray(teamMembers) && teamMembers.length > 5 && (
+                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted ring-2 ring-background text-[10px] font-bold">
+                                  +{teamMembers.length - 5}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </ScrollArea>
+                </aside>
+              )}
             </div>
           </div>
+        </div>
 
-          {/* Search with enhanced styling */}
-          <div className="relative mb-6">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Search team members..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 h-12 bg-background/50 backdrop-blur-sm border-muted-foreground/20 focus:border-primary transition-all"
-            />
-          </div>
-
-          <Tabs defaultValue="team" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6 bg-muted/30 backdrop-blur-sm p-1 h-auto">
-              <TabsTrigger value="team" className="data-[state=active]:bg-background data-[state=active]:shadow-md transition-all">
-                <Users className="w-4 h-4 mr-2" />
-                <span className="hidden sm:inline">Team</span>
-              </TabsTrigger>
-              <TabsTrigger value="projects" className="data-[state=active]:bg-background data-[state=active]:shadow-md transition-all">
-                <FileText className="w-4 h-4 mr-2" />
-                <span className="hidden sm:inline">Projects</span>
-              </TabsTrigger>
-              <TabsTrigger value="chat" className="data-[state=active]:bg-background data-[state=active]:shadow-md transition-all">
-                <MessageSquare className="w-4 h-4 mr-2" />
-                <span className="hidden sm:inline">Chat</span>
-                {subscription?.tier === "free" && <Badge variant="secondary" className="ml-2 text-xs hidden lg:inline">Pro</Badge>}
-              </TabsTrigger>
-              {/* Comments tab removed - now contextual in Experiments/Projects */}
-              <TabsTrigger value="files" className="data-[state=active]:bg-background data-[state=active]:shadow-md transition-all">
-                <Upload className="w-4 h-4 mr-2" />
-                <span className="hidden sm:inline">Files</span>
-              </TabsTrigger>
-              <TabsTrigger value="activity" className="data-[state=active]:bg-background data-[state=active]:shadow-md transition-all">
-                <Activity className="w-4 h-4 mr-2" />
-                <span className="hidden sm:inline">Activity</span>
-              </TabsTrigger>
-            </TabsList>
-
-            {/* Team Members Tab */}
-            <TabsContent value="team" data-tour="team-section">
-              <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                {/* Member List (2 cols wide) */}
-                <div className="xl:col-span-2 space-y-4">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold">Team Members ({filteredMembers.length})</h3>
-                  </div>
-                  {filteredMembers.map((member) => (
-                    <Card key={member.id} className="group hover:shadow-lg transition-all duration-300 hover:-translate-y-1 overflow-hidden">
-                      <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                      <div className="relative p-6">
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-start gap-4 flex-1">
-                            <div className="relative">
-                              <Avatar className="w-14 h-14 ring-2 ring-background group-hover:ring-primary/20 transition-all">
-                                {member.avatar_url ? <AvatarImage src={member.avatar_url} alt={member.display_name} /> : null}
-                                <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/5 font-semibold">
-                                  {member.display_name.split(' ').map((n: string) => n[0]).join('')}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-background ${getStatusColor(member.status)} shadow-sm`} />
-                            </div>
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <h3 className="font-semibold text-lg">{member.display_name}</h3>
-                                <Badge variant="secondary" className="capitalize text-xs">
-                                  {member.role}
-                                </Badge>
-                              </div>
-                              <p className="text-sm text-muted-foreground mb-3 capitalize">{member.status}</p>
-                              <div className="flex items-center gap-2">
-                                <Button size="sm" variant="outline" className="gap-2 hover:bg-primary hover:text-primary-foreground transition-colors">
-                                  <MessageSquare className="w-3 h-3" />
-                                  Message
-                                </Button>
-                                <Button size="sm" variant="outline" className="gap-2 hover:bg-primary hover:text-primary-foreground transition-colors">
-                                  <FileText className="w-3 h-3" />
-                                  View Work
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
-                          <Select
-                            value={member.status}
-                            onValueChange={async (value) => {
-                              const { error } = await collaboration.updateStatus(value as any);
-                              if (!error) {
-                                setTeamMembers(prev => prev.map(m =>
-                                  m.id === member.id ? { ...m, status: value as any } : m
-                                ));
-                                sonnerToast.success(`Status updated to ${value}`);
-                              }
-                            }}
-                          >
-                            <SelectTrigger className="w-32 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <SelectValue placeholder="Status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="online">
-                                <div className="flex items-center gap-2">
-                                  <div className="w-2 h-2 rounded-full bg-green-500" />
-                                  Online
-                                </div>
-                              </SelectItem>
-                              <SelectItem value="away">
-                                <div className="flex items-center gap-2">
-                                  <div className="w-2 h-2 rounded-full bg-orange-500" />
-                                  Away
-                                </div>
-                              </SelectItem>
-                              <SelectItem value="busy">
-                                <div className="flex items-center gap-2">
-                                  <div className="w-2 h-2 rounded-full bg-red-500" />
-                                  Busy
-                                </div>
-                              </SelectItem>
-                              <SelectItem value="offline">
-                                <div className="flex items-center gap-2">
-                                  <div className="w-2 h-2 rounded-full bg-gray-500" />
-                                  Offline
-                                </div>
-                              </SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-
-                {/* Leaderboard (1 col wide) */}
-                <div className="xl:col-span-1">
-                  <TeamLeaderboard />
-                </div>
-              </div>
-            </TabsContent>
-
-            {/* Shared Projects Tab */}
-            <TabsContent value="projects">
-              <div className="space-y-4">
-                {sharedProjects.map((project) => (
-                  <Card key={project.id} className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4 flex-1">
-                        <div className="p-3 rounded-lg bg-primary/10">
-                          <FileText className="w-6 h-6 text-primary" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <h3 className="text-lg font-semibold">{project.name}</h3>
-                            <Badge variant={project.status === "active" ? "default" : "secondary"}>
-                              {project.status}
-                            </Badge>
-                          </div>
-                          <div className="flex items-center gap-6 text-sm text-muted-foreground">
-                            <span>Owner: {project.owner}</span>
-                            <div className="flex items-center gap-2">
-                              <Users className="w-4 h-4" />
-                              {project.members} members
-                            </div>
-                            <span>Updated {project.lastUpdate}</span>
-                          </div>
-                        </div>
-                      </div>
-                      <Button>View Project</Button>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            </TabsContent>
-
-            {/* Real-Time Chat Tab */}
-            <TabsContent value="chat">
-              <ErrorBoundary>
-                {false && subscription?.tier === "free" ? (
-                  <Card className="p-8 text-center">
-                    <MessageSquare className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-                    <h3 className="text-xl font-semibold mb-2">Real-Time Chat</h3>
-                    <p className="text-muted-foreground mb-4">
-                      Collaborate in real-time with your team members using our integrated chat feature.
-                    </p>
-                    <Button onClick={() => setUpgradeOpen(true)}>
-                      Upgrade to Pro
-                    </Button>
-                  </Card>
-                ) : (
-                  <div className="flex gap-0 h-[calc(100vh-280px)] border rounded-lg overflow-hidden">
-                    {loadingData ? (
-                      <div className="flex items-center justify-center p-12 flex-1">
-                        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                        <p className="ml-4 text-muted-foreground">Loading chat...</p>
-                      </div>
-                    ) : (
-                      <>
-                        {/* Channel Sidebar */}
-                        {labId && (
-                          <ChannelSidebar
-                            labId={labId}
-                            selectedChannelId={selectedChannelId}
-                            onChannelSelect={setSelectedChannelId}
-                            className="w-64 flex-shrink-0"
-                          />
-                        )}
-
-                        {/* Chat Panel */}
-                        <div className="flex-1 min-w-0">
-                          <ChatPanel
-                            channelId={selectedChannelId}
-                            projectName={channels.find(c => c.id === selectedChannelId)?.display_name || channels.find(c => c.id === selectedChannelId)?.name || "General"}
-                          />
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
-              </ErrorBoundary>
-            </TabsContent>
-
-            {/* Comments content removed - now contextual in Experiments/Projects */}
-
-            {/* File Sharing Tab */}
-            <TabsContent value="files">
-              <FileSharing
-                projectId="project-1"
-                projectName="Protein Structure Analysis"
-              />
-            </TabsContent>
-
-            {/* Activity Feed Tab */}
-            <TabsContent value="activity">
-              <ActivityTimeline />
-            </TabsContent>
-          </Tabs>
-
-          <UpgradeDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} />
-        </main>
+        {/* Global Overlays */}
+        {labId && (
+          <WorkspaceSearch
+            open={isSearchOpen}
+            onOpenChange={setIsSearchOpen}
+            labId={labId}
+            onSelect={handleSelect}
+          />
+        )}
       </MainLayout>
     </AuthGuard>
   );

@@ -13,7 +13,7 @@ import {
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { FlaskConical } from "lucide-react";
-import { NotificationBell } from "@/components/NotificationBell";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";

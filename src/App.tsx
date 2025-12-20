@@ -8,6 +8,7 @@ import { ErrorBoundary } from "react-error-boundary";
 // Core Services & Layout
 import { SidebarProvider } from "@/components/layout/SidebarContext";
 import { ServiceProvider } from "@/core/ServiceProvider";
+import { LabProvider } from "@/contexts/LabContext";
 import { TourGuide } from "@/components/onboarding/TourGuide";
 import { useOnboarding } from "@/hooks/use-onboarding";
 import { GlobalErrorFallback } from "@/components/ui/GlobalErrorFallback";
@@ -63,56 +64,58 @@ const App = () => {
 
   return (
     <ServiceProvider>
-      <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <SidebarProvider>
-            <Toaster />
-            <BrowserRouter>
-              <ErrorBoundary FallbackComponent={GlobalErrorFallback} onReset={() => window.location.replace('/')}>
-                <Suspense fallback={<LoadingSpinner fullScreen text="Loading Lab-IQ..." />}>
-                  <Routes>
-                    <Route path="/" element={<Index />} />
-                    <Route path="/login" element={<Login />} />
-                    <Route path="/signup" element={<Signup />} />
-                    <Route path="/dashboard" element={<Dashboard />} />
-                    <Route path="/datasets" element={<Datasets />} />
-                    <Route path="/dashboard/datasets/:id" element={<DatasetDetail />} />
-                    <Route path="/upload" element={<Upload />} />
-                    <Route path="/insights" element={<Insights />} />
-                    <Route path="/analytics" element={<Analytics />} />
-                    <Route path="/experiments" element={<Experiments />} />
-                    <Route path="/automation" element={<Automation />} />
-                    <Route path="/automation/execution/:executionId" element={<WorkflowExecution />} />
-                    <Route path="/collaboration" element={<Collaboration />} />
-                    <Route path="/reports" element={<Reports />} />
-                    <Route path="/assistant" element={<Assistant />} />
-                    <Route path="/pricing" element={<Pricing />} />
-                    <Route path="/settings" element={<SettingsPage />} />
-                    <Route path="/settings/notifications" element={<NotificationPreferences />} />
-                    <Route path="/notifications" element={<NotificationPreferences />} />
-                    <Route path="/settings/profile" element={<Profile />} />
-                    <Route path="/profile" element={<Profile />} />
-                    <Route path="/device-streams" element={<DeviceStreams />} />
-                    <Route path="/data-anonymization" element={<DataAnonymization />} />
-                    <Route path="/models" element={<Models />} />
-                    <Route path="/dashboards" element={<Dashboards />} />
+      <LabProvider>
+        <QueryClientProvider client={queryClient}>
+          <TooltipProvider>
+            <SidebarProvider>
+              <Toaster />
+              <BrowserRouter>
+                <ErrorBoundary FallbackComponent={GlobalErrorFallback} onReset={() => window.location.replace('/')}>
+                  <Suspense fallback={<LoadingSpinner fullScreen text="Loading Lab-IQ..." />}>
+                    <Routes>
+                      <Route path="/" element={<Index />} />
+                      <Route path="/login" element={<Login />} />
+                      <Route path="/signup" element={<Signup />} />
+                      <Route path="/dashboard" element={<Dashboard />} />
+                      <Route path="/datasets" element={<Datasets />} />
+                      <Route path="/dashboard/datasets/:id" element={<DatasetDetail />} />
+                      <Route path="/upload" element={<Upload />} />
+                      <Route path="/insights" element={<Insights />} />
+                      <Route path="/analytics" element={<Analytics />} />
+                      <Route path="/experiments" element={<Experiments />} />
+                      <Route path="/automation" element={<Automation />} />
+                      <Route path="/automation/execution/:executionId" element={<WorkflowExecution />} />
+                      <Route path="/collaboration" element={<Collaboration />} />
+                      <Route path="/reports" element={<Reports />} />
+                      <Route path="/assistant" element={<Assistant />} />
+                      <Route path="/pricing" element={<Pricing />} />
+                      <Route path="/settings" element={<SettingsPage />} />
+                      <Route path="/settings/notifications" element={<NotificationPreferences />} />
+                      <Route path="/notifications" element={<NotificationPreferences />} />
+                      <Route path="/settings/profile" element={<Profile />} />
+                      <Route path="/profile" element={<Profile />} />
+                      <Route path="/device-streams" element={<DeviceStreams />} />
+                      <Route path="/data-anonymization" element={<DataAnonymization />} />
+                      <Route path="/models" element={<Models />} />
+                      <Route path="/dashboards" element={<Dashboards />} />
 
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                </Suspense>
-              </ErrorBoundary>
+                      <Route path="*" element={<NotFound />} />
+                    </Routes>
+                  </Suspense>
+                </ErrorBoundary>
 
-              {!onboardingLoading && (
-                <TourGuide
-                  isOpen={showOnboarding}
-                  onClose={closeOnboarding}
-                  onComplete={completeOnboarding}
-                />
-              )}
-            </BrowserRouter>
-          </SidebarProvider>
-        </TooltipProvider>
-      </QueryClientProvider>
+                {!onboardingLoading && (
+                  <TourGuide
+                    isOpen={showOnboarding}
+                    onClose={closeOnboarding}
+                    onComplete={completeOnboarding}
+                  />
+                )}
+              </BrowserRouter>
+            </SidebarProvider>
+          </TooltipProvider>
+        </QueryClientProvider>
+      </LabProvider>
     </ServiceProvider>
   );
 };

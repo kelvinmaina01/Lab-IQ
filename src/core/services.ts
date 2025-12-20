@@ -109,6 +109,19 @@ export class SupabaseCollaborationService implements ICollaborationService {
         }
     }
 
+    async getTeamMember(userId: string, labId: string) {
+        return await collaborationService.getTeamMember(userId, labId);
+    }
+
+    async updateStatus(status: 'online' | 'away' | 'busy' | 'offline', statusMessage?: string) {
+        try {
+            await collaborationService.updateStatus(status, statusMessage);
+            return { error: null };
+        } catch (error) {
+            return { error };
+        }
+    }
+
     async inviteMember(email: string, role: string, labId: string) {
         try {
             await collaborationService.inviteMember(email, role, labId);
@@ -116,12 +129,12 @@ export class SupabaseCollaborationService implements ICollaborationService {
             // [ADVANCED] Integration: Log activity for invite
             const { data: { user } } = await supabase.auth.getUser();
             if (user) {
-                await supabase.from('activity_feed').insert({
+                await supabase.from('collaboration_activity').insert({
                     lab_id: labId,
-                    actor_id: user.id,
-                    action: 'invited',
-                    entity_type: 'team_member',
-                    description: `Invited ${email} as ${role}`
+                    user_id: user.id,
+                    action_type: 'invite',
+                    description: `Invited ${email} as ${role}`,
+                    metadata: { email, role }
                 });
             }
 
@@ -132,27 +145,7 @@ export class SupabaseCollaborationService implements ICollaborationService {
     }
 
     subscribeToPresence(labId: string, onSync: (users: any[]) => void): RealtimeChannel {
-        const channel = supabase.channel(`presence:${labId}`);
-
-        channel
-            .on('presence', { event: 'sync' }, () => {
-                const state = channel.presenceState();
-                const users = Object.values(state).flat();
-                onSync(users);
-            })
-            .subscribe(async (status) => {
-                if (status === 'SUBSCRIBED') {
-                    const { data: { user } } = await supabase.auth.getUser();
-                    if (user) {
-                        await channel.track({
-                            user_id: user.id,
-                            online_at: new Date().toISOString(),
-                        });
-                    }
-                }
-            });
-
-        return channel;
+        return collaborationService.subscribeToPresence(labId, onSync);
     }
 
     async getLeaderboard(timeRange: string): Promise<LeaderboardEntry[]> {
@@ -364,7 +357,7 @@ export class SupabaseCollaborationService implements ICollaborationService {
     async uploadFile(file: File, projectId: string, labId: string) {
         const path = `${labId}/${projectId}/${Date.now()}_${file.name}`;
         const { data: uploadData, error: uploadError } = await supabase.storage
-            .from('collaboration_files')
+            .from('collaboration-files')
             .upload(path, file);
 
         if (uploadError) return { data: null, error: uploadError };
@@ -402,7 +395,7 @@ export class SupabaseCollaborationService implements ICollaborationService {
         // First get the path to delete from storage
         const { data: fileData } = await supabase.from('shared_files').select('storage_path').eq('id', fileId).single();
         if (fileData) {
-            await supabase.storage.from('collaboration_files').remove([fileData.storage_path]);
+            await supabase.storage.from('collaboration-files').remove([fileData.storage_path]);
         }
         return await supabase.from('shared_files').delete().eq('id', fileId);
     }
@@ -697,100 +690,145 @@ export class SupabaseCollaborationService implements ICollaborationService {
     }
 
     subscribeToChat(channelId: string, onMessage: (msg: any) => void, onUpdate: (msg: any) => void, onDelete: (id: string) => void): RealtimeChannel {
-        const channel = supabase
-            .channel(`chat:${channelId}`)
-            .on(
-                'postgres_changes',
-                { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `channel_id=eq.${channelId}` },
-                async (payload) => {
-                    // Fetch user details for the new message
-                    const { data: userData } = await supabase.from('team_members').select('display_name, avatar_url').eq('user_id', payload.new.user_id).single();
-                    const newMessage = { ...payload.new, user: userData ? { display_name: userData.display_name, avatar_url: userData.avatar_url } : undefined };
-                    onMessage(newMessage);
-                }
-            )
-            .on(
-                'postgres_changes',
-                { event: 'UPDATE', schema: 'public', table: 'chat_messages', filter: `channel_id=eq.${channelId}` },
-                (payload) => onUpdate(payload.new)
-            )
-            .on(
-                'postgres_changes',
-                { event: 'DELETE', schema: 'public', table: 'chat_messages', filter: `channel_id=eq.${channelId}` },
-                (payload) => onDelete(payload.old.id)
-            )
-            .subscribe();
-        return channel;
+        return collaborationService.subscribeToChat(channelId, onMessage, onUpdate, onDelete);
     }
 
     subscribeToChannels(labId: string, onInsert: (ch: any) => void, onUpdate: (ch: any) => void, onDelete: (id: string) => void): RealtimeChannel {
-        const channel = supabase
-            .channel(`channels:${labId}`)
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_channels', filter: `lab_id=eq.${labId}` }, (payload) => onInsert(payload.new))
-            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_channels', filter: `lab_id=eq.${labId}` }, (payload) => onUpdate(payload.new))
-            .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'chat_channels', filter: `lab_id=eq.${labId}` }, (payload) => onDelete(payload.old.id))
-            .subscribe();
-        return channel;
+        return collaborationService.subscribeToChannels(labId, onInsert, onUpdate, onDelete);
+    }
+
+    // Direct Messages
+    async getDirectMessages(otherUserId: string) {
+        try {
+            const data = await collaborationService.getDirectMessages(otherUserId);
+            return { data, error: null };
+        } catch (error) {
+            return { data: null, error };
+        }
+    }
+
+    async sendDirectMessage(recipientId: string, content: string) {
+        try {
+            const data = await collaborationService.sendDirectMessage(recipientId, content);
+            return { data, error: null };
+        } catch (error) {
+            return { data: null, error };
+        }
+    }
+
+    subscribeToDirectMessages(userId: string, onMessage: (msg: any) => void): RealtimeChannel {
+        return collaborationService.subscribeToDirectMessages(userId, onMessage);
+    }
+
+    // Search
+    async searchEverything(query: string, labId: string) {
+        return await collaborationService.searchEverything(query, labId);
     }
 
     async startTyping(channelId: string) {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return { error: "No user" };
-
-        // Get team_member_id for current user
-        const { data: teamMember } = await supabase
-            .from('team_members')
-            .select('id')
-            .eq('user_id', user.id)
-            .single();
-
-        if (!teamMember) return { error: "Team member not found" };
-
-        await supabase.from('typing_indicators').upsert({
-            channel_id: channelId,
-            team_member_id: teamMember.id,
-            is_typing: true,
-            expires_at: new Date(Date.now() + 5000).toISOString()
-        });
-        return { error: null };
+        return await collaborationService.startTyping(channelId);
     }
 
     async stopTyping(channelId: string) {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return { error: "No user" };
-
-        // Get team_member_id for current user
-        const { data: teamMember } = await supabase
-            .from('team_members')
-            .select('id')
-            .eq('user_id', user.id)
-            .single();
-
-        if (!teamMember) return { error: "Team member not found" };
-
-        await supabase.from('typing_indicators').delete().eq('channel_id', channelId).eq('team_member_id', teamMember.id);
-        return { error: null };
+        return await collaborationService.stopTyping(channelId);
     }
 
     subscribeToTyping(channelId: string, onTypingStart: (user: string) => void, onTypingStop: (user: string) => void): RealtimeChannel {
-        const channel = supabase
-            .channel(`typing:${channelId}`)
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'typing_indicators', filter: `channel_id=eq.${channelId}` },
-                async (payload) => {
-                    const { data: teamMember } = await supabase.from('team_members').select('display_name').eq('id', payload.new.team_member_id).single();
-                    if (teamMember) onTypingStart(teamMember.display_name);
-                }
-            )
-            .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'typing_indicators', filter: `channel_id=eq.${channelId}` },
-                async (payload) => {
-                    if (payload.old.team_member_id) {
-                        const { data: userData } = await supabase.from('team_members').select('display_name').eq('user_id', payload.old.user_id).single();
-                        if (userData) onTypingStop(userData.display_name);
-                    }
-                }
-            )
-            .subscribe();
-        return channel;
+        return collaborationService.subscribeToTyping(channelId, onTypingStart, onTypingStop);
+    }
+
+    // Canvases
+    async getCanvases(labId: string) {
+        return await collaborationService.getCanvases(labId);
+    }
+
+    async createCanvas(title: string, labId: string) {
+        return await collaborationService.createCanvas(title, labId);
+    }
+
+    async updateCanvas(id: string, content: any) {
+        return await collaborationService.updateCanvas(id, content);
+    }
+
+    // Lists
+    async getLists(labId: string) {
+        return await collaborationService.getLists(labId);
+    }
+
+    async createList(title: string, labId: string) {
+        return await collaborationService.createList(title, labId);
+    }
+
+    async addListItem(listId: string, content: string) {
+        return await collaborationService.addListItem(listId, content);
+    }
+
+    async toggleListItem(itemId: string, isCompleted: boolean) {
+        return await collaborationService.toggleListItem(itemId, isCompleted);
+    }
+
+    // Scientific Resources & Deep Sync
+    async shareResource(resourceId: string, resourceType: string, channelId: string) {
+        return await collaborationService.shareResource(resourceId, resourceType, channelId);
+    }
+
+    async getSharedResources(labId: string, type?: string) {
+        return await collaborationService.getSharedResources(labId, type);
+    }
+
+    async getLabResources(labId: string, type: 'dataset' | 'report' | 'experiment') {
+        return await collaborationService.getLabResources(labId, type);
+    }
+
+    // NEW METHODS - Notifications
+    async getNotifications(userId: string) {
+        return await collaborationService.getNotifications(userId);
+    }
+
+    async markNotificationAsRead(notificationId: string) {
+        return await collaborationService.markNotificationAsRead(notificationId);
+    }
+
+    async markAllNotificationsAsRead() {
+        return await collaborationService.markAllNotificationsAsRead();
+    }
+
+    subscribeToNotifications(userId: string, onNotification: (notification: any) => void): RealtimeChannel {
+        return collaborationService.subscribeToNotifications(userId, onNotification);
+    }
+
+    // NEW METHODS - Unread Counts
+    async getUnreadCount(channelId: string, userId: string): Promise<number> {
+        return await collaborationService.getUnreadCount(channelId, userId);
+    }
+
+    async markChannelAsRead(channelId: string, userId: string) {
+        return await collaborationService.markChannelAsRead(channelId, userId);
+    }
+
+    async markDirectMessageAsRead(messageId: string) {
+        return await collaborationService.markDirectMessageAsRead(messageId);
+    }
+
+    async getUnreadDirectMessageCount(userId: string): Promise<number> {
+        return await collaborationService.getUnreadDirectMessageCount(userId);
+    }
+
+    // NEW METHODS - Channel Membership
+    async joinChannel(channelId: string, userId: string, labId: string) {
+        return await collaborationService.joinChannel(channelId, userId, labId);
+    }
+
+    async leaveChannel(channelId: string, userId: string) {
+        return await collaborationService.leaveChannel(channelId, userId);
+    }
+
+    async getChannelMembers(channelId: string) {
+        return await collaborationService.getChannelMembers(channelId);
+    }
+
+    async isUserChannelMember(channelId: string, userId: string): Promise<boolean> {
+        return await collaborationService.isUserChannelMember(channelId, userId);
     }
 }
 

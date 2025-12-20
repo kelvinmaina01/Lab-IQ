@@ -11,7 +11,10 @@
       "Bash(npx tsc:*)",
       "Bash(git commit -m \"$(cat <<''EOF''\nfeat: Production-ready dashboards and comprehensive domain detection\n\nMajor Features Added:\n- Pinned Dashboards system with real-time sync and AI auto-pinning\n- Multi-domain detection: Biotech, Clinical, Biopharma, Chemistry, Research\n- Research institution support with publication-ready analysis\n- Clinical reference ranges for 15+ parameters\n- Domain-specific AI system prompts and model recommendations\n\nDashboards Feature:\n- Created DashboardCard component with chart visualizations\n- Created Dashboards page with filtering and search\n- Dashboard service with CRUD and real-time subscriptions\n- AI auto-pins significant insights from chat\n- Database migration for pinned_dashboards table\n\nDomain Detection Enhancements:\n- Biotech: 50+ keywords, sequence pattern detection, DESeq2/GSEA\n- Clinical: 80+ keywords, reference ranges, ICD code detection\n- Biopharma: 60+ keywords, Lipinski''s Rule, SMILES detection\n- Chemistry: 30+ keywords, QC and method validation\n- Research: 100+ keywords, power analysis, effect sizes, reproducibility\n\nBug Fixes:\n- Fixed Experiments page missing imports\n- Fixed Collaboration ChatPanel imports\n- Fixed AI Assistant dataset query (now uses dataset_columns table)\n- Created workflow_runs table migration\n- Removed duplicate dictionary key in ml-service\n\nML Service Updates:\n- Enhanced domain detection in lab_iq/app.py\n- Added research quality checks\n- Clinical reference ranges in ML pipeline\n- Domain-specific suggested analyses\n\nFiles Changed:\n- src/pages/Dashboards.tsx (NEW)\n- src/components/dashboard/DashboardCard.tsx (NEW)\n- src/lib/services/dashboardService.ts (NEW)\n- src/lib/services/labIQKnowledgeBase.ts (ENHANCED)\n- src/lib/ai/LabIQAI.ts (ENHANCED)\n- lab_iq/app.py (ENHANCED)\n- supabase/migrations/20251215_pinned_dashboards.sql (NEW)\n- supabase/migrations/20251216_workflow_runs.sql (NEW)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n)\")",
       "WebSearch",
-      "Bash(npx eslint:*)"
+      "Bash(npx eslint:*)",
+      "Bash(grep:*)",
+      "Bash(npm install:*)",
+      "Bash(npx -y supabase@latest functions deploy:*)"
     ],
     "deny": [],
     "ask": []

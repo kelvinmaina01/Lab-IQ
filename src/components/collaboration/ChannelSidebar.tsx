@@ -134,6 +134,7 @@ export const ChannelSidebar = ({
 
   // Filter and group channels
   const filteredChannels = useMemo(() => {
+    if (!Array.isArray(channels)) return [];
     return channels.filter(ch =>
       ch.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       ch.display_name?.toLowerCase().includes(searchQuery.toLowerCase())

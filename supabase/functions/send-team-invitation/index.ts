@@ -243,10 +243,11 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'Lab IQ <invitations@labiq.app>',
+        from: 'Lab IQ <onboarding@resend.dev>',  // Using Resend's verified test domain
         to: [email],
         subject: `You've been invited to join Lab IQ`,
         html: emailHtml,
+        reply_to: 'noreply@labiq.app',  // Optional: set reply-to to your domain
       }),
     });
 
