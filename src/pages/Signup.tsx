@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,13 +31,20 @@ const Signup = () => {
   const [checkingAuth, setCheckingAuth] = useState(true);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirect = searchParams.get('redirect');
+  const token = searchParams.get('token');
 
   useEffect(() => {
     // Check if user is already logged in
     const checkAuth = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        navigate('/dashboard');
+        if (redirect) {
+          navigate(`${redirect}${token ? ` ?token=${token}` : ''}`);
+        } else {
+          navigate('/dashboard');
+        }
       }
       setCheckingAuth(false);
     };
@@ -77,7 +84,11 @@ const Signup = () => {
         title: 'Account created!',
         description: 'Welcome to Lab-IQ. Start exploring your laboratory intelligence platform.',
       });
-      navigate('/dashboard');
+      if (redirect) {
+        navigate(`${redirect}${token ? `?token=${token}` : ''}`);
+      } else {
+        navigate('/dashboard');
+      }
     } catch (error: any) {
       toast({
         title: 'Sign up failed',

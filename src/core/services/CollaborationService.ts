@@ -220,6 +220,17 @@ export class CollaborationService {
       .subscribe();
   }
 
+  async getRecentConversations(): Promise<{ data: string[] | null; error: any }> {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+      const data = await this.messaging.getRecentConversations(user.id);
+      return { data, error: null };
+    } catch (error) {
+      return { data: null, error };
+    }
+  }
+
   async addReaction(messageId: string, emoji: string): Promise<{ error: any }> {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -308,10 +319,32 @@ export class CollaborationService {
   }
 
   async searchEverything(query: string, labId: string): Promise<any> {
-    // Basic search implementation
-    const { data: channels } = await supabase.from('chat_channels' as any).select('*').eq('lab_id', labId).ilike('display_name', `%${query}%`);
-    const { data: messages } = await supabase.from('chat_messages' as any).select('*').ilike('content', `%${query}%`).limit(20);
-    return { channels: channels || [], messages: messages || [], files: [], projects: [] };
+    const q = `%${query}%`;
+
+    const [
+      { data: channels },
+      { data: messages },
+      { data: files },
+      { data: projects },
+      { data: canvases },
+      { data: lists }
+    ] = await Promise.all([
+      supabase.from('chat_channels').select('*').eq('lab_id', labId).ilike('display_name', q).limit(5),
+      supabase.from('chat_messages').select('*, user:team_members!chat_messages_user_id_fkey(*)').ilike('content', q).limit(10),
+      supabase.from('shared_resources').select('*').eq('lab_id', labId).ilike('name', q).limit(5),
+      supabase.from('shared_projects').select('*').eq('lab_id', labId).ilike('name', q).limit(5),
+      supabase.from('shared_canvases').select('*').eq('lab_id', labId).ilike('title', q).limit(5),
+      supabase.from('shared_lists').select('*').eq('lab_id', labId).ilike('title', q).limit(5)
+    ]);
+
+    return {
+      channels: channels || [],
+      messages: messages || [],
+      files: files || [],
+      projects: projects || [],
+      canvases: canvases || [],
+      lists: lists || []
+    };
   }
 
   // ============================================
@@ -532,10 +565,16 @@ export class CollaborationService {
 
   async inviteMember(email: string, role: string, labId: string): Promise<{ error: any }> {
     try {
+      console.log('[InviteMember] Starting invitation process:', { email, role, labId });
+
       const { data: user } = await supabase.auth.getUser();
+      console.log('[InviteMember] Current user:', user.user?.email);
+
       const invitationToken = crypto.randomUUID();
+      console.log('[InviteMember] Generated token:', invitationToken);
 
       // Insert invitation
+      console.log('[InviteMember] Inserting invitation to database...');
       const { error: inviteError } = await supabase.from('team_invitations').insert({
         email,
         lab_id: labId,
@@ -546,11 +585,13 @@ export class CollaborationService {
       });
 
       if (inviteError) {
-        console.error('Failed to create invitation:', inviteError);
+        console.error('[InviteMember] ❌ Failed to create invitation:', inviteError);
         return { error: inviteError };
       }
+      console.log('[InviteMember] ✅ Invitation created in database');
 
       // Log activity
+      console.log('[InviteMember] Logging activity...');
       await supabase.from('collaboration_activity').insert({
         lab_id: labId,
         user_id: user.user?.id,
@@ -560,6 +601,7 @@ export class CollaborationService {
       });
 
       // Send email invitation via Edge Function
+      console.log('[InviteMember] Preparing to send email via edge function...');
       try {
         // Get inviter's display name
         const { data: inviterProfile } = await supabase
@@ -570,7 +612,9 @@ export class CollaborationService {
           .single();
 
         const inviterName = inviterProfile?.display_name || user.user?.email?.split('@')[0] || 'Team Member';
+        console.log('[InviteMember] Inviter name:', inviterName);
 
+        console.log('[InviteMember] Invoking send-team-invitation edge function...');
         const { data: emailResult, error: emailError } = await supabase.functions.invoke('send-team-invitation', {
           body: {
             email,
@@ -582,18 +626,68 @@ export class CollaborationService {
         });
 
         if (emailError) {
-          console.error('Email sending error:', emailError);
+          console.error('[InviteMember] ❌ Email sending error:', emailError);
           throw emailError;
         }
 
-        console.log('Email sent successfully:', emailResult);
+        console.log('[InviteMember] ✅ Email sent successfully:', emailResult);
       } catch (emailError) {
-        console.error('Failed to send invitation email:', emailError);
+        console.error('[InviteMember] ⚠️ Failed to send invitation email (invitation still created):', emailError);
         // Don't fail the invitation if email fails - invitation is still created in DB
       }
 
+      console.log('[InviteMember] ✅ Invitation process completed successfully');
       return { error: null };
     } catch (error) {
+      console.error('[InviteMember] ❌ Unexpected error:', error);
+      return { error };
+    }
+  }
+
+  async acceptInvitation(token: string): Promise<{ error: any }> {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      // 1. Fetch the invitation
+      const { data: invite, error: fetchError } = await supabase
+        .from('team_invitations')
+        .select('*')
+        .or(`invitation_token.eq.${token},token.eq.${token}`)
+        .single();
+
+      if (fetchError || !invite) throw new Error("Invalid or expired invitation");
+      if (invite.accepted_at) throw new Error("Invitation already accepted");
+
+      // 2. Add user to team_members
+      const { error: joinError } = await supabase.from('team_members').upsert({
+        lab_id: invite.lab_id,
+        user_id: user.id,
+        role: invite.role,
+        display_name: user.email?.split('@')[0] || 'Researcher',
+        status: 'online',
+        last_active: new Date().toISOString()
+      });
+
+      if (joinError) throw joinError;
+
+      // 3. Mark invitation as accepted
+      await supabase.from('team_invitations').update({
+        accepted_at: new Date().toISOString()
+      }).eq('id', invite.id);
+
+      // 4. Log activity
+      await supabase.from('collaboration_activity').insert({
+        lab_id: invite.lab_id,
+        user_id: user.id,
+        action_type: 'success',
+        description: `joined the lab via invitation`,
+        metadata: { invitationId: invite.id }
+      });
+
+      return { error: null };
+    } catch (error) {
+      console.error("Accept invitation error:", error);
       return { error };
     }
   }

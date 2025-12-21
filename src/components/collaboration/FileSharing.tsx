@@ -22,7 +22,12 @@ import {
     User,
     X,
     FileVideo,
-    FileArchive
+    FileArchive,
+    Database,
+    TestTube,
+    Zap,
+    ExternalLink,
+    Shield
 } from 'lucide-react';
 import {
     DropdownMenu,
@@ -34,12 +39,12 @@ import {
     DropdownMenuCheckboxItem
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from 'sonner';
 import { useServices } from '@/core/ServiceProvider';
-import { SharedFile } from '@/core/interfaces';
-import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface FileSharingProps {
     projectId?: string;
@@ -48,84 +53,124 @@ interface FileSharingProps {
 
 // File preview modal component
 const FilePreviewModal = ({ file, open, onOpenChange }: { file: SharedFile | null; open: boolean; onOpenChange: (open: boolean) => void }) => {
-  if (!file) return null;
+    if (!file) return null;
 
-  const isImage = file.mime_type?.startsWith('image/');
-  const isVideo = file.mime_type?.startsWith('video/');
-  const isText = file.mime_type?.includes('text') || file.mime_type?.includes('json');
+    const isImage = file.mime_type?.startsWith('image/');
+    const isVideo = file.mime_type?.startsWith('video/');
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <FileIcon category={file.category} />
-            {file.name}
-          </DialogTitle>
-          <DialogDescription>
-            Uploaded by {file.uploader?.display_name || 'Unknown'} • {formatDistanceToNow(new Date(file.created_at), { addSuffix: true })}
-          </DialogDescription>
-        </DialogHeader>
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-5xl max-h-[90vh] bg-background/95 backdrop-blur-2xl border-border/40">
+                <DialogHeader className="p-4 border-b border-border/20">
+                    <div className="flex items-center gap-4">
+                        <div className={cn("p-2.5 rounded-xl", getCategoryColor(file.category))}>
+                            <FileIcon category={file.category} className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <DialogTitle className="text-xl font-black tracking-tight flex items-center gap-2">
+                                {file.name}
+                            </DialogTitle> {/* Removed stray </Badge> tag */}
+                            <DialogDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                                Scientific Asset • {file.mime_type} • {formatFileSize(file.size_bytes)}
+                            </DialogDescription>
+                        </div>
+                    </div>
+                </DialogHeader>
 
-        <div className="relative flex-1 overflow-auto bg-muted/30 rounded-lg p-4">
-          {isImage && (
-            <img src={file.storage_path} alt={file.name} className="max-w-full h-auto mx-auto rounded-lg shadow-lg" />
-          )}
-          {isVideo && (
-            <video controls className="max-w-full h-auto mx-auto rounded-lg shadow-lg">
-              <source src={file.storage_path} type={file.mime_type} />
-              Your browser does not support video playback.
-            </video>
-          )}
-          {!isImage && !isVideo && (
-            <div className="text-center py-12">
-              <FileIcon category={file.category} className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-              <p className="text-muted-foreground mb-4">Preview not available for this file type</p>
-              <Button variant="outline">
-                <Download className="w-4 h-4 mr-2" />
-                Download to view
-              </Button>
-            </div>
-          )}
-        </div>
+                <div className="relative flex-1 overflow-auto bg-muted/20 rounded-2xl p-8 min-h-[400px] flex items-center justify-center border border-border/20">
+                    {isImage && (
+                        <motion.img
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            src={file.storage_path}
+                            alt={file.name}
+                            className="max-w-full h-auto rounded-xl shadow-2xl border border-border/20"
+                        />
+                    )}
+                    {isVideo && (
+                        <video controls className="max-w-full h-auto rounded-xl shadow-2xl border border-border/20">
+                            <source src={file.storage_path} type={file.mime_type} />
+                            Your browser does not support video playback.
+                        </video>
+                    )}
+                    {!isImage && !isVideo && (
+                        <div className="text-center space-y-6">
+                            <div className="relative inline-block">
+                                <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full" />
+                                <FileIcon category={file.category} className="w-24 h-24 mx-auto relative text-primary/60" />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-black tracking-tight mb-2">No Visual Preview Available</h3>
+                                <p className="text-muted-foreground text-sm max-w-xs mx-auto mb-6">This scientific archive needs careful handling. Please download to analyze its contents.</p>
+                                <Button className="rounded-xl px-8 h-11 font-black uppercase tracking-widest gap-2 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 transition-all">
+                                    <Download className="w-4 h-4" /> Initialize Download
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+                </div>
 
-        <div className="flex items-center justify-between pt-4 border-t">
-          <div className="text-sm text-muted-foreground">
-            {formatFileSize(file.size_bytes)} • {file.downloads} downloads
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline">
-              <Download className="w-4 h-4 mr-2" />
-              Download
-            </Button>
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Close
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-6 border-t border-border/20">
+                    <div className="space-y-1">
+                        <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Authored By</p>
+                        <div className="flex items-center gap-2">
+                            <Avatar className="h-7 w-7 border">
+                                <AvatarImage src={file.uploader?.avatar_url} />
+                                <AvatarFallback>{file.uploader?.display_name?.substring(0, 2)}</AvatarFallback>
+                            </Avatar>
+                            <span className="text-sm font-black">{file.uploader?.display_name || 'System'}</span>
+                        </div>
+                    </div>
+                    <div className="space-y-1 text-center">
+                        <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Ingestion Date</p>
+                        <p className="text-sm font-black italic">{format(new Date(file.created_at), 'MMM dd, yyyy • HH:mm')}</p>
+                    </div>
+                    <div className="flex items-center justify-end gap-3">
+                        <Button variant="outline" className="rounded-xl border-border/40 hover:bg-primary/5 font-bold px-5">
+                            <Download className="w-4 h-4 mr-2" /> Download
+                        </Button>
+                        <Button className="rounded-xl shadow-lg font-black uppercase tracking-[0.1em]" onClick={() => onOpenChange(false)}>
+                            Resolve Context
+                        </Button>
+                    </div>
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
 };
 
 const FileIcon = ({ category, className }: { category: string; className?: string }) => {
-  const iconClass = className || "w-6 h-6";
-  switch (category) {
-    case 'dataset': return <FileSpreadsheet className={iconClass} />;
-    case 'report': return <FileText className={iconClass} />;
-    case 'code': return <FileCode className={iconClass} />;
-    case 'image': return <ImageIcon className={iconClass} />;
-    case 'video': return <FileVideo className={iconClass} />;
-    case 'archive': return <FileArchive className={iconClass} />;
-    default: return <File className={iconClass} />;
-  }
+    const iconClass = className || "w-6 h-6";
+    switch (category) {
+        case 'dataset': return <Database className={iconClass} />;
+        case 'report': return <FileText className={iconClass} />;
+        case 'code': return <FileCode className={iconClass} />;
+        case 'image': return <ImageIcon className={iconClass} />;
+        case 'video': return <FileVideo className={iconClass} />;
+        case 'archive': return <FileArchive className={iconClass} />;
+        case 'experiment': return <TestTube className={iconClass} />;
+        default: return <File className={iconClass} />;
+    }
+};
+
+const getCategoryColor = (category: string) => {
+    switch (category) {
+        case 'dataset': return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
+        case 'report': return 'bg-purple-500/10 text-purple-500 border-purple-500/20';
+        case 'code': return 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20';
+        case 'image': return 'bg-orange-500/10 text-orange-500 border-orange-500/20';
+        case 'video': return 'bg-pink-500/10 text-pink-500 border-pink-500/20';
+        case 'archive': return 'bg-zinc-500/10 text-zinc-500 border-zinc-500/20';
+        case 'experiment': return 'bg-amber-500/10 text-amber-500 border-amber-500/20';
+        default: return 'bg-slate-500/10 text-slate-500 border-slate-500/20';
+    }
 };
 
 const formatFileSize = (bytes: number) => {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
 };
 
 export const FileSharing: React.FC<FileSharingProps> = ({
@@ -160,18 +205,6 @@ export const FileSharing: React.FC<FileSharingProps> = ({
             toast.error("Failed to load files");
         } finally {
             setLoading(false);
-        }
-    };
-
-    const getCategoryColor = (category: string) => {
-        switch (category) {
-            case 'dataset': return 'bg-blue-500/10 text-blue-600 dark:text-blue-400';
-            case 'report': return 'bg-purple-500/10 text-purple-600 dark:text-purple-400';
-            case 'code': return 'bg-green-500/10 text-green-600 dark:text-green-400';
-            case 'image': return 'bg-orange-500/10 text-orange-600 dark:text-orange-400';
-            case 'video': return 'bg-pink-500/10 text-pink-600 dark:text-pink-400';
-            case 'archive': return 'bg-gray-500/10 text-gray-600 dark:text-gray-400';
-            default: return 'bg-gray-500/10 text-gray-600 dark:text-gray-400';
         }
     };
 
@@ -250,230 +283,289 @@ export const FileSharing: React.FC<FileSharingProps> = ({
         return matchesSearch && matchesCategory;
     });
 
-    const categories = ['dataset', 'report', 'code', 'image', 'video', 'archive'];
+    const categories = ['dataset', 'report', 'code', 'experiment', 'image', 'video', 'archive'];
 
     if (loading && files.length === 0) {
         return (
-            <Card>
-                <CardHeader>
-                    <Skeleton className="h-8 w-48" />
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    {[1, 2, 3].map(i => (
-                        <Skeleton key={i} className="h-24 w-full" />
+            <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                    <Skeleton className="h-10 w-64 rounded-xl" />
+                    <Skeleton className="h-10 w-32 rounded-xl" />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[1, 2, 3, 4, 5, 6].map(i => (
+                        <Skeleton key={i} className="h-48 w-full rounded-2xl" />
                     ))}
-                </CardContent>
-            </Card>
+                </div>
+            </div>
         );
     }
 
     return (
-        <>
-            <Card className="shadow-lg">
-                <CardHeader className="border-b bg-gradient-to-r from-background to-muted/20">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <CardTitle className="flex items-center gap-2 text-2xl">
-                                <div className="p-2 bg-primary/10 rounded-lg">
-                                    <Upload className="w-5 h-5 text-primary" />
-                                </div>
-                                File Sharing
-                                <Badge variant="secondary" className="text-sm">
-                                    {files.length} files
-                                </Badge>
-                            </CardTitle>
-                            {projectName && (
-                                <CardDescription className="mt-2">
-                                    Project: {projectName}
-                                </CardDescription>
-                            )}
-                        </div>
-
-                        <label htmlFor="file-upload">
-                            <Button className="gap-2 cursor-pointer shadow-md hover:shadow-lg transition-all" asChild disabled={uploading}>
-                                <span>
-                                    {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                                    Upload File
-                                </span>
-                            </Button>
-                            <input
-                                id="file-upload"
-                                type="file"
-                                className="hidden"
-                                onChange={handleFileUpload}
-                                disabled={uploading}
-                            />
-                        </label>
+        <div className="space-y-8 animate-in fade-in duration-700">
+            {/* Action Header */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-muted/5 p-6 rounded-3xl border border-border/40 backdrop-blur-sm">
+                <div className="flex items-center gap-5">
+                    <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/20 shadow-[0_0_20px_rgba(var(--primary),0.1)]">
+                        <Database className="h-7 w-7 text-primary animate-pulse" />
                     </div>
+                    <div>
+                        <h2 className="text-2xl font-black tracking-tight flex items-center gap-3">
+                            Asset Core
+                            <Badge className="bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 text-[10px] font-black h-5 px-2">
+                                {files.length} ACTIVE
+                            </Badge>
+                        </h2>
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 flex items-center gap-2 mt-1">
+                            <Zap className="h-3 w-3 text-amber-500 fill-amber-500" /> Molecular Data Stream L4
+                        </p>
+                    </div>
+                </div>
 
-                    {/* Upload Progress */}
-                    {uploading && (
-                        <div className="mt-4 space-y-2 animate-in slide-in-from-top-2">
-                            <div className="flex items-center justify-between text-sm">
-                                <span>Uploading...</span>
-                                <span className="font-semibold">{uploadProgress}%</span>
+                <div className="flex items-center gap-3">
+                    <label htmlFor="file-upload">
+                        <Button className="rounded-2xl h-12 px-6 font-black uppercase tracking-widest gap-2 shadow-xl hover:shadow-primary/20 transition-all border border-primary/20" asChild disabled={uploading}>
+                            <span>
+                                {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                                Push to Repository
+                            </span>
+                        </Button>
+                        <input
+                            id="file-upload"
+                            type="file"
+                            className="hidden"
+                            onChange={handleFileUpload}
+                            disabled={uploading}
+                        />
+                    </label>
+                </div>
+            </div>
+
+            {/* Upload Progress Ribbon */}
+            <AnimatePresence>
+                {uploading && (
+                    <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="overflow-hidden"
+                    >
+                        <div className="p-4 rounded-2xl bg-primary/5 border border-primary/20 mb-6">
+                            <div className="flex items-center justify-between text-[11px] font-black uppercase tracking-widest text-primary mb-2 px-1">
+                                <span className="flex items-center gap-2"><Loader2 className="h-3 w-3 animate-spin" /> Transmitting Packets...</span>
+                                <span>{uploadProgress}%</span>
                             </div>
-                            <Progress value={uploadProgress} className="h-2" />
+                            <Progress value={uploadProgress} className="h-1.5 bg-primary/10" />
                         </div>
-                    )}
-                </CardHeader>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
-                <CardContent className="p-6">
-                    {/* Search and Filter */}
-                    <div className="flex gap-3 mb-6">
-                        <div className="relative flex-1">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                            <Input
-                                placeholder="Search files..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-10"
-                            />
-                        </div>
+            {/* Browser Controls */}
+            <div className="flex flex-col md:flex-row gap-4 items-center">
+                <div className="relative flex-1 w-full group">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                    <Input
+                        placeholder="Search Research Assets..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-12 h-12 bg-background/50 border-border/40 rounded-2xl focus:ring-primary/20 text-[13px] font-medium"
+                    />
+                </div>
 
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="outline" className="gap-2 min-w-[120px]">
-                                    <Filter className="w-4 h-4" />
-                                    Filter
-                                    {filterCategories.length > 0 && (
-                                        <Badge variant="secondary" className="ml-1 px-1.5 text-xs">
-                                            {filterCategories.length}
-                                        </Badge>
-                                    )}
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-56">
-                                <DropdownMenuLabel>Filter by Type</DropdownMenuLabel>
-                                <DropdownMenuSeparator />
-                                {categories.map(category => (
-                                    <DropdownMenuCheckboxItem
-                                        key={category}
-                                        checked={filterCategories.includes(category)}
-                                        onCheckedChange={() => toggleCategory(category)}
-                                    >
-                                        <div className="flex items-center gap-2">
-                                            <FileIcon category={category} className="w-4 h-4" />
-                                            <span className="capitalize">{category}</span>
+                <div className="flex items-center gap-2 w-full md:w-auto">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" className="h-12 rounded-2xl gap-2 font-bold bg-background/50 border-border/40 px-5 text-[13px]">
+                                <Filter className="w-4 h-4" />
+                                Parameters
+                                {filterCategories.length > 0 && (
+                                    <Badge className="ml-1 px-1.5 text-[10px] font-black bg-primary text-primary-foreground h-5">
+                                        {filterCategories.length}
+                                    </Badge>
+                                )}
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-64 p-2 rounded-2xl border-border/40 bg-background/95 backdrop-blur-xl">
+                            <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 px-3 py-2">Filter Matrix</DropdownMenuLabel>
+                            <DropdownMenuSeparator className="opacity-40" />
+                            {categories.map(category => (
+                                <DropdownMenuCheckboxItem
+                                    key={category}
+                                    className="rounded-xl px-3 py-2.5 text-[12px] font-bold focus:bg-primary/10 focus:text-primary transition-all mb-1 last:mb-0"
+                                    checked={filterCategories.includes(category)}
+                                    onCheckedChange={() => toggleCategory(category)}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className={cn("p-1.5 rounded-lg", getCategoryColor(category))}>
+                                            <FileIcon category={category} className="w-3.5 h-3.5" />
                                         </div>
-                                    </DropdownMenuCheckboxItem>
-                                ))}
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                                        <span className="capitalize tracking-tight">{category}</span>
+                                    </div>
+                                </DropdownMenuCheckboxItem>
+                            ))}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    <div className="h-12 flex items-center bg-muted/20 border border-border/40 rounded-2xl p-1 gap-1">
+                        <Button
+                            variant={viewMode === 'grid' ? "secondary" : "ghost"}
+                            size="icon"
+                            className="h-10 w-10 rounded-xl transition-all"
+                            onClick={() => setViewMode('grid')}
+                        >
+                            <ImageIcon className="h-4 w-4" />
+                        </Button>
+                        <Button
+                            variant={viewMode === 'list' ? "secondary" : "ghost"}
+                            size="icon"
+                            className="h-10 w-10 rounded-xl transition-all"
+                            onClick={() => setViewMode('list')}
+                        >
+                            <FileText className="h-4 w-4" />
+                        </Button>
                     </div>
+                </div>
+            </div>
 
-                    {/* Files Grid */}
-                    <div className={cn(
-                        "gap-4",
-                        viewMode === 'grid' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3" : "space-y-3"
-                    )}>
-                        {filteredFiles.map((file) => (
-                            <Card
-                                key={file.id}
-                                className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer overflow-hidden"
-                                onClick={() => handlePreview(file)}
-                            >
-                                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                                <CardContent className="p-4 relative">
-                                    <div className="flex items-start gap-3">
-                                        <div className={cn(
-                                            "p-3 rounded-xl shadow-sm transition-all group-hover:scale-110",
-                                            getCategoryColor(file.category)
-                                        )}>
-                                            <FileIcon category={file.category} />
+            {/* Assets Matrix */}
+            <div className={cn(
+                "gap-6",
+                viewMode === 'grid' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3" : "space-y-4"
+            )}>
+                {filteredFiles.map((file) => (
+                    <motion.div
+                        key={file.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3 }}
+                        whileHover={{ y: -5 }}
+                        className="group relative"
+                    >
+                        <Card
+                            className="cursor-pointer overflow-hidden border-border/40 bg-background/50 hover:bg-background hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] transition-all duration-500 rounded-3xl"
+                            onClick={() => handlePreview(file)}
+                        >
+                            <div className={cn(
+                                "absolute top-0 right-0 w-32 h-32 blur-[60px] opacity-0 group-hover:opacity-40 transition-opacity",
+                                getCategoryColor(file.category).includes('blue') ? 'bg-blue-500' :
+                                    getCategoryColor(file.category).includes('purple') ? 'bg-purple-500' :
+                                        getCategoryColor(file.category).includes('emerald') ? 'bg-emerald-500' : 'bg-primary'
+                            )} />
+
+                            <CardContent className="p-6 relative">
+                                <div className="flex items-start gap-4 mb-4">
+                                    <div className={cn(
+                                        "p-4 rounded-2xl shadow-sm transition-all group-hover:scale-110",
+                                        getCategoryColor(file.category)
+                                    )}>
+                                        <FileIcon category={file.category} className="w-6 h-6" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <Badge variant="outline" className="text-[8px] font-black uppercase tracking-widest px-1.5 h-4 border-muted-foreground/20">
+                                                {file.category}
+                                            </Badge>
+                                            <span className="text-[10px] font-black text-muted-foreground/40 italic ml-auto">{formatFileSize(file.size_bytes)}</span>
                                         </div>
+                                        <h4 className="font-black text-[15px] tracking-tight truncate group-hover:text-primary transition-colors">
+                                            {file.name}
+                                        </h4>
+                                    </div>
+                                </div>
 
-                                        <div className="flex-1 min-w-0">
-                                            <h4 className="font-semibold text-sm mb-1 truncate group-hover:text-primary transition-colors">
-                                                {file.name}
-                                            </h4>
-
-                                            <div className="flex items-center gap-3 text-xs text-muted-foreground mb-2">
-                                                <span>{formatFileSize(file.size_bytes)}</span>
-                                                <span>•</span>
-                                                <span className="flex items-center gap-1">
-                                                    <Download className="w-3 h-3" />
-                                                    {file.downloads}
-                                                </span>
-                                            </div>
-
-                                            <div className="flex items-center gap-2">
-                                                <Avatar className="w-5 h-5 ring-1 ring-background">
-                                                    <AvatarImage src={file.uploader?.avatar_url} />
-                                                    <AvatarFallback className="text-xs bg-gradient-to-br from-primary/20 to-primary/5">
-                                                        {file.uploader?.display_name?.[0] || 'U'}
-                                                    </AvatarFallback>
-                                                </Avatar>
-                                                <span className="text-xs text-muted-foreground truncate">
-                                                    {file.uploader?.display_name || 'Unknown'}
-                                                </span>
-                                                <span className="text-xs text-muted-foreground">•</span>
-                                                <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                                    <Clock className="w-3 h-3" />
-                                                    {formatDistanceToNow(new Date(file.created_at), { addSuffix: true })}
-                                                </span>
-                                            </div>
+                                <div className="flex items-center gap-4 py-4 border-y border-border/20 mb-4">
+                                    <div className="flex items-center gap-2">
+                                        <Avatar className="w-7 h-7 border ring-2 ring-background ring-offset-2 ring-offset-muted-foreground/10">
+                                            <AvatarImage src={file.uploader?.avatar_url} />
+                                            <AvatarFallback className="text-[10px] font-black bg-gradient-to-br from-primary/10 to-primary/5">
+                                                {file.uploader?.display_name?.[0] || 'U'}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                        <div className="flex flex-col">
+                                            <span className="text-[11px] font-black">{file.uploader?.display_name || 'System Operator'}</span>
+                                            <span className="text-[9px] font-bold text-muted-foreground/60">{formatDistanceToNow(new Date(file.created_at), { addSuffix: true })}</span>
                                         </div>
+                                    </div>
+                                    <div className="ml-auto flex items-center gap-1.5 px-3 py-1 bg-muted/30 rounded-full border border-border/40">
+                                        <Download className="w-3 h-3 text-muted-foreground/60" />
+                                        <span className="text-[10px] font-bold text-muted-foreground">{file.downloads}</span>
+                                    </div>
+                                </div>
 
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-1">
+                                        <Shield className="h-3 w-3 text-emerald-500/50" />
+                                        <span className="text-[9px] font-black text-muted-foreground/40 tracking-widest uppercase">Immutable Hash</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 rounded-lg hover:bg-primary/10 hover:text-primary"
+                                            onClick={(e) => { e.stopPropagation(); handleDownload(file); }}
+                                        >
+                                            <Download className="w-4 h-4" />
+                                        </Button>
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                                                 <Button
                                                     variant="ghost"
-                                                    size="sm"
-                                                    className="opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    size="icon"
+                                                    className="h-8 w-8 rounded-lg hover:bg-destructive/10 hover:text-destructive"
                                                 >
-                                                    <Eye className="w-4 h-4" />
+                                                    <MoreHorizontal className="w-4 h-4" />
                                                 </Button>
                                             </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuItem onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handlePreview(file);
-                                                }}>
-                                                    <Eye className="w-4 h-4 mr-2" />
-                                                    Preview
+                                            <DropdownMenuContent align="end" className="rounded-xl border-border/40">
+                                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handlePreview(file); }} className="gap-2 rounded-lg py-2 cursor-pointer">
+                                                    <Eye className="w-4 h-4" /> Preview
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleDownload(file);
-                                                }}>
-                                                    <Download className="w-4 h-4 mr-2" />
-                                                    Download
+                                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDownload(file); }} className="gap-2 rounded-lg py-2 cursor-pointer">
+                                                    <Download className="w-4 h-4" /> Download
                                                 </DropdownMenuItem>
-                                                <DropdownMenuSeparator />
+                                                <DropdownMenuSeparator className="opacity-40" />
                                                 <DropdownMenuItem
-                                                    className="text-destructive"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleDelete(file.id);
-                                                    }}
+                                                    className="gap-2 rounded-lg py-2 text-destructive focus:bg-destructive/10 focus:text-destructive cursor-pointer"
+                                                    onClick={(e) => { e.stopPropagation(); handleDelete(file.id); }}
                                                 >
-                                                    <Trash2 className="w-4 h-4 mr-2" />
-                                                    Delete
+                                                    <Trash2 className="w-4 h-4" /> Delete Asset
                                                 </DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                     </div>
-                                </CardContent>
-                            </Card>
-                        ))}
-                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </motion.div>
+                ))}
+            </div>
 
-                    {filteredFiles.length === 0 && (
-                        <div className="text-center py-16 animate-in fade-in duration-300">
-                            <div className="p-4 bg-muted/20 rounded-full w-fit mx-auto mb-4">
-                                <Upload className="w-12 h-12 text-muted-foreground" />
-                            </div>
-                            <h3 className="text-lg font-semibold mb-2">No files found</h3>
-                            <p className="text-muted-foreground max-w-md mx-auto">
-                                {searchQuery || filterCategories.length > 0
-                                    ? 'Try adjusting your search or filters'
-                                    : 'Upload your first file to get started!'}
-                            </p>
+            {filteredFiles.length === 0 && (
+                <div className="text-center py-24 bg-muted/5 rounded-[40px] border border-dashed border-border/60">
+                    <div className="relative inline-block mb-6">
+                        <div className="absolute inset-0 bg-primary/20 blur-[80px] rounded-full" />
+                        <div className="h-20 w-20 rounded-3xl bg-background border border-border/40 flex items-center justify-center relative shadow-xl">
+                            <File className="w-10 h-10 text-muted-foreground/30" />
                         </div>
+                    </div>
+                    <h3 className="text-xl font-black mb-2 tracking-tight">Zero Assets Detected</h3>
+                    <p className="text-muted-foreground text-sm max-w-sm mx-auto font-medium">
+                        {searchQuery || filterCategories.length > 0
+                            ? 'The current filter matrix returned no results. Adjust your parameters to locate the asset.'
+                            : 'This repository is currently empty. Push your first scientific archive to the core.'}
+                    </p>
+                    {(searchQuery || filterCategories.length > 0) && (
+                        <Button
+                            variant="link"
+                            className="mt-4 text-primary font-black uppercase text-[10px] tracking-widest"
+                            onClick={() => { setSearchQuery(''); setFilterCategories([]); }}
+                        >
+                            Reset System Filters
+                        </Button>
                     )}
-                </CardContent>
-            </Card>
+                </div>
+            )}
 
             {/* File Preview Modal */}
             <FilePreviewModal
@@ -481,6 +573,10 @@ export const FileSharing: React.FC<FileSharingProps> = ({
                 open={previewOpen}
                 onOpenChange={setPreviewOpen}
             />
-        </>
+        </div>
     );
 };
+
+// Re-using the same icons and more horizontal for consistency
+import { MoreHorizontal } from 'lucide-react';
+import { format } from 'date-fns';

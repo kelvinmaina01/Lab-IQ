@@ -30,6 +30,13 @@ import {
     Headphones,
     PanelLeftClose,
     PanelLeft,
+    Atom,
+    Microscope,
+    FlaskConical,
+    Dna,
+    Activity,
+    Users,
+    Waves
 } from "lucide-react";
 import { UnifiedCreateMenu } from "./UnifiedCreateMenu";
 import {
@@ -51,6 +58,7 @@ import { ChatChannel, TeamMember, SharedCanvas, SharedList } from "@/core/interf
 import { ChannelDialog } from "./ChannelDialog";
 import { toast } from "sonner";
 import { useUnreadCounts } from "@/hooks/useUnreadCounts";
+import { supabase } from "@/integrations/supabase/client";
 
 import { InviteModal } from "./InviteModal";
 import { HuddleBar } from "./HuddleBar";
@@ -58,8 +66,8 @@ import { HuddleBar } from "./HuddleBar";
 interface CollaborationSidebarProps {
     labId: string;
     selectedId: string | null;
-    selectedType: 'channel' | 'dm' | 'app' | 'activity' | 'canvas' | 'list';
-    onSelect: (id: string, type: 'channel' | 'dm' | 'app' | 'activity' | 'canvas' | 'list') => void;
+    selectedType: 'channel' | 'dm' | 'app' | 'activity' | 'canvas' | 'list' | 'project' | 'file';
+    onSelect: (id: string, type: 'channel' | 'dm' | 'app' | 'activity' | 'canvas' | 'list' | 'project' | 'file') => void;
     onSearchOpen?: () => void;
     className?: string;
 }
@@ -80,7 +88,6 @@ export const CollaborationSidebar = ({
     const [currentUser, setCurrentUser] = useState<TeamMember | null>(null);
     const [loading, setLoading] = useState(true);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
-    const [searchQuery, setSearchQuery] = useState("");
     const [favorites, setFavorites] = useState<Set<string>>(new Set());
     const [isCollapsed, setIsCollapsed] = useState(() => {
         const saved = localStorage.getItem(`collab-sidebar-collapsed-${labId}`);
@@ -92,117 +99,60 @@ export const CollaborationSidebar = ({
 
     const [expandedSections, setExpandedSections] = useState({
         channels: true,
+        projects: true,
         dms: true,
         apps: true,
-        canvases: true,
-        lists: true,
+        notebooks: false, // Renamed from canvases
+        inventories: false, // Renamed from lists
     });
 
-    // Load Initial Data
     useEffect(() => {
         if (labId) {
             loadData();
-            const chSub = subscribeToChannels();
+            const cleanup = subscribeToChannels();
             return () => {
-                chSub();
+                cleanup();
             };
         }
     }, [labId]);
 
+    const [labName, setLabName] = useState("Research Workspace");
+
+    const [recentDMs, setRecentDMs] = useState<string[]>([]);
+
     const loadData = async () => {
         try {
             setLoading(true);
-            const [chRes, tmRes, meRes, canvRes, listRes] = await Promise.all([
+            const [chRes, tmRes, meRes, canvRes, listRes, labRes, dmRes] = await Promise.all([
                 collaboration.getChannels(labId),
                 collaboration.getTeamMembers(labId),
                 auth.getUser(),
                 collaboration.getCanvases(labId),
                 collaboration.getLists(labId),
+                supabase.from('labs' as any).select('name').eq('id', labId).single(),
+                collaboration.getRecentConversations()
             ]);
 
             setChannels(chRes.data || []);
             setTeamMembers(tmRes.data || []);
             setCanvases(canvRes.data || []);
             setLists(listRes.data || []);
+            if (labRes.data) setLabName((labRes.data as any).name);
 
             if (meRes) {
                 const me = (tmRes.data || []).find(m => m.user_id === meRes.id);
-                if (me) setCurrentUser(me);
+                if (me) {
+                    setCurrentUser(me);
+                    setRecentDMs(dmRes.data || []);
+                }
             }
 
-            // Load favorites
             const savedFavorites = localStorage.getItem(`collab-favorites-${labId}`);
             if (savedFavorites) setFavorites(new Set(JSON.parse(savedFavorites)));
-
         } catch (error) {
             console.error("Error loading collaboration data:", error);
         } finally {
             setLoading(false);
-        }
-    };
-
-    const [isInviteOpen, setIsInviteOpen] = useState(false);
-    const [isHuddleActive, setIsHuddleActive] = useState(false);
-    const [activeHuddleChannel, setActiveHuddleChannel] = useState("");
-
-    const handleCreateAction = (action: string) => {
-        switch (action) {
-            case 'channel':
-                setIsDialogOpen(true);
-                break;
-            case 'invite':
-                setIsInviteOpen(true);
-                break;
-            case 'message':
-                onSearchOpen?.();
-                break;
-            case 'huddle':
-                const currentChannel = Array.isArray(channels) ? channels.find(c => c.id === selectedId) : null;
-                setActiveHuddleChannel(currentChannel?.display_name || currentChannel?.name || "General");
-                setIsHuddleActive(true);
-                toast.success("Huddle started", {
-                    description: "Scientific voice channel is now active.",
-                    icon: <Headphones className="h-4 w-4 text-emerald-500" />
-                });
-                break;
-            case 'canvas':
-                handleCreateCanvas();
-                break;
-            case 'list':
-                handleCreateList();
-                break;
-            default:
-                toast("Feature coming soon", {
-                    description: `${action.charAt(0).toUpperCase() + action.slice(1)} integration is being synchronized.`
-                });
-        }
-    };
-
-    const handleCreateCanvas = async () => {
-        try {
-            const { data, error } = await collaboration.createCanvas("Untitled Notebook", labId);
-            if (error) throw error;
-            if (data) {
-                setCanvases(prev => [data, ...prev]);
-                onSelect(data.id, 'canvas');
-                toast.success("Canvas created");
-            }
-        } catch (err) {
-            toast.error("Failed to create canvas");
-        }
-    };
-
-    const handleCreateList = async () => {
-        try {
-            const { data, error } = await collaboration.createList("New Inventory List", labId);
-            if (error) throw error;
-            if (data) {
-                setLists(prev => [data, ...prev]);
-                onSelect(data.id, 'list');
-                toast.success("List created");
-            }
-        } catch (err) {
-            toast.error("Failed to create list");
         }
     };
 
@@ -216,48 +166,53 @@ export const CollaborationSidebar = ({
         return () => subscription.unsubscribe();
     };
 
+    const handleCreateAction = (action: string) => {
+        switch (action) {
+            case 'channel': setIsDialogOpen(true); break;
+            case 'invite': setIsInviteOpen(true); break;
+            case 'canvas': handleCreateCanvas(); break;
+            case 'list': handleCreateList(); break;
+            case 'huddle': setIsHuddleActive(true); break;
+            default: onSearchOpen?.();
+        }
+    };
+
+    const handleCreateCanvas = async () => {
+        const { data } = await collaboration.createCanvas("Scientific Notebook", labId);
+        if (data) { setCanvases(prev => [data, ...prev]); onSelect(data.id, 'canvas'); }
+    };
+
+    const handleCreateList = async () => {
+        const { data } = await collaboration.createList("Inventory Protocol", labId);
+        if (data) { setLists(prev => [data, ...prev]); onSelect(data.id, 'list'); }
+    };
+
     const toggleSection = (section: keyof typeof expandedSections) => {
         setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));
     };
 
-    const toggleFavorite = (id: string) => {
+    const toggleFavorite = (id: string, e: React.MouseEvent) => {
+        e.stopPropagation();
         setFavorites((prev) => {
             const next = new Set(prev);
-            if (next.has(id)) next.delete(id);
-            else next.add(id);
+            if (next.has(id)) next.delete(id); else next.add(id);
             localStorage.setItem(`collab-favorites-${labId}`, JSON.stringify(Array.from(next)));
             return next;
         });
     };
 
-    const toggleCollapse = () => {
-        const nextCollapsed = !isCollapsed;
-        setIsCollapsed(nextCollapsed);
-        localStorage.setItem(`collab-sidebar-collapsed-${labId}`, JSON.stringify(nextCollapsed));
-    };
-
     const getChannelIcon = (type: ChatChannel["type"], isPrivate: boolean) => {
-        if (isPrivate) return <Lock className="h-4 w-4" />;
-        if (type === "announcement") return <Megaphone className="h-4 w-4" />;
-        if (type === "project") return <FolderKanban className="h-4 w-4" />;
-        return <Hash className="h-4 w-4" />;
+        if (isPrivate) return <Lock className="h-3.5 w-3.5" />;
+        if (type === "project") return <Dna className="h-3.5 w-3.5 text-cyan-400" />;
+        if (type === "announcement") return <Megaphone className="h-3.5 w-3.5 text-amber-400" />;
+        return <Atom className="h-3.5 w-3.5 text-primary/70" />;
     };
 
-    const getStatusColor = (status: TeamMember['status']) => {
-        switch (status) {
-            case 'online': return 'text-green-500 fill-green-500';
-            case 'away': return 'text-yellow-500 fill-yellow-500';
-            case 'busy': return 'text-red-500 fill-red-500';
-            default: return 'text-muted-foreground';
-        }
-    };
-
-    // Sections rendering
     const renderSidebarItem = (
         id: string,
         label: string,
         icon: React.ReactNode,
-        type: 'channel' | 'dm' | 'app',
+        type: 'channel' | 'dm' | 'app' | 'activity' | 'canvas' | 'list',
         metadata?: { unread?: number; status?: TeamMember['status']; isFavorite?: boolean }
     ) => {
         const isActive = selectedId === id && selectedType === type;
@@ -266,36 +221,38 @@ export const CollaborationSidebar = ({
             <div
                 key={id}
                 className={cn(
-                    "group relative flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-all cursor-pointer mx-1",
+                    "group relative flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-sm transition-all cursor-pointer mx-2 mb-0.5",
                     isActive
-                        ? "bg-primary/20 text-primary font-medium"
-                        : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                        ? "bg-primary/15 text-primary font-semibold shadow-[0_0_15px_rgba(var(--primary-rgb),0.1)] border-l-2 border-primary"
+                        : "text-muted-foreground hover:bg-muted/40 hover:text-foreground"
                 )}
                 onClick={() => onSelect(id, type)}
             >
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <div className={cn("shrink-0", isActive && "text-primary")}>
+                <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                    <div className={cn("shrink-0 transition-transform group-hover:scale-110 duration-200", isActive && "text-primary")}>
                         {icon}
                     </div>
-                    <span className="truncate flex-1">
+                    <span className="truncate flex-1 tracking-tight">
                         {label}
                     </span>
                     {metadata?.unread && metadata.unread > 0 && (
-                        <Badge variant="default" className="h-4 min-w-[16px] px-1 text-[9px] font-bold">
+                        <div className="h-5 min-w-[20px] px-1.5 flex items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-black animate-in zoom-in duration-300">
                             {metadata.unread}
-                        </Badge>
+                        </div>
                     )}
                     {type === 'dm' && metadata?.status && (
-                        <Circle className={cn("h-2 w-2", getStatusColor(metadata.status))} />
+                        <div className={cn(
+                            "h-2 w-2 rounded-full",
+                            metadata.status === 'online' ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-muted-foreground/30"
+                        )} />
                     )}
                 </div>
 
-                {/* Star for channels/dms */}
                 {(type === 'channel' || type === 'dm') && (
                     <Star
-                        onClick={(e) => { e.stopPropagation(); toggleFavorite(id); }}
+                        onClick={(e) => toggleFavorite(id, e)}
                         className={cn(
-                            "h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity",
+                            "h-3 w-3 opacity-0 group-hover:opacity-100 transition-all hover:scale-125",
                             metadata?.isFavorite && "opacity-100 fill-yellow-500 text-yellow-500"
                         )}
                     />
@@ -304,420 +261,281 @@ export const CollaborationSidebar = ({
         );
     };
 
+    const [isInviteOpen, setIsInviteOpen] = useState(false);
+    const [isHuddleActive, setIsHuddleActive] = useState(false);
+
     return (
         <TooltipProvider>
-        <div className={cn(
-            "border-r bg-background flex flex-col h-full transition-all duration-300 relative",
-            isCollapsed ? "w-16" : "w-72",
-            className
-        )}>
-            {/* Collapse Toggle Button */}
-            <Button
-                variant="ghost"
-                size="icon"
-                onClick={toggleCollapse}
-                className="absolute -right-3 top-4 z-50 h-6 w-6 rounded-full border bg-background shadow-md hover:bg-muted"
-            >
-                {isCollapsed ? <PanelLeft className="h-3 w-3" /> : <PanelLeftClose className="h-3 w-3" />}
-            </Button>
+            <div className={cn(
+                "border-r border-border/40 bg-background/80 backdrop-blur-xl flex flex-col h-full transition-all duration-300 relative",
+                isCollapsed ? "w-20" : "w-[280px]",
+                className
+            )}>
+                {/* Visual Accent - Science Gradient Line */}
+                <div className="absolute left-0 top-0 w-[2px] h-full bg-gradient-to-b from-primary/50 via-cyan-500/30 to-transparent opacity-20" />
 
-            {/* Workspace Header */}
-            {!isCollapsed ? (
-                <div className="p-4 border-b flex items-center justify-between hover:bg-muted/30 cursor-pointer transition-colors group">
-                    <div className="flex items-center gap-2 overflow-hidden">
-                        <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 border border-primary/20 shadow-inner">
-                            <Sparkles className="h-5 w-5 text-primary" />
+                {/* Workspace Identity Section */}
+                <div className="p-5 border-b border-border/30 flex items-center justify-between group cursor-pointer hover:bg-muted/20 transition-all">
+                    {!isCollapsed ? (
+                        <div className="flex items-center gap-3 overflow-hidden">
+                            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center shrink-0 border border-primary/20 shadow-lg shadow-primary/5">
+                                <FlaskConical className="h-5 w-5 text-primary animate-pulse" />
+                            </div>
+                            <div className="overflow-hidden">
+                                <h2 className="font-bold text-[15px] truncate leading-tight tracking-tight text-foreground/90">{labName}</h2>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                    <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                    <p className="text-[10px] text-muted-foreground uppercase font-black tracking-[0.05em]">Operational</p>
+                                </div>
+                            </div>
                         </div>
-                        <div className="overflow-hidden">
-                            <h2 className="font-bold text-sm truncate leading-tight">Lab-IQ Global</h2>
-                            <p className="text-[10px] text-muted-foreground truncate">Enterprise Workspace</p>
+                    ) : (
+                        <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 shadow-inner mx-auto">
+                            <FlaskConical className="h-5 w-5 text-primary" />
                         </div>
-                    </div>
-                    <div className="flex items-center gap-1">
+                    )}
+                    {!isCollapsed && (
                         <UnifiedCreateMenu
-                            onAction={(action) => handleCreateAction(action)}
+                            onAction={handleCreateAction}
                             trigger={
-                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground">
-                                    <SquarePen className="h-4 w-4" />
+                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10">
+                                    <Plus className="h-4 w-4" />
                                 </Button>
                             }
                         />
-                        <ChevronDown className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
-                    </div>
+                    )}
                 </div>
-            ) : (
-                <div className="p-4 border-b flex items-center justify-center">
-                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20 shadow-inner">
-                        <Sparkles className="h-5 w-5 text-primary" />
-                    </div>
-                </div>
-            )}
 
-            {/* Global Search Button */}
-            {!isCollapsed ? (
-                <div className="px-3 py-3">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full justify-start gap-2 bg-muted/30 border-muted hover:border-primary/30 text-muted-foreground text-xs font-normal transition-all rounded-lg"
-                        onClick={onSearchOpen}
-                    >
-                        <Search className="h-3 w-3" />
-                        <span>Search workspace...</span>
-                        <span className="ml-auto text-[10px] bg-muted px-1.5 py-0.5 rounded border border-border">⌘K</span>
-                    </Button>
-                </div>
-            ) : (
-                <div className="px-3 py-3">
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <Button
-                                variant="outline"
-                                size="icon"
-                                className="w-10 h-10 bg-muted/30 border-muted hover:border-primary/30"
-                                onClick={onSearchOpen}
-                            >
-                                <Search className="h-4 w-4" />
-                            </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="right">Search workspace (⌘K)</TooltipContent>
-                    </Tooltip>
-                </div>
-            )}
-
-            {!isCollapsed && (
-                <ScrollArea className="flex-1 px-1">
-                <div className="py-2 space-y-4">
-
-                    {/* Top Actions */}
-                    <div className="space-y-0.5 px-2">
-                        {renderSidebarItem('activity', 'All Activity', <Clock className="h-4 w-4" />, 'activity' as any)}
-                        {renderSidebarItem('mentions', 'Mentions & Reactions', <AtSign className="h-4 w-4" />, 'activity' as any)}
-                        {renderSidebarItem('saved', 'Saved Items', <Bookmark className="h-4 w-4" />, 'activity' as any)}
-                    </div>
-
-                    {/* Channels Section */}
-                    <div className="space-y-1">
-                        <div className="flex items-center justify-between px-3 mb-1 group/section">
-                            <button
-                                onClick={() => toggleSection('channels')}
-                                className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground hover:text-foreground uppercase tracking-wider transition-colors"
-                            >
-                                {expandedSections.channels ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-                                Channels
-                            </button>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Plus
-                                        onClick={() => setIsDialogOpen(true)}
-                                        className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground cursor-pointer opacity-0 group-hover/section:opacity-100 transition-opacity"
-                                    />
-                                </TooltipTrigger>
-                                <TooltipContent>Create Channel</TooltipContent>
-                            </Tooltip>
-                        </div>
-
-                        {expandedSections.channels && (
-                            <div className="space-y-0.5">
-                                {Array.isArray(channels) && channels.map(ch => renderSidebarItem(
-                                    ch.id,
-                                    ch.display_name || ch.name,
-                                    getChannelIcon(ch.type, ch.is_private),
-                                    'channel',
-                                    { unread: channelUnreadCounts[ch.id] || 0, isFavorite: favorites.has(ch.id) }
-                                ))}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Canvases Section */}
-                    <div className="space-y-1">
-                        <div className="flex items-center justify-between px-3 mb-1 group/section">
-                            <button
-                                onClick={() => toggleSection('canvases')}
-                                className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground hover:text-foreground uppercase tracking-wider transition-colors"
-                            >
-                                {expandedSections.canvases ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-                                Canvases
-                            </button>
-                            <Plus
-                                onClick={() => handleCreateCanvas()}
-                                className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground cursor-pointer opacity-0 group-hover/section:opacity-100 transition-opacity"
-                            />
-                        </div>
-
-                        {expandedSections.canvases && (
-                            <div className="space-y-0.5">
-                                {Array.isArray(canvases) && canvases.map(canv => renderSidebarItem(
-                                    canv.id,
-                                    canv.title,
-                                    <Book className="h-4 w-4 text-amber-500/70" />,
-                                    'canvas',
-                                    { isFavorite: favorites.has(canv.id) }
-                                ))}
-                                {Array.isArray(canvases) && canvases.length === 0 && (
-                                    <p className="text-[10px] text-muted-foreground px-4 py-1 italic">No active canvases</p>
-                                )}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Lists Section */}
-                    <div className="space-y-1">
-                        <div className="flex items-center justify-between px-3 mb-1 group/section">
-                            <button
-                                onClick={() => toggleSection('lists')}
-                                className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground hover:text-foreground uppercase tracking-wider transition-colors"
-                            >
-                                {expandedSections.lists ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-                                Lists
-                            </button>
-                            <Plus
-                                onClick={() => handleCreateList()}
-                                className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground cursor-pointer opacity-0 group-hover/section:opacity-100 transition-opacity"
-                            />
-                        </div>
-
-                        {expandedSections.lists && (
-                            <div className="space-y-0.5">
-                                {Array.isArray(lists) && lists.map(list => renderSidebarItem(
-                                    list.id,
-                                    list.title,
-                                    <CheckSquare className="h-4 w-4 text-emerald-500/70" />,
-                                    'list',
-                                    { isFavorite: favorites.has(list.id) }
-                                ))}
-                                {Array.isArray(lists) && lists.length === 0 && (
-                                    <p className="text-[10px] text-muted-foreground px-4 py-1 italic">No active lists</p>
-                                )}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Direct Messages Section */}
-                    <div className="space-y-1">
-                        <div className="flex items-center justify-between px-3 mb-1 group/section">
-                            <button
-                                onClick={() => toggleSection('dms')}
-                                className="flex items-center gap-2 text-[11px] font-bold text-muted-foreground hover:text-foreground uppercase tracking-wider transition-colors"
-                            >
-                                {expandedSections.dms ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-                                Direct Messages
-                                {dmUnreadCount > 0 && (
-                                    <Badge variant="default" className="h-4 min-w-[16px] px-1 text-[9px] font-bold">
-                                        {dmUnreadCount}
-                                    </Badge>
-                                )}
-                            </button>
-                            <Plus className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground cursor-pointer opacity-0 group-hover/section:opacity-100 transition-opacity" />
-                        </div>
-
-                        {expandedSections.dms && (
-                            <div className="space-y-0.5">
-                                {Array.isArray(teamMembers) && teamMembers
-                                    .filter(m => m.user_id !== currentUser?.user_id)
-                                    .map(m => renderSidebarItem(
-                                        m.user_id,
-                                        m.display_name,
-                                        <Avatar className="h-4 w-4">
-                                            <AvatarImage src={m.avatar_url} />
-                                            <AvatarFallback className="text-[8px] bg-primary/20">{m.display_name.substring(0, 2)}</AvatarFallback>
-                                        </Avatar>,
-                                        'dm',
-                                        { status: m.status, isFavorite: favorites.has(m.user_id) }
-                                    ))
-                                }
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Apps / AI Agents Section */}
-                    <div className="space-y-1">
-                        <div className="flex items-center justify-between px-3 mb-1 group/section">
-                            <button
-                                onClick={() => toggleSection('apps')}
-                                className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground hover:text-foreground uppercase tracking-wider transition-colors"
-                            >
-                                {expandedSections.apps ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-                                Specialized Apps
-                            </button>
-                            <LayoutGrid className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground cursor-pointer opacity-0 group-hover/section:opacity-100 transition-opacity" />
-                        </div>
-
-                        {expandedSections.apps && (
-                            <div className="space-y-0.5">
-                                {renderSidebarItem('bioexpert', 'BioExpert AI', <Bot className="h-4 w-4 text-emerald-500" />, 'app')}
-                                {renderSidebarItem('pharma', 'PharmaBot', <Bot className="h-4 w-4 text-blue-500" />, 'app')}
-                                {renderSidebarItem('clinical', 'ClinicalScribe', <Bot className="h-4 w-4 text-purple-500" />, 'app')}
-                            </div>
-                        )}
-                    </div>
-
-                </div>
-                </ScrollArea>
-            )}
-
-            {/* Collapsed Icon View */}
-            {isCollapsed && (
-                <ScrollArea className="flex-1">
-                    <div className="flex flex-col items-center gap-2 py-4">
+                {/* Search Bar Refined */}
+                <div className="px-4 py-4">
+                    {!isCollapsed ? (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full justify-start gap-2.5 bg-muted/20 border-border/30 hover:bg-muted/40 hover:border-primary/30 text-muted-foreground text-xs font-medium transition-all rounded-xl h-10 shadow-sm"
+                            onClick={onSearchOpen}
+                        >
+                            <Search className="h-3.5 w-3.5 text-primary/50" />
+                            <span className="opacity-70">Search Brain...</span>
+                            <span className="ml-auto text-[9px] bg-background border border-border/50 px-1.5 py-0.5 rounded-md font-bold tracking-tighter">⌘K</span>
+                        </Button>
+                    ) : (
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <Button
-                                    variant={selectedType === 'activity' && selectedId === 'activity' ? 'default' : 'ghost'}
+                                    variant="outline"
                                     size="icon"
-                                    className="h-10 w-10"
-                                    onClick={() => onSelect('activity', 'activity' as any)}
+                                    className="w-12 h-12 mx-auto bg-muted/20 border-border/30 rounded-xl"
+                                    onClick={onSearchOpen}
                                 >
-                                    <Clock className="h-4 w-4" />
+                                    <Search className="h-4 w-4 text-primary" />
                                 </Button>
                             </TooltipTrigger>
-                            <TooltipContent side="right">All Activity</TooltipContent>
+                            <TooltipContent side="right">Quick Search (⌘K)</TooltipContent>
                         </Tooltip>
+                    )}
+                </div>
 
-                        <div className="w-8 border-t my-2" />
+                {!isCollapsed ? (
+                    <ScrollArea className="flex-1">
+                        <div className="py-2 space-y-5">
 
-                        {Array.isArray(channels) && channels.slice(0, 5).map(ch => (
+                            {/* Intelligence Streams */}
+                            <div className="space-y-1">
+                                <p className="px-5 text-[10px] font-black text-muted-foreground/60 uppercase tracking-[0.15em] mb-2">Activity Monitor</p>
+                                {renderSidebarItem('activity', 'Global Feed', <Activity className="h-4 w-4 text-emerald-400" />, 'activity' as any)}
+                                {renderSidebarItem('mentions', 'Mentions', <AtSign className="h-4 w-4 text-primary/70" />, 'activity' as any)}
+                                {renderSidebarItem('saved', 'Bookmarks', <Bookmark className="h-4 w-4 text-amber-500/70" />, 'activity' as any)}
+                            </div>
+
+                            {/* Research Units (Channels) */}
+                            <div className="space-y-1">
+                                <div className="flex items-center justify-between px-5 mb-2 group/section">
+                                    <button
+                                        onClick={() => toggleSection('channels')}
+                                        className="flex items-center gap-2 text-[10px] font-black text-muted-foreground/80 hover:text-foreground uppercase tracking-[0.15em] transition-colors"
+                                    >
+                                        {expandedSections.channels ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                                        Research Units
+                                    </button>
+                                    <Plus onClick={() => setIsDialogOpen(true)} className="h-3.5 w-3.5 text-muted-foreground hover:text-primary cursor-pointer transition-colors opacity-0 group-hover/section:opacity-100" />
+                                </div>
+                                {expandedSections.channels && (
+                                    <div className="space-y-0.5">
+                                        {channels.filter(ch => ch.type !== 'project').map(ch => renderSidebarItem(
+                                            ch.id,
+                                            ch.display_name || ch.name,
+                                            getChannelIcon(ch.type, ch.is_private),
+                                            'channel',
+                                            { unread: channelUnreadCounts[ch.id] || 0, isFavorite: favorites.has(ch.id) }
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Active Experiments (Projects) */}
+                            <div className="space-y-1">
+                                <div className="flex items-center justify-between px-5 mb-2 group/section">
+                                    <button
+                                        onClick={() => toggleSection('projects')}
+                                        className="flex items-center gap-2 text-[10px] font-black text-muted-foreground/80 hover:text-foreground uppercase tracking-[0.15em] transition-colors"
+                                    >
+                                        {expandedSections.projects ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                                        Active Experiments
+                                    </button>
+                                </div>
+                                {expandedSections.projects && (
+                                    <div className="space-y-0.5 text-xs">
+                                        {channels.filter(ch => ch.type === 'project').map(ch => renderSidebarItem(
+                                            ch.id,
+                                            ch.display_name || ch.name,
+                                            <Dna className="h-4 w-4 text-cyan-400/70" />,
+                                            'channel',
+                                            { unread: channelUnreadCounts[ch.id] || 0, isFavorite: favorites.has(ch.id) }
+                                        ))}
+                                        {channels.filter(ch => ch.type === 'project').length === 0 && (
+                                            <p className="text-[10px] text-muted-foreground/50 px-8 py-2 italic font-medium">No active streams...</p>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Autonomous Agents (Bot Apps) */}
+                            <div className="space-y-1">
+                                <div className="flex items-center justify-between px-5 mb-2 group/section text-primary/60">
+                                    <button
+                                        onClick={() => toggleSection('apps')}
+                                        className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.15em] transition-colors"
+                                    >
+                                        {expandedSections.apps ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                                        Autonomous Agents
+                                    </button>
+                                    <Sparkles className="h-3 w-3 animate-pulse" />
+                                </div>
+                                {expandedSections.apps && (
+                                    <div className="space-y-0.5">
+                                        {renderSidebarItem('bioexpert', 'BioExpert AI', <Bot className="h-4 w-4 text-emerald-500" />, 'app')}
+                                        {renderSidebarItem('pharma', 'PharmaBot', <Microscope className="h-4 w-4 text-blue-500" />, 'app')}
+                                        {renderSidebarItem('clinical', 'Scribe-IQ', <Waves className="h-4 w-4 text-purple-500" />, 'app')}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Collaborator Sync (DMs) */}
+                            <div className="space-y-1">
+                                <div className="flex items-center justify-between px-5 mb-2 group/section">
+                                    <button
+                                        onClick={() => toggleSection('dms')}
+                                        className="flex items-center gap-2 text-[10px] font-black text-muted-foreground/80 hover:text-foreground uppercase tracking-[0.15em] transition-colors"
+                                    >
+                                        {expandedSections.dms ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                                        Recent Syncs
+                                        {dmUnreadCount > 0 && <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />}
+                                    </button>
+                                    <Users className="h-3.5 w-3.5 text-muted-foreground/50" />
+                                </div>
+                                {expandedSections.dms && (
+                                    <div className="space-y-0.5">
+                                        {Array.isArray(teamMembers) && teamMembers
+                                            .filter(m => (recentDMs.includes(m.user_id) || selectedId === m.user_id) && m.user_id !== currentUser?.user_id)
+                                            .map(m => renderSidebarItem(
+                                                m.user_id,
+                                                m.display_name,
+                                                <Avatar className="h-5 w-5 border border-border/50">
+                                                    <AvatarImage src={m.avatar_url} />
+                                                    <AvatarFallback className="text-[8px] bg-primary/20">{m.display_name.substring(0, 2)}</AvatarFallback>
+                                                </Avatar>,
+                                                'dm',
+                                                { status: m.status, isFavorite: favorites.has(m.user_id) }
+                                            ))
+                                        }
+                                        {recentDMs.length === 0 && (
+                                            <p className="text-[10px] text-muted-foreground/50 px-8 py-2 italic">Connect with collaborators...</p>
+                                        )}
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="w-full justify-start px-8 text-[10px] font-bold text-primary/60 hover:text-primary hover:bg-primary/5 transition-all mt-1"
+                                            onClick={onSearchOpen}
+                                        >
+                                            <Plus className="h-3 w-3 mr-2" /> Find Collaborator
+                                        </Button>
+                                    </div>
+                                )}
+                            </div>
+
+                        </div>
+                    </ScrollArea>
+                ) : (
+                    <div className="flex-1 pt-4 space-y-4 flex flex-col items-center">
+                        <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="group"><Activity className="h-5 w-5 text-emerald-400 transition-transform group-hover:scale-110" /></Button></TooltipTrigger><TooltipContent side="right">Feed</TooltipContent></Tooltip>
+                        <div className="w-10 h-px bg-border/30" />
+                        {channels.slice(0, 5).map(ch => (
                             <Tooltip key={ch.id}>
                                 <TooltipTrigger asChild>
                                     <Button
                                         variant={selectedId === ch.id ? 'default' : 'ghost'}
                                         size="icon"
-                                        className="h-10 w-10 relative"
+                                        className="rounded-xl h-11 w-11 relative"
                                         onClick={() => onSelect(ch.id, 'channel')}
                                     >
                                         {getChannelIcon(ch.type, ch.is_private)}
-                                        {channelUnreadCounts[ch.id] > 0 && (
-                                            <div className="absolute -top-1 -right-1 h-4 w-4 bg-primary rounded-full flex items-center justify-center">
-                                                <span className="text-[8px] text-primary-foreground font-bold">
-                                                    {channelUnreadCounts[ch.id] > 9 ? '9+' : channelUnreadCounts[ch.id]}
-                                                </span>
-                                            </div>
-                                        )}
                                     </Button>
                                 </TooltipTrigger>
                                 <TooltipContent side="right">{ch.display_name || ch.name}</TooltipContent>
                             </Tooltip>
                         ))}
-
-                        <div className="w-8 border-t my-2" />
-
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-10 w-10 relative"
-                                >
-                                    <MessageSquare className="h-4 w-4" />
-                                    {dmUnreadCount > 0 && (
-                                        <div className="absolute -top-1 -right-1 h-4 w-4 bg-primary rounded-full flex items-center justify-center">
-                                            <span className="text-[8px] text-primary-foreground font-bold">
-                                                {dmUnreadCount > 9 ? '9+' : dmUnreadCount}
-                                            </span>
-                                        </div>
-                                    )}
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent side="right">Direct Messages</TooltipContent>
-                        </Tooltip>
                     </div>
-                </ScrollArea>
-            )}
+                )}
 
-            {/* User Footer */}
-            <div className="p-3 border-t bg-muted/20">
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        {!isCollapsed ? (
-                            <div className="flex items-center gap-3 p-1.5 rounded-lg hover:bg-muted transition-colors cursor-pointer group">
+                {/* Core User Status - Scientific Themed Footer */}
+                <div className="p-4 border-t border-border/30 bg-muted/10 backdrop-blur-md">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <div className="flex items-center gap-3 p-2 rounded-xl hover:bg-muted/50 transition-all cursor-pointer group border border-transparent hover:border-primary/20">
                                 <div className="relative shrink-0">
-                                    <Avatar className="h-8 w-8 border border-border shadow-sm group-hover:border-primary/50 transition-colors">
+                                    <Avatar className="h-9 w-9 border border-border transition-all group-hover:border-primary">
                                         <AvatarImage src={currentUser?.avatar_url} />
-                                        <AvatarFallback className="bg-primary/10 text-primary">{currentUser?.display_name?.substring(0, 2).toUpperCase() || 'U'}</AvatarFallback>
+                                        <AvatarFallback className="bg-primary/10 text-primary font-bold">{currentUser?.display_name?.substring(0, 2).toUpperCase()}</AvatarFallback>
                                     </Avatar>
                                     <div className={cn(
-                                        "absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-background shadow-sm",
-                                        currentUser?.status === 'online' ? "bg-green-500" : "bg-muted-foreground"
+                                        "absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-background shadow-lg",
+                                        currentUser?.status === 'online' ? "bg-emerald-500" : "bg-muted-foreground/50"
                                     )} />
                                 </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-semibold truncate leading-none mb-1">{currentUser?.display_name || 'Anonymous'}</p>
-                                    <p className="text-[10px] text-muted-foreground truncate">{currentUser?.role || 'Researcher'}</p>
-                                </div>
-                                <MoreVertical className="h-3.5 w-3.5 text-muted-foreground" />
+                                {!isCollapsed && (
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-bold truncate tracking-tight text-foreground/90">{currentUser?.display_name || 'Computing...'}</p>
+                                        <p className="text-[10px] text-primary/70 uppercase font-black tracking-widest leading-none mt-1">{currentUser?.role || 'Researcher'}</p>
+                                    </div>
+                                )}
+                                {!isCollapsed && <Settings className="h-3.5 w-3.5 text-muted-foreground group-hover:rotate-90 transition-transform duration-500" />}
                             </div>
-                        ) : (
-                            <div className="flex justify-center">
-                                <div className="relative">
-                                    <Avatar className="h-10 w-10 border border-border shadow-sm hover:border-primary/50 transition-colors cursor-pointer">
-                                        <AvatarImage src={currentUser?.avatar_url} />
-                                        <AvatarFallback className="bg-primary/10 text-primary">{currentUser?.display_name?.substring(0, 2).toUpperCase() || 'U'}</AvatarFallback>
-                                    </Avatar>
-                                    <div className={cn(
-                                        "absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-background shadow-sm",
-                                        currentUser?.status === 'online' ? "bg-green-500" : "bg-muted-foreground"
-                                    )} />
-                                </div>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" side="top" className="w-64 mb-4 border-primary/20 backdrop-blur-xl bg-background/90 p-2 shadow-2xl">
+                            <div className="p-3 mb-2 bg-primary/5 rounded-lg border border-primary/10">
+                                <p className="text-[10px] font-black uppercase text-primary/60 tracking-widest mb-1">Current Sync</p>
+                                <p className="text-xs font-semibold text-foreground/80">{currentUser?.display_name}</p>
                             </div>
-                        )}
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" side="top" className="w-56 mb-2">
-                        <div className="p-2 flex items-center gap-3 border-b mb-1">
-                            <Avatar className="h-8 w-8">
-                                <AvatarImage src={currentUser?.avatar_url} />
-                                <AvatarFallback>{currentUser?.display_name?.substring(0, 2)}</AvatarFallback>
-                            </Avatar>
-                            <div>
-                                <p className="text-sm font-bold">{currentUser?.display_name}</p>
-                                <p className="text-[10px] text-muted-foreground">Set a status message</p>
-                            </div>
-                        </div>
-                        <DropdownMenuItem className="gap-2">
-                            <Circle className="h-2 w-2 text-green-500 fill-green-500" /> Set as Active
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="gap-2">
-                            <Circle className="h-2 w-2 text-yellow-500 fill-yellow-500" /> Set as Away
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="gap-2">
-                            <Circle className="h-2 w-2 text-red-500 fill-red-500" /> Do not disturb
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="gap-2">
-                            <Settings className="h-4 w-4" /> Preferences
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="gap-2 text-destructive">
-                            Log out
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                            <DropdownMenuItem className="gap-2.5 rounded-lg">
+                                <div className="h-2 w-2 rounded-full bg-emerald-500" /> Operational Status: Active
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem className="gap-2.5 rounded-lg">
+                                <Settings className="h-4 w-4 opacity-70" /> System Preferences
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="gap-2.5 rounded-lg text-destructive">
+                                <LayoutGrid className="h-4 w-4 opacity-70" /> Terminate Session
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
+
+                {/* Sub-modals */}
+                <ChannelDialog open={isDialogOpen} onOpenChange={setIsDialogOpen} labId={labId} onChannelCreated={(ch) => onSelect(ch.id, 'channel')} />
+                <InviteModal open={isInviteOpen} onOpenChange={setIsInviteOpen} labId={labId} />
+                <HuddleBar isActive={isHuddleActive} channelName="Sync Hub" onLeave={() => setIsHuddleActive(false)} />
             </div>
-
-            {/* Channel Invite Dialog */}
-            <ChannelDialog
-                open={isDialogOpen}
-                onOpenChange={setIsDialogOpen}
-                labId={labId}
-                onChannelCreated={(ch) => onSelect(ch.id, 'channel')}
-            />
-
-            <InviteModal
-                open={isInviteOpen}
-                onOpenChange={setIsInviteOpen}
-                labId={labId}
-            />
-
-            <HuddleBar
-                isActive={isHuddleActive}
-                channelName={activeHuddleChannel}
-                onLeave={() => {
-                    setIsHuddleActive(false);
-                    toast.info("Left Huddle", {
-                        description: "Voice session ended."
-                    });
-                }}
-            />
-        </div>
         </TooltipProvider>
     );
 };

@@ -7,9 +7,10 @@ CREATE TABLE IF NOT EXISTS public.team_invitations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email TEXT NOT NULL,
     lab_id UUID REFERENCES public.labs(id) ON DELETE CASCADE,
-    role TEXT NOT NULL CHECK (role IN ('admin', 'member', 'researcher', 'guest')),
+    role TEXT NOT NULL CHECK (role IN ('admin', 'member', 'researcher', 'lead', 'guest')),
     invited_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
     invitation_token TEXT UNIQUE NOT NULL,
+    token TEXT, -- Legacy alias for invitation_token used in some code
     email_sent_at TIMESTAMPTZ,
     accepted_at TIMESTAMPTZ,
     expires_at TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '7 days'),
@@ -44,6 +45,12 @@ ALTER TABLE public.team_invitations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.collaboration_activity ENABLE ROW LEVEL SECURITY;
 
 -- 4. RLS Policies for team_invitations
+
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Users can create invitations for their labs" ON public.team_invitations;
+DROP POLICY IF EXISTS "Users can view invitations for their labs" ON public.team_invitations;
+DROP POLICY IF EXISTS "Anyone can view invitation by token" ON public.team_invitations;
+DROP POLICY IF EXISTS "Users can update their own invitations" ON public.team_invitations;
 
 -- Allow authenticated users to create invitations
 CREATE POLICY "Users can create invitations for their labs"
@@ -88,6 +95,10 @@ TO authenticated
 USING (email = auth.jwt()->>'email' OR invited_by = auth.uid());
 
 -- 5. RLS Policies for collaboration_activity
+
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Users can view activity for their labs" ON public.collaboration_activity;
+DROP POLICY IF EXISTS "Users can create activity for their labs" ON public.collaboration_activity;
 
 -- Allow users to view activity for their labs
 CREATE POLICY "Users can view activity for their labs"

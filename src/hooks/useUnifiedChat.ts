@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useServices } from "@/core/ServiceProvider";
 import { ChatMessage, DirectMessage } from '@/core/interfaces';
 import { RealtimeChannel } from '@supabase/supabase-js';
+import { toast } from 'sonner';
 
 export const useUnifiedChat = (id: string | null, type: 'channel' | 'dm') => {
     const { collaboration, auth } = useServices();
@@ -89,7 +90,7 @@ export const useUnifiedChat = (id: string | null, type: 'channel' | 'dm') => {
     }, [id, type, currentUser?.id]);
 
     const sendMessage = useCallback(async (content: string, parentId?: string) => {
-        if (!id) throw new Error('No selection');
+        if (!id) return;
 
         const tempId = `temp-${Date.now()}`;
         const tempMessage: any = {
@@ -97,7 +98,7 @@ export const useUnifiedChat = (id: string | null, type: 'channel' | 'dm') => {
             content,
             created_at: new Date().toISOString(),
             user: {
-                display_name: currentUser?.full_name || currentUser?.email?.split('@')[0] || 'Me',
+                display_name: currentUser?.display_name || currentUser?.full_name || currentUser?.email?.split('@')[0] || 'Me',
                 avatar_url: currentUser?.avatar_url
             }
         };
@@ -113,22 +114,21 @@ export const useUnifiedChat = (id: string | null, type: 'channel' | 'dm') => {
         setMessages(prev => [...prev, tempMessage]);
 
         try {
+            let result;
             if (type === 'channel') {
-                const { error } = await collaboration.sendMessage(id, content, parentId);
-                if (error) throw error;
+                result = await collaboration.sendMessage(id, content, parentId);
             } else {
-                const { error } = await collaboration.sendDirectMessage(id, content);
-                if (error) throw error;
+                result = await collaboration.sendDirectMessage(id, content);
             }
 
-            // We don't remove temp message immediately if we want smooth sync, 
-            // but usually the real message comes back through RT.
-            // For DMs, the 'sent' message isn't always pushed back to the sender via DB triggers depending on setup.
-            // If we don't see it via RT, we replace temp with real data.
+            if (result.error) throw result.error;
 
+            // If we're lucky, the real message comes back through RT quickly.
+            // If not, we could replace the temp message here, but RT usually handles it.
         } catch (err) {
             console.error("Failed to send", err);
             setMessages(prev => prev.filter(m => m.id !== tempId));
+            toast.error("Failed to send message");
             throw err;
         }
     }, [id, type, collaboration, currentUser]);

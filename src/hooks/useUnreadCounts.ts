@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useServices } from '@/core/ServiceProvider';
+import { supabase } from '@/integrations/supabase/client';
 
 export const useUnreadCounts = (labId: string | null, userId: string | null) => {
   const { collaboration } = useServices();
@@ -12,10 +13,38 @@ export const useUnreadCounts = (labId: string | null, userId: string | null) => 
 
     loadUnreadCounts();
 
-    // Refresh every 30 seconds
-    const interval = setInterval(loadUnreadCounts, 30000);
+    // Subscribe to new channel messages
+    const messageSub = supabase
+      .channel('unread-count-messages')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'chat_messages'
+      }, (payload) => {
+        // If message is in one of our channels and not from us, refresh
+        if (payload.new.user_id !== userId) {
+          loadUnreadCounts();
+        }
+      })
+      .subscribe();
 
-    return () => clearInterval(interval);
+    // Subscribe to new DMs
+    const dmSub = supabase
+      .channel('unread-count-dms')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'direct_messages',
+        filter: `recipient_id=eq.${userId}`
+      }, () => {
+        loadUnreadCounts();
+      })
+      .subscribe();
+
+    return () => {
+      messageSub.unsubscribe();
+      dmSub.unsubscribe();
+    };
   }, [labId, userId]);
 
   const loadUnreadCounts = async () => {

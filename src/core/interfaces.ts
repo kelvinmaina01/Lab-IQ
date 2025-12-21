@@ -214,6 +214,7 @@ export interface ICollaborationService {
 
     // Direct Messages
     getDirectMessages(otherUserId: string): Promise<{ data: DirectMessage[] | null; error: any }>;
+    getRecentConversations(): Promise<{ data: string[] | null; error: any }>;
     sendDirectMessage(recipientId: string, content: string): Promise<{ data: DirectMessage | null; error: any }>;
     subscribeToDirectMessages(userId: string, onMessage: (msg: DirectMessage) => void): RealtimeChannel;
 
@@ -223,6 +224,8 @@ export interface ICollaborationService {
         channels: ChatChannel[];
         files: SharedFile[];
         projects: SharedProject[];
+        canvases: SharedCanvas[];
+        lists: SharedList[];
     }>;
 
     // Typing Indicators
@@ -245,6 +248,7 @@ export interface ICollaborationService {
     getSharedResources(labId: string, type?: string): Promise<{ data: SaaSResource[] | null; error: any }>;
     shareResource(resourceId: string, resourceType: string, channelId: string): Promise<{ error: any }>;
     getLabResources(labId: string, type: 'dataset' | 'report' | 'experiment'): Promise<{ data: any[] | null; error: any }>;
+    acceptInvitation(token: string): Promise<{ error: any }>;
 }
 
 export interface ChatChannel {

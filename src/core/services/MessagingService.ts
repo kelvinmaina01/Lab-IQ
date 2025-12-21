@@ -104,6 +104,25 @@ export class MessagingService {
     }
 
     // Direct Messages
+    async getRecentConversations(userId: string): Promise<string[]> {
+        const { data, error } = await supabase
+            .from('direct_messages')
+            .select('sender_id, recipient_id')
+            .or(`sender_id.eq.${userId},recipient_id.eq.${userId}`)
+            .order('created_at', { ascending: false })
+            .limit(50);
+
+        if (error) throw error;
+
+        const uniqueUserIds = new Set<string>();
+        data.forEach(dm => {
+            if (dm.sender_id !== userId) uniqueUserIds.add(dm.sender_id);
+            if (dm.recipient_id !== userId) uniqueUserIds.add(dm.recipient_id);
+        });
+
+        return Array.from(uniqueUserIds);
+    }
+
     async getDirectMessages(myId: string, otherUserId: string): Promise<any[]> {
         const { data, error } = await supabase
             .from('direct_messages')

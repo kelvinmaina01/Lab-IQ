@@ -38,6 +38,7 @@ const Datasets = React.lazy(() => import("./pages/Datasets"));
 const Dashboards = React.lazy(() => import("./pages/Dashboards"));
 const Login = React.lazy(() => import("./pages/Login"));
 const Signup = React.lazy(() => import("./pages/Signup"));
+const AcceptInvitation = React.lazy(() => import("./pages/AcceptInvitation"));
 const NotFound = React.lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -98,6 +99,7 @@ const App = () => {
                       <Route path="/data-anonymization" element={<DataAnonymization />} />
                       <Route path="/models" element={<Models />} />
                       <Route path="/dashboards" element={<Dashboards />} />
+                      <Route path="/accept-invitation" element={<AcceptInvitation />} />
 
                       <Route path="*" element={<NotFound />} />
                     </Routes>

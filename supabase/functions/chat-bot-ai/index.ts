@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
@@ -7,6 +6,8 @@ const corsHeaders = {
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+console.info('[LabAI] Bot function started');
+
 serve(async (req) => {
     // Handle CORS preflight
     if (req.method === "OPTIONS") {
@@ -14,7 +15,15 @@ serve(async (req) => {
     }
 
     try {
+        console.log('[LabAI] Received bot request');
         const { message, channelId, userId, history } = await req.json();
+
+        console.log('[LabAI] Request details:', {
+            userId,
+            channelId,
+            messageLength: message?.length || 0,
+            hasHistory: Array.isArray(history) && history.length > 0,
+        });
 
         // Try Groq first (preferred), fallback to Grok, then Gemini
         const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
@@ -22,7 +31,8 @@ serve(async (req) => {
         const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 
         if (!GROQ_API_KEY && !GROK_API_KEY && !GEMINI_API_KEY) {
-            throw new Error("Missing AI API keys. Configure GROQ_API_KEY, GROK_API_KEY, or GEMINI_API_KEY");
+            console.error('[LabAI] No API keys configured');
+            throw new Error("AI service not configured. Please contact administrator.");
         }
 
         // Initialize Supabase Client (Service Role)
@@ -31,13 +41,16 @@ serve(async (req) => {
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
         // Fetch channel context for better responses
+        console.log('[LabAI] Fetching channel context...');
         const { data: channel } = await supabase
             .from('chat_channels')
             .select('display_name, description, type')
             .eq('id', channelId)
             .single();
 
-        // Construct Enhanced System Prompt
+        console.log('[LabAI] Channel:', channel?.display_name);
+
+        // Enhanced scientific system prompt
         const systemPrompt = `You are LabAI, an expert scientific research assistant integrated into Lab-IQ collaboration platform.
 
 **Your Role:**
@@ -53,19 +66,23 @@ serve(async (req) => {
 - You have access to Lab-IQ features: datasets, experiments, reports, workflows
 
 **Response Guidelines:**
-- Be concise but thorough
+- Be concise but thorough (2-4 paragraphs)
 - Use markdown formatting for clarity
 - Cite sources when applicable
 - Provide actionable recommendations
 - If you need more information, ask clarifying questions
+- Use bullet points for lists
+- Include relevant equations or formulas when helpful
 
 Respond as a collaborative research partner.`;
 
         let aiMessage = "";
+        let modelUsed = "";
 
-        // 2. Try Groq API first (preferred for speed and quality)
+        // 1. Try Groq API first (preferred for speed and quality)
         if (GROQ_API_KEY) {
             try {
+                console.log('[LabAI] Attempting GROQ API...');
                 const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST",
                     headers: {
@@ -73,27 +90,37 @@ Respond as a collaborative research partner.`;
                         "Authorization": `Bearer ${GROQ_API_KEY}`,
                     },
                     body: JSON.stringify({
-                        model: "mixtral-8x7b-32768",
+                        model: "llama-3.3-70b-versatile", // Latest and best model
                         messages: [
                             { role: "system", content: systemPrompt },
                             ...(history || []),
                             { role: "user", content: message }
                         ],
                         temperature: 0.7,
-                        max_tokens: 1000,
+                        max_tokens: 1024,
+                        top_p: 0.9,
                     }),
                 });
 
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('[LabAI] GROQ API error:', errorText);
+                    throw new Error(`GROQ API failed: ${response.status}`);
+                }
+
                 const aiData = await response.json();
                 aiMessage = aiData.choices?.[0]?.message?.content;
+                modelUsed = "llama-3.3-70b-versatile";
+                console.log('[LabAI] ✅ GROQ response received');
             } catch (error) {
-                console.error("Groq API failed:", error);
+                console.error("[LabAI] Groq API failed:", error);
             }
         }
 
-        // Fallback to Grok if Groq fails
+        // 2. Fallback to Grok if Groq fails
         if (!aiMessage && GROK_API_KEY) {
             try {
+                console.log('[LabAI] Attempting Grok API...');
                 const response = await fetch("https://api.x.ai/v1/chat/completions", {
                     method: "POST",
                     headers: {
@@ -113,14 +140,17 @@ Respond as a collaborative research partner.`;
 
                 const aiData = await response.json();
                 aiMessage = aiData.choices?.[0]?.message?.content;
+                modelUsed = "grok-beta";
+                console.log('[LabAI] ✅ Grok response received');
             } catch (error) {
-                console.error("Grok API failed:", error);
+                console.error("[LabAI] Grok API failed:", error);
             }
         }
 
-        // Final fallback to Gemini
+        // 3. Final fallback to Gemini
         if (!aiMessage && GEMINI_API_KEY) {
             try {
+                console.log('[LabAI] Attempting Gemini API...');
                 const response = await fetch(
                     `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`,
                     {
@@ -129,7 +159,7 @@ Respond as a collaborative research partner.`;
                         body: JSON.stringify({
                             contents: [{ parts: [{ text: `${systemPrompt}\n\nUser: ${message}` }] }],
                             generationConfig: {
-                                maxOutputTokens: 1000,
+                                maxOutputTokens: 1024,
                                 temperature: 0.7
                             }
                         })
@@ -138,46 +168,57 @@ Respond as a collaborative research partner.`;
 
                 const aiData = await response.json();
                 aiMessage = aiData.candidates?.[0]?.content?.parts?.[0]?.text;
+                modelUsed = "gemini-pro";
+                console.log('[LabAI] ✅ Gemini response received');
             } catch (error) {
-                console.error("Gemini API failed:", error);
+                console.error("[LabAI] Gemini API failed:", error);
             }
         }
 
         if (!aiMessage) {
-            aiMessage = "I'm experiencing technical difficulties. Please try again in a moment.";
+            console.error('[LabAI] ❌ All AI providers failed');
+            aiMessage = "I'm experiencing technical difficulties. Please try again in a moment or contact support if this persists.";
+            modelUsed = "fallback";
         }
 
-        // 3. Store AI Response in Database (This triggers Realtime for everyone)
-        // We post as a 'bot' user or the system
-        // Ideally we have a dedicated bot user in auth.users, but for now we might insert with a special flag 
-        // or just insert as a 'system' message if supported.
-        // Let's assume we insert with a null user_id? No, RLS might block.
-        // We'll insert with the Requesting User's ID properly tagged as 'scraped' or 'bot'? 
-        // Better: Edge function has SERVICE ROLE, so it bypasses RLS.
-        // We can insert with a specific Bot User ID if we have one.
-        // For now, we'll insert as the user OR a hardcoded bot ID.
-        const botUserId = '00000000-0000-0000-0000-000000000000'; // Placeholder or create a real one
+        console.log('[LabAI] Storing response in database...');
 
+        // Store AI Response in Database using is_bot and bot_metadata columns
         const { error: dbError } = await supabase
             .from('chat_messages')
             .insert({
                 channel_id: channelId,
-                user_id: userId, // Posting 'on behalf' of user? Or replying?
-                // If replying, we should really use a distinct bot user.
-                // Let's append "[AI]" to content if we must reuse ID, or use a specific ID.
-                content: `[AI] ${aiMessage}`,
-                // created_at: handled by default
+                user_id: userId,
+                content: aiMessage,
+                is_bot: true, // Use the existing is_bot column
+                bot_metadata: { // Use the existing bot_metadata JSONB column
+                    model: modelUsed,
+                    role: "scientific_assistant",
+                    timestamp: new Date().toISOString(),
+                    provider: GROQ_API_KEY ? "groq" : GROK_API_KEY ? "grok" : "gemini"
+                }
             });
 
-        if (dbError) console.error("DB Error", dbError);
+        if (dbError) {
+            console.error("[LabAI] DB Error:", dbError);
+        } else {
+            console.log('[LabAI] ✅ Response stored in database');
+        }
 
-        return new Response(JSON.stringify({ success: true, aiMessage }), {
+        console.log('[LabAI] ✅ Request completed successfully');
+        return new Response(JSON.stringify({
+            success: true,
+            aiMessage,
+            model: modelUsed
+        }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
 
     } catch (error) {
-        console.error("Error:", error);
-        return new Response(JSON.stringify({ error: error.message }), {
+        console.error("[LabAI] ❌ Error:", error);
+        return new Response(JSON.stringify({
+            error: error instanceof Error ? error.message : "Unknown error occurred"
+        }), {
             status: 500,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
