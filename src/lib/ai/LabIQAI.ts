@@ -1,5 +1,5 @@
 /**
- * Lab-IQ Unified AI Service
+ * LabIQ Health Unified AI Service
  * Production-grade multi-agent AI system for data analytics
  *
  * Architecture:
@@ -738,7 +738,7 @@ ${stats.columns.map(c => `  - ${c.name} (${c.type}): ${c.count} values, ${c.uniq
   private getSystemPrompt(mode: string, dataContext: string): string {
     // Domain-specific prompts for biotech, clinical, biopharma
     const domainPrompts: Record<string, string> = {
-      biotech: `You are Lab-IQ's Biotech Data Analysis Expert specializing in:
+      biotech: `You are LabIQ Health's Biotech Data Analysis Expert specializing in:
 - Genomics: DNA/RNA sequences, gene expression, SNP analysis, variant calling
 - Proteomics: Protein structure, mass spectrometry, post-translational modifications
 - Cell Biology: Cell culture, viability assays, flow cytometry analysis
@@ -747,7 +747,7 @@ ${stats.columns.map(c => `  - ${c.name} (${c.type}): ${c.count} values, ${c.uniq
 Key biotech metrics: Fold change, log2 ratios, Phred quality scores, FDR-corrected p-values.
 Normalization methods: TPM, FPKM, CPM for expression data.`,
 
-      clinical: `You are Lab-IQ's Clinical Data Analysis Expert specializing in:
+      clinical: `You are LabIQ Health's Clinical Data Analysis Expert specializing in:
 - Patient Outcomes: Survival analysis, readmission prediction, mortality risk
 - Laboratory Values: Reference ranges, critical values, trends
 - Vital Signs: Blood pressure, heart rate, temperature, SpO2
@@ -762,7 +762,7 @@ Clinical Reference Ranges:
 
 Always flag values outside normal ranges and note clinical significance.`,
 
-      biopharma: `You are Lab-IQ's Biopharma & Drug Development Expert specializing in:
+      biopharma: `You are LabIQ Health's Biopharma & Drug Development Expert specializing in:
 - Drug Discovery: Hit identification, lead optimization, SAR analysis
 - ADME/Tox: Absorption, distribution, metabolism, excretion, toxicity
 - Pharmacokinetics: Cmax, Tmax, AUC, half-life, clearance, bioavailability
@@ -772,7 +772,7 @@ Drug-Likeness (Lipinski's Rule): MW≤500, LogP≤5, HBD≤5, HBA≤10
 Potency: IC50 < 100 nM (highly potent)
 Safety: hERG IC50 > 30 μM (low cardiac risk)`,
 
-      chemistry: `You are Lab-IQ's Laboratory Chemistry Expert specializing in:
+      chemistry: `You are LabIQ Health's Laboratory Chemistry Expert specializing in:
 - Analytical Chemistry: Chromatography (HPLC, GC), spectroscopy (NMR, MS, IR)
 - Synthesis: Reaction optimization, yield improvement, purity assessment
 - Quality Control: Method validation, stability studies, batch analysis
@@ -780,18 +780,18 @@ Safety: hERG IC50 > 30 μM (low cardiac risk)`,
     };
 
     const modeInstructions: Record<string, string> = {
-      analysis: `You are Lab-IQ's data analysis assistant for biotech, clinical, and health sector data.
+      analysis: `You are LabIQ Health's data analysis assistant for biotech, clinical, and health sector data.
 Provide statistical insights, identify patterns specific to the domain, and explain data characteristics.
 Focus on accuracy, clinical/biological relevance, and actionable insights.
 ${domainPrompts.clinical}
 ${domainPrompts.biotech}`,
-      automl: `You are Lab-IQ's machine learning assistant specialized for biotech and healthcare data.
+      automl: `You are LabIQ Health's machine learning assistant specialized for biotech and healthcare data.
 Recommend domain-appropriate algorithms, explain model selection for clinical/biological data,
 suggest feature engineering relevant to health sciences, and interpret results in medical/scientific context.
 For clinical data: Prefer interpretable models (Logistic Regression, Decision Trees) for patient outcomes.
 For biotech data: Consider specialized tools (DESeq2, edgeR) for expression analysis.
 For biopharma: Include QSAR models and structure-activity analysis.`,
-      educator: `You are Lab-IQ's data science educator for healthcare and life sciences.
+      educator: `You are LabIQ Health's data science educator for healthcare and life sciences.
 Explain concepts clearly with medical/biological examples, use clinical analogies,
 and help users understand data analysis principles in the context of health research.
 Ensure explanations are accessible to researchers who may not have ML backgrounds.`,
@@ -824,7 +824,7 @@ class ExperimentAgent extends BaseAIAgent {
       .eq('id', datasetId)
       .single();
 
-    const prompt = `You are Lab-IQ's experiment configuration assistant.
+    const prompt = `You are LabIQ Health's experiment configuration assistant.
 
 Dataset: ${dataset?.name || 'Unknown'}
 Description: ${dataset?.description || 'No description'}
@@ -900,7 +900,7 @@ class BottleneckAgent extends BaseAIAgent {
     },
     context?: string
   ): Promise<AIResponse> {
-    const prompt = `You are Lab-IQ's performance analysis agent. Analyze these metrics for bottlenecks:
+    const prompt = `You are LabIQ Health's performance analysis agent. Analyze these metrics for bottlenecks:
 
 Metrics:
 - Processing Time: ${metrics.processingTime ?? 'N/A'} ms
@@ -1000,7 +1000,7 @@ class PredictiveInsightAgent extends BaseAIAgent {
     const trend = this.computeTrend(historicalData);
     const prediction = this.computePrediction(historicalData, timeframe);
 
-    const prompt = `You are Lab-IQ's predictive analytics agent.
+    const prompt = `You are LabIQ Health's predictive analytics agent.
 
 Metric: ${metricName}
 Historical Data Points: ${historicalData.length}
@@ -1257,7 +1257,7 @@ class PerformanceMonitor {
 }
 
 // =============================================================================
-// MAIN LAB-IQ AI CLASS (Singleton Facade)
+// MAIN LabIQ Health AI CLASS (Singleton Facade)
 // =============================================================================
 
 export class LabIQAI {

@@ -392,7 +392,7 @@ const Models = () => {
           optimizedParams = { ...optimizedParams, ...response.metadata.parameters };
           toast({
             title: "AI Optimization",
-            description: "Hyperparameters optimized by Lab-IQ AI",
+            description: "Hyperparameters optimized by LabIQ Health AI",
           });
         }
       } catch (e) {
@@ -461,11 +461,10 @@ const Models = () => {
 
       toast({
         title: "Training Complete",
-        description: `${model.name} achieved ${
-          model.type === 'classification' ? `${(metrics.accuracy! * 100).toFixed(1)}% accuracy` :
+        description: `${model.name} achieved ${model.type === 'classification' ? `${(metrics.accuracy! * 100).toFixed(1)}% accuracy` :
           model.type === 'regression' ? `R² = ${metrics.r2!.toFixed(3)}` :
-          `Silhouette = ${metrics.silhouetteScore!.toFixed(3)}`
-        }`,
+            `Silhouette = ${metrics.silhouetteScore!.toFixed(3)}`
+          }`,
       });
 
     } catch (error) {
@@ -573,7 +572,7 @@ const Models = () => {
 
   const filteredModels = models.filter(model => {
     const matchesSearch = model.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         model.description.toLowerCase().includes(searchQuery.toLowerCase());
+      model.description.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = filterStatus === 'all' || model.status === filterStatus;
     const matchesType = filterType === 'all' || model.type === filterType;
     return matchesSearch && matchesStatus && matchesType;
@@ -589,7 +588,7 @@ const Models = () => {
     deployed: models.filter(m => m.status === 'deployed').length,
     completed: models.filter(m => m.status === 'completed').length,
     avgAccuracy: models.filter(m => m.metrics?.accuracy).reduce((sum, m) => sum + (m.metrics.accuracy || 0), 0) /
-                 (models.filter(m => m.metrics?.accuracy).length || 1),
+      (models.filter(m => m.metrics?.accuracy).length || 1),
   };
 
   // =============================================================================
@@ -741,7 +740,7 @@ const Models = () => {
               </Button>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-tour="models-grid">
               {filteredModels.map(model => (
                 <ModelCard
                   key={model.id}
@@ -1038,8 +1037,8 @@ const ModelCard: React.FC<ModelCardProps> = ({ model, onTrain, onDeploy, onDelet
   const primaryMetric = model.type === 'classification'
     ? model.metrics?.accuracy
     : model.type === 'regression'
-    ? model.metrics?.r2
-    : model.metrics?.silhouetteScore;
+      ? model.metrics?.r2
+      : model.metrics?.silhouetteScore;
 
   return (
     <Card className="p-6 hover:shadow-lg transition-all group">

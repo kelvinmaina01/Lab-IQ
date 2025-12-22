@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useLocation } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,11 +13,14 @@ import { Plus, Search, FlaskConical, Calendar, User, MoreVertical, Play, Pause, 
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { CommentsSystem } from "@/components/collaboration/CommentsSystem";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { AuthGuard } from "@/components/auth/AuthGuard";
+import { labIQAI } from "@/lib/ai/LabIQAI";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useSubscription } from "@/hooks/useSubscription";
+import { useSubscription } from "@/hooks/use-subscription";
 import { useActivityTracker } from "@/hooks/useActivityTracker";
 import { UpgradeDialog } from "@/components/UpgradeDialog";
+import { ExperimentTemplates } from "@/components/experiments/ExperimentTemplates";
 
 const Experiments = () => {
   const location = useLocation();
@@ -151,7 +154,7 @@ const Experiments = () => {
     try {
       const selectedDataset = datasets.find(d => d.id === selectedDatasetId);
       const context = selectedDataset ? `Dataset: ${selectedDataset.name}` : '';
-      const generatedDesc = await labIQAI.experiment.suggestDescription(title, context);
+      const generatedDesc = await labIQAI.generateDescription('experiment', title, context);
 
       if (generatedDesc) {
         setDescription(generatedDesc);

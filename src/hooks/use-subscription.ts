@@ -174,7 +174,7 @@ export const PLAN_LIMITS: Record<PlanType, Subscription> = {
 export const FEATURE_DESCRIPTIONS: Record<keyof SubscriptionFeatures, { name: string; description: string; requiredPlan: PlanType }> = {
   aiModels: { name: 'AI Models', description: 'Number of AI models available for analysis', requiredPlan: 'free' },
   analysisModes: { name: 'Analysis Modes', description: 'Analysis, Educator, and Prediction modes', requiredPlan: 'free' },
-  apiAccess: { name: 'API Access', description: 'Programmatic access to Lab-IQ APIs', requiredPlan: 'pro' },
+  apiAccess: { name: 'API Access', description: 'Programmatic access to LabIQ Health APIs', requiredPlan: 'pro' },
   prioritySupport: { name: 'Priority Support', description: '24-hour response time', requiredPlan: 'pro' },
   phoneSupport: { name: 'Phone Support', description: 'Direct phone support line', requiredPlan: 'team' },
   dedicatedManager: { name: 'Dedicated Manager', description: 'Personal account manager', requiredPlan: 'enterprise' },

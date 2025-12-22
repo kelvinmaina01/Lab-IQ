@@ -208,18 +208,24 @@ html {
 
 /* Advanced Antigravity-style Animations */
 @keyframes float-rotate {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translateY(0px) rotate(0deg);
   }
+
   50% {
     transform: translateY(-30px) rotate(5deg);
   }
 }
 
 @keyframes pulse-glow {
-  0%, 100% {
+
+  0%,
+  100% {
     box-shadow: 0 0 20px rgba(0, 204, 204, 0.3);
   }
+
   50% {
     box-shadow: 0 0 40px rgba(0, 204, 204, 0.6);
   }
@@ -230,6 +236,7 @@ html {
     opacity: 0;
     transform: translateX(-100px);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);
@@ -241,6 +248,7 @@ html {
     opacity: 0;
     transform: scale(0.5);
   }
+
   to {
     opacity: 1;
     transform: scale(1);
@@ -248,18 +256,24 @@ html {
 }
 
 @keyframes gradient-shift {
-  0%, 100% {
+
+  0%,
+  100% {
     background-position: 0% 50%;
   }
+
   50% {
     background-position: 100% 50%;
   }
 }
 
 @keyframes bounce-subtle {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translateY(0);
   }
+
   50% {
     transform: translateY(-10px);
   }
@@ -271,6 +285,7 @@ html {
     transform: translateY(60px);
     filter: blur(10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -282,6 +297,7 @@ html {
   0% {
     background-position: -200% center;
   }
+
   100% {
     background-position: 200% center;
   }
@@ -331,7 +347,7 @@ html {
 }
 
 .animate-shimmer {
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
   background-size: 200% 100%;
   animation: shimmer 2s infinite;
 }
@@ -348,6 +364,50 @@ html {
 .animate-slide-in-right {
   animation: slide-in-right 0.7s cubic-bezier(0.4, 0, 0.2, 1) forwards;
   opacity: 0;
+}
+
+/* Typing animation for hero headline */
+@keyframes typing {
+  from {
+    width: 0;
+  }
+
+  to {
+    width: 100%;
+  }
+}
+
+@keyframes blink-caret {
+
+  0%,
+  100% {
+    border-color: transparent;
+  }
+
+  50% {
+    border-color: hsl(var(--primary));
+  }
+}
+
+@keyframes caret-fade {
+
+  0%,
+  80% {
+    border-color: hsl(var(--primary));
+  }
+
+  100% {
+    border-color: transparent;
+  }
+}
+
+.animate-typing {
+  animation:
+    typing 3.5s steps(25, end) forwards,
+    blink-caret 0.75s step-end 4,
+    caret-fade 1s ease-out 3.5s forwards;
+  width: 0;
+  border-right-width: 3px;
 }
 
 /* Smooth transitions for all interactive elements */

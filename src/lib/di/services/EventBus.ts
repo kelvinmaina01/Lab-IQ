@@ -139,7 +139,7 @@ export class TypedChannel<T> {
   }
 }
 
-// Predefined event types for Lab-IQ
+// Predefined event types for LabIQ Health
 export const LabIQEvents = {
   // Challenge events
   CHALLENGE_STARTED: 'challenge:started',

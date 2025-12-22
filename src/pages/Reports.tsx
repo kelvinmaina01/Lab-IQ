@@ -314,7 +314,7 @@ const Reports = () => {
     setSelectedReport(report);
 
     try {
-      const context = `Report: ${report.title}. Type: ${report.type}. Compliance: ${report.compliance}. Modules: ${Object.entries(report.modules).filter(([,v]) => v).map(([k]) => k).join(', ')}`;
+      const context = `Report: ${report.title}. Type: ${report.type}. Compliance: ${report.compliance}. Modules: ${Object.entries(report.modules).filter(([, v]) => v).map(([k]) => k).join(', ')}`;
 
       const response = await labIQAI.quickInsight.process(context, 'recommendation');
 
@@ -622,7 +622,7 @@ const Reports = () => {
           </div>
 
           {/* Tabs */}
-          <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
+          <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} data-tour="reports-builder">
             <TabsList className="grid w-full max-w-3xl grid-cols-6">
               <TabsTrigger value="all">All</TabsTrigger>
               <TabsTrigger value="executive">Executive</TabsTrigger>
@@ -777,12 +777,11 @@ const Reports = () => {
               ) : (
                 <div className="space-y-4 py-4">
                   {selectedReport?.aiInsights?.map((insight) => (
-                    <Card key={insight.id} className={`p-4 border-l-4 ${
-                      insight.severity === 'critical' ? 'border-l-red-500' :
-                      insight.severity === 'high' ? 'border-l-orange-500' :
-                      insight.severity === 'medium' ? 'border-l-amber-500' :
-                      'border-l-green-500'
-                    }`}>
+                    <Card key={insight.id} className={`p-4 border-l-4 ${insight.severity === 'critical' ? 'border-l-red-500' :
+                        insight.severity === 'high' ? 'border-l-orange-500' :
+                          insight.severity === 'medium' ? 'border-l-amber-500' :
+                            'border-l-green-500'
+                      }`}>
                       <div className="flex items-start justify-between">
                         <div>
                           <div className="flex items-center gap-2 mb-1">

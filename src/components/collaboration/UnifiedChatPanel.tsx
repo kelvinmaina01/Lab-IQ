@@ -104,7 +104,7 @@ export const UnifiedChatPanel = ({ id, labId, type, title, onThreadOpen }: Unifi
                     {metadata.name || `Scientific ${type}`}
                 </h4>
                 <p className="text-xs text-muted-foreground line-clamp-1 mb-3">
-                    {metadata.description || "Interactive scientific asset linked from Lab-IQ core."}
+                    {metadata.description || "Interactive scientific asset linked from LabIQ Health core."}
                 </p>
                 <div className="flex items-center justify-between">
                     <Button variant="outline" size="sm" className="h-7 text-[10px] gap-1.5 rounded-lg border-primary/20 hover:border-primary/50">

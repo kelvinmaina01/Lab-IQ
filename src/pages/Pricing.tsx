@@ -363,7 +363,7 @@ const Pricing = () => {
                                     <div>
                                         <h3 className="font-semibold mb-1">50% Academic Institution</h3>
                                         <p className="text-sm text-muted-foreground">
-                                            Universities and research labs qualify for institutional discounts on Team plans.
+                                            Universities, research institutions, and NGOs qualify for institutional discounts on Team plans.
                                         </p>
                                     </div>
                                 </div>
@@ -573,13 +573,12 @@ const Pricing = () => {
                         <div className="flex items-center justify-center gap-2 mb-4">
                             {['email', 'sent', 'verified'].map((step, idx) => (
                                 <div key={step} className="flex items-center">
-                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-300 ${
-                                        verificationStep === step
+                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-300 ${verificationStep === step
                                             ? 'bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white scale-110'
                                             : idx < ['email', 'sent', 'verified'].indexOf(verificationStep)
-                                            ? 'bg-green-500 text-white'
-                                            : 'bg-muted text-muted-foreground'
-                                    }`}>
+                                                ? 'bg-green-500 text-white'
+                                                : 'bg-muted text-muted-foreground'
+                                        }`}>
                                         {idx < ['email', 'sent', 'verified'].indexOf(verificationStep) ? (
                                             <Check className="w-4 h-4" />
                                         ) : (
@@ -587,11 +586,10 @@ const Pricing = () => {
                                         )}
                                     </div>
                                     {idx < 2 && (
-                                        <div className={`w-12 h-0.5 mx-1 transition-colors duration-300 ${
-                                            idx < ['email', 'sent', 'verified'].indexOf(verificationStep)
+                                        <div className={`w-12 h-0.5 mx-1 transition-colors duration-300 ${idx < ['email', 'sent', 'verified'].indexOf(verificationStep)
                                                 ? 'bg-green-500'
                                                 : 'bg-muted'
-                                        }`} />
+                                            }`} />
                                     )}
                                 </div>
                             ))}

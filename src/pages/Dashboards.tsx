@@ -30,7 +30,7 @@ export default function Dashboards() {
 
           {/* Description: Medical/Scientific Context */}
           <p className="text-muted-foreground leading-relaxed text-lg max-w-md mx-auto">
-            We are engineering a proprietary visualization engine for clinical diagnostics and longitudinal health data analysis.
+            We are engineering a proprietary visualization engine for public health data analysis and longitudinal research.
             Real-time metric tracking and cross-parameter correlations are in final optimization.
           </p>
 

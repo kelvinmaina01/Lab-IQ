@@ -47,13 +47,13 @@ export interface TourStep {
 const tourSteps: TourStep[] = [
   {
     id: "welcome",
-    title: "Welcome to Lab-IQ! 🎉",
-    description: "I'm your AI assistant, here to guide you through the most powerful laboratory data platform. Let's discover how Lab-IQ transforms your research workflow with cutting-edge AI and automation.",
+    title: "Welcome to LabIQ Health! 🎉",
+    description: "I'm your AI assistant, here to guide you through the most powerful laboratory data platform. Let's discover how LabIQ Health transforms your research workflow with cutting-edge AI and automation.",
     icon: Sparkles,
     route: "/dashboard",
     position: "center",
     tips: [
-      "Lab-IQ supports Biotech, Pharmaceutical, Chemistry, and Clinical research",
+      "LabIQ Health supports Biotech, Pharmaceutical, Chemistry, and Clinical research",
       "Everything you need is just a click away",
       "Your data security is our top priority"
     ]
@@ -75,7 +75,7 @@ const tourSteps: TourStep[] = [
   {
     id: "upload",
     title: "Effortless Data Upload",
-    description: "Upload your research data with confidence. Lab-IQ intelligently processes CSV, Excel, and other formats, automatically detecting data types and quality issues. Drag, drop, and let our AI do the heavy lifting.",
+    description: "Upload your research data with confidence. LabIQ Health intelligently processes CSV, Excel, and other formats, automatically detecting data types and quality issues. Drag, drop, and let our AI do the heavy lifting.",
     icon: Upload,
     route: "/upload",
     highlightSelector: "[data-tour='upload-zone']",
@@ -103,7 +103,7 @@ const tourSteps: TourStep[] = [
   {
     id: "experiments",
     title: "Track Your Scientific Journey",
-    description: "Experiments keep your research organized and reproducible. Document hypotheses, track parameters, and compare results side-by-side. Lab-IQ automatically logs every detail, so you never lose track of what worked.",
+    description: "Experiments keep your research organized and reproducible. Document hypotheses, track parameters, and compare results side-by-side. LabIQ Health automatically logs every detail, so you never lose track of what worked.",
     icon: Beaker,
     route: "/experiments",
     highlightSelector: "[data-tour='experiments-list']",
@@ -159,7 +159,7 @@ const tourSteps: TourStep[] = [
   {
     id: "insights",
     title: "AI-Generated Discoveries",
-    description: "Insights is where Lab-IQ's AI shines. Our algorithms continuously analyze your data, discovering patterns, correlations, and anomalies. Get personalized recommendations tailored to your research goals.",
+    description: "Insights is where LabIQ Health's AI shines. Our algorithms continuously analyze your data, discovering patterns, correlations, and anomalies. Get personalized recommendations tailored to your research goals.",
     icon: Target,
     route: "/insights",
     highlightSelector: "[data-tour='insights-feed']",
@@ -187,7 +187,7 @@ const tourSteps: TourStep[] = [
   {
     id: "reports",
     title: "Professional Reporting",
-    description: "Generate stunning, publication-ready reports in seconds. Lab-IQ compiles your data, visualizations, and insights into beautiful documents. Perfect for presentations, publications, or regulatory submissions.",
+    description: "Generate stunning, publication-ready reports in seconds. LabIQ Health compiles your data, visualizations, and insights into beautiful documents. Perfect for presentations, publications, or regulatory submissions.",
     icon: FileText,
     route: "/reports",
     highlightSelector: "[data-tour='reports-builder']",
@@ -215,7 +215,7 @@ const tourSteps: TourStep[] = [
   {
     id: "complete",
     title: "You're All Set! 🚀",
-    description: "Congratulations! You've completed the tour. Lab-IQ is now your research superpower. Start by uploading your first dataset, or explore the templates in Automation. Remember, I'm always here if you need help—just click the help icon!",
+    description: "Congratulations! You've completed the tour. LabIQ Health is now your research superpower. Start by uploading your first dataset, or explore the templates in Automation. Remember, I'm always here if you need help—just click the help icon!",
     icon: Check,
     route: "/dashboard",
     position: "center",
@@ -305,7 +305,7 @@ export const OnboardingAssistant = ({ isOpen, onClose, onComplete }: OnboardingA
                 <Sparkles className="w-5 h-5 text-white" />
               </div>
               <div>
-                <DialogTitle className="text-xl">Lab-IQ Tour Guide</DialogTitle>
+                <DialogTitle className="text-xl">LabIQ Health Tour Guide</DialogTitle>
                 <DialogDescription>
                   Let me show you around • Step {currentStep + 1} of {tourSteps.length}
                 </DialogDescription>

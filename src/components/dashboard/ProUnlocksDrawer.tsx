@@ -22,7 +22,7 @@ export const ProUnlocksDrawer = ({ onUpgrade }: ProUnlocksDrawerProps) => {
     {
       icon: BarChart3,
       title: "Cross-Lab Benchmark Percentile",
-      description: "Compare your lab performance against industry peers"
+      description: "Compare your data analysis performance against industry peers"
     },
     {
       icon: Mail,
@@ -46,7 +46,7 @@ export const ProUnlocksDrawer = ({ onUpgrade }: ProUnlocksDrawerProps) => {
             Pro Unlocks
           </SheetTitle>
           <SheetDescription>
-            Unlock the full power of your research lab
+            Unlock the full power of your health data analysis
           </SheetDescription>
         </SheetHeader>
 
@@ -75,7 +75,7 @@ export const ProUnlocksDrawer = ({ onUpgrade }: ProUnlocksDrawerProps) => {
             <Crown className="w-4 h-4" />
             Upgrade to Pro
           </Button>
-          
+
           <div className="text-center">
             <p className="text-xs text-muted-foreground">
               Students save 90% • Cancel anytime

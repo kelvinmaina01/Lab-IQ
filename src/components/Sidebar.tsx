@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { FlaskConical, Home, Upload, Brain, BarChart3, FlaskConicalIcon, Boxes, Users, FileText, Cpu, Database, ChevronLeft, ChevronRight, Settings, LayoutDashboard } from "lucide-react";
+import { HeartPulse, Home, Upload, Brain, BarChart3, FlaskConicalIcon, Boxes, Users, FileText, Cpu, Database, ChevronLeft, ChevronRight, Settings, LayoutDashboard } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "@/components/layout/SidebarContext";
 import { Button } from "@/components/ui/button";
@@ -35,17 +35,17 @@ const Sidebar = () => {
         {!isCollapsed && (
           <Link to="/" className="flex items-center gap-3 overflow-hidden whitespace-nowrap">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center shrink-0 shadow-lg shadow-primary/20">
-              <FlaskConical className="w-5 h-5 text-white" />
+              <HeartPulse className="w-5 h-5 text-white" />
             </div>
             <div className="transition-opacity duration-300">
-              <div className="text-lg font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">LabIQ</div>
+              <div className="text-lg font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">LabIQ Health</div>
             </div>
           </Link>
         )}
         {isCollapsed && (
           <div className="w-full flex justify-center">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-lg shadow-primary/20">
-              <FlaskConical className="w-5 h-5 text-white" />
+              <HeartPulse className="w-5 h-5 text-white" />
             </div>
           </div>
         )}

@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import {
   Loader2,
-  FlaskConical,
+  HeartPulse,
   Brain,
   Zap,
   Shield,
@@ -56,7 +56,7 @@ const Login = () => {
         password,
       });
       if (error) throw error;
-      toast({ title: 'Welcome back!', description: 'Successfully signed in to Lab-IQ.' });
+      toast({ title: 'Welcome back!', description: 'Successfully signed in to LabIQ Health.' });
 
       if (redirect) {
         navigate(`${redirect}${token ? `?token=${token}` : ''}`);
@@ -111,10 +111,10 @@ const Login = () => {
           {/* Logo */}
           <Link to="/" className="flex items-center gap-3 mb-12 group">
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-              <FlaskConical className="w-7 h-7 text-white" />
+              <HeartPulse className="w-7 h-7 text-white" />
             </div>
             <span className="text-3xl font-black bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              Lab-IQ
+              LabIQ Health
             </span>
           </Link>
 
@@ -126,8 +126,8 @@ const Login = () => {
               <span className="text-muted-foreground">intelligent research</span>
             </h1>
             <p className="text-lg text-muted-foreground max-w-md leading-relaxed">
-              Continue your journey with AI-powered laboratory intelligence.
-              Your experiments and insights are waiting.
+              Continue your journey with AI-powered health data intelligence.
+              Your projects and insights are waiting.
             </p>
           </div>
 
@@ -173,10 +173,10 @@ const Login = () => {
         <div className="lg:hidden mb-8">
           <Link to="/" className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-lg">
-              <FlaskConical className="w-6 h-6 text-white" />
+              <HeartPulse className="w-6 h-6 text-white" />
             </div>
             <span className="text-2xl font-black bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              Lab-IQ
+              LabIQ Health
             </span>
           </Link>
         </div>
@@ -188,9 +188,9 @@ const Login = () => {
               <Sparkles className="w-4 h-4" />
               <span>Welcome back</span>
             </div>
-            <h2 className="text-3xl font-bold mb-2">Sign in to Lab-IQ</h2>
+            <h2 className="text-3xl font-bold mb-2">Sign in to LabIQ Health</h2>
             <p className="text-muted-foreground">
-              Enter your credentials to access your laboratory workspace
+              Enter your credentials to access your health data workspace
             </p>
           </div>
 
@@ -272,7 +272,7 @@ const Login = () => {
             </div>
             <div className="relative flex justify-center text-sm">
               <span className="px-4 bg-background text-muted-foreground">
-                New to Lab-IQ?
+                New to LabIQ Health?
               </span>
             </div>
           </div>

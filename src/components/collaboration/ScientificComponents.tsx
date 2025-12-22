@@ -1,8 +1,8 @@
 import { Bot } from 'lucide-react';
 
 /**
- * Scientific loading skeleton for Lab-IQ components
- * Uses Lab-IQ theme colors and scientific aesthetic
+ * Scientific loading skeleton for LabIQ Health components
+ * Uses LabIQ Health theme colors and scientific aesthetic
  */
 export function ScientificLoadingSkeleton() {
     return (

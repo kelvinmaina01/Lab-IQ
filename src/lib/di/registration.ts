@@ -35,7 +35,7 @@ function registerUtilityServices(): void {
     const isDev = import.meta.env.DEV;
     return new Logger({
       level: isDev ? 'debug' : 'info',
-      prefix: '[Lab-IQ]',
+      prefix: '[LabIQ Health]',
       enableTimestamp: true,
     });
   });

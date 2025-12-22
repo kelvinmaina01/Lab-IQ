@@ -259,7 +259,7 @@ class WorkflowService {
 
       if (fetchError) throw fetchError;
 
-      // Create execution record in workflow_runs table (correct table name)
+      // Create execution record in workflow_executions table (correct table name)
       const runRecord = {
         workflow_id: workflowId,
         user_id: user.id,
@@ -273,7 +273,7 @@ class WorkflowService {
       };
 
       const { data: executionData, error: executionError } = await supabase
-        .from('workflow_runs')
+        .from('workflow_executions')
         .insert(runRecord)
         .select()
         .single();
@@ -321,7 +321,7 @@ class WorkflowService {
       // Update execution as successful
       const duration = Date.now() - startTime;
       await supabase
-        .from('workflow_runs')
+        .from('workflow_executions')
         .update({
           status: 'completed',
           completed_at: new Date().toISOString(),
@@ -354,7 +354,7 @@ class WorkflowService {
 
       // Update execution as failed
       await supabase
-        .from('workflow_runs')
+        .from('workflow_executions')
         .update({
           status: 'failed',
           completed_at: new Date().toISOString(),
@@ -531,7 +531,7 @@ class WorkflowService {
   async fetchExecutions(workflowId: string, limit: number = 10): Promise<WorkflowExecution[]> {
     try {
       const { data, error } = await supabase
-        .from('workflow_runs')
+        .from('workflow_executions')
         .select('*')
         .eq('workflow_id', workflowId)
         .order('started_at', { ascending: false })
@@ -539,7 +539,7 @@ class WorkflowService {
 
       if (error) throw error;
 
-      // Map workflow_runs fields to WorkflowExecution interface
+      // Map workflow_executions fields to WorkflowExecution interface
       return (data || []).map(run => ({
         id: run.id,
         workflow_id: run.workflow_id,
@@ -573,7 +573,7 @@ class WorkflowService {
       if (workflowError) throw workflowError;
 
       const { count: runCount, error: countError } = await supabase
-        .from('workflow_runs')
+        .from('workflow_executions')
         .select('*', { count: 'exact', head: true })
         .eq('workflow_id', workflowId);
 
@@ -871,7 +871,7 @@ class WorkflowService {
     return {
       total_errors: failedExecutions.length,
       error_types: errorTypes,
-      most_common_error: Object.entries(errorTypes).sort(([,a], [,b]) => b - a)[0]?.[0] || 'None'
+      most_common_error: Object.entries(errorTypes).sort(([, a], [, b]) => b - a)[0]?.[0] || 'None'
     };
   }
 
@@ -988,27 +988,37 @@ class WorkflowService {
         trigger_type: 'dataset_upload' as const,
         trigger_config: { tags: ['ic50', 'dose-response'] },
         steps: [
-          { type: 'quality_check' as const, config: {
-            threshold: 90,
-            required_columns: ['concentration', 'response'],
-            check_outliers: true
-          }},
-          { type: 'transform' as const, config: {
-            operations: ['log_transform', 'normalize', 'curve_fitting'],
-            model: 'four_parameter_logistic'
-          }},
-          { type: 'analyze' as const, config: {
-            mode: 'analysis',
-            metrics: ['ic50', 'hill_slope', 'r_squared', 'confidence_interval']
-          }},
-          { type: 'export' as const, config: {
-            format: 'pdf',
-            include: ['dose_response_curve', 'statistics_table', 'quality_metrics']
-          }},
-          { type: 'notify' as const, config: {
-            recipients: [],
-            include_summary: true
-          }}
+          {
+            type: 'quality_check' as const, config: {
+              threshold: 90,
+              required_columns: ['concentration', 'response'],
+              check_outliers: true
+            }
+          },
+          {
+            type: 'transform' as const, config: {
+              operations: ['log_transform', 'normalize', 'curve_fitting'],
+              model: 'four_parameter_logistic'
+            }
+          },
+          {
+            type: 'analyze' as const, config: {
+              mode: 'analysis',
+              metrics: ['ic50', 'hill_slope', 'r_squared', 'confidence_interval']
+            }
+          },
+          {
+            type: 'export' as const, config: {
+              format: 'pdf',
+              include: ['dose_response_curve', 'statistics_table', 'quality_metrics']
+            }
+          },
+          {
+            type: 'notify' as const, config: {
+              recipients: [],
+              include_summary: true
+            }
+          }
         ],
         status: 'active' as const,
         estimatedTimeSaved: '45 min per assay'
@@ -1021,24 +1031,32 @@ class WorkflowService {
         trigger_type: 'dataset_upload' as const,
         trigger_config: { tags: ['elisa', 'plate-reader'] },
         steps: [
-          { type: 'quality_check' as const, config: {
-            threshold: 85,
-            check_plate_layout: true,
-            cv_threshold: 15
-          }},
-          { type: 'transform' as const, config: {
-            operations: ['background_subtraction', 'standard_curve_fit'],
-            interpolation: 'four_parameter'
-          }},
-          { type: 'analyze' as const, config: {
-            mode: 'analysis',
-            calculate: ['concentrations', 'cv', 'lod', 'loq']
-          }},
-          { type: 'export' as const, config: {
-            format: 'excel',
-            include: ['standard_curve', 'sample_concentrations', 'qc_metrics']
-          }},
-          { type: 'notify' as const, config: { recipients: [] }}
+          {
+            type: 'quality_check' as const, config: {
+              threshold: 85,
+              check_plate_layout: true,
+              cv_threshold: 15
+            }
+          },
+          {
+            type: 'transform' as const, config: {
+              operations: ['background_subtraction', 'standard_curve_fit'],
+              interpolation: 'four_parameter'
+            }
+          },
+          {
+            type: 'analyze' as const, config: {
+              mode: 'analysis',
+              calculate: ['concentrations', 'cv', 'lod', 'loq']
+            }
+          },
+          {
+            type: 'export' as const, config: {
+              format: 'excel',
+              include: ['standard_curve', 'sample_concentrations', 'qc_metrics']
+            }
+          },
+          { type: 'notify' as const, config: { recipients: [] } }
         ],
         status: 'active' as const,
         estimatedTimeSaved: '30 min per plate'
@@ -1051,24 +1069,32 @@ class WorkflowService {
         trigger_type: 'dataset_upload' as const,
         trigger_config: { tags: ['cell-viability', 'mtt', 'mts'] },
         steps: [
-          { type: 'quality_check' as const, config: {
-            threshold: 85,
-            check_controls: true,
-            replicate_check: true
-          }},
-          { type: 'transform' as const, config: {
-            operations: ['blank_subtraction', 'viability_calculation', 'normalization'],
-            control: 'untreated'
-          }},
-          { type: 'analyze' as const, config: {
-            mode: 'analysis',
-            calculate: ['percent_viability', 'ic50', 'statistical_significance']
-          }},
-          { type: 'export' as const, config: {
-            format: 'pdf',
-            include: ['dose_response', 'viability_table', 'statistics']
-          }},
-          { type: 'notify' as const, config: { recipients: [] }}
+          {
+            type: 'quality_check' as const, config: {
+              threshold: 85,
+              check_controls: true,
+              replicate_check: true
+            }
+          },
+          {
+            type: 'transform' as const, config: {
+              operations: ['blank_subtraction', 'viability_calculation', 'normalization'],
+              control: 'untreated'
+            }
+          },
+          {
+            type: 'analyze' as const, config: {
+              mode: 'analysis',
+              calculate: ['percent_viability', 'ic50', 'statistical_significance']
+            }
+          },
+          {
+            type: 'export' as const, config: {
+              format: 'pdf',
+              include: ['dose_response', 'viability_table', 'statistics']
+            }
+          },
+          { type: 'notify' as const, config: { recipients: [] } }
         ],
         status: 'active' as const,
         estimatedTimeSaved: '40 min per experiment'
@@ -1081,24 +1107,32 @@ class WorkflowService {
         trigger_type: 'dataset_upload' as const,
         trigger_config: { tags: ['bradford', 'bca', 'protein-quant'] },
         steps: [
-          { type: 'quality_check' as const, config: {
-            threshold: 90,
-            check_standards: true,
-            linearity_check: true
-          }},
-          { type: 'transform' as const, config: {
-            operations: ['standard_curve_fit', 'interpolation'],
-            curve_type: 'linear'
-          }},
-          { type: 'analyze' as const, config: {
-            mode: 'analysis',
-            calculate: ['concentrations', 'r_squared', 'detection_range']
-          }},
-          { type: 'export' as const, config: {
-            format: 'excel',
-            include: ['standard_curve', 'sample_concentrations', 'dilution_factors']
-          }},
-          { type: 'notify' as const, config: { recipients: [] }}
+          {
+            type: 'quality_check' as const, config: {
+              threshold: 90,
+              check_standards: true,
+              linearity_check: true
+            }
+          },
+          {
+            type: 'transform' as const, config: {
+              operations: ['standard_curve_fit', 'interpolation'],
+              curve_type: 'linear'
+            }
+          },
+          {
+            type: 'analyze' as const, config: {
+              mode: 'analysis',
+              calculate: ['concentrations', 'r_squared', 'detection_range']
+            }
+          },
+          {
+            type: 'export' as const, config: {
+              format: 'excel',
+              include: ['standard_curve', 'sample_concentrations', 'dilution_factors']
+            }
+          },
+          { type: 'notify' as const, config: { recipients: [] } }
         ],
         status: 'active' as const,
         estimatedTimeSaved: '20 min per assay'
@@ -1113,24 +1147,32 @@ class WorkflowService {
         trigger_type: 'dataset_upload' as const,
         trigger_config: { tags: ['hplc', 'chromatography'] },
         steps: [
-          { type: 'quality_check' as const, config: {
-            threshold: 90,
-            check_baseline: true,
-            resolution_check: true
-          }},
-          { type: 'transform' as const, config: {
-            operations: ['baseline_correction', 'peak_detection', 'integration'],
-            method: 'trapezoid'
-          }},
-          { type: 'analyze' as const, config: {
-            mode: 'analysis',
-            calculate: ['peak_area', 'retention_time', 'purity', 'symmetry_factor']
-          }},
-          { type: 'export' as const, config: {
-            format: 'pdf',
-            include: ['chromatogram', 'peak_table', 'purity_report', 'system_suitability']
-          }},
-          { type: 'notify' as const, config: { recipients: [] }}
+          {
+            type: 'quality_check' as const, config: {
+              threshold: 90,
+              check_baseline: true,
+              resolution_check: true
+            }
+          },
+          {
+            type: 'transform' as const, config: {
+              operations: ['baseline_correction', 'peak_detection', 'integration'],
+              method: 'trapezoid'
+            }
+          },
+          {
+            type: 'analyze' as const, config: {
+              mode: 'analysis',
+              calculate: ['peak_area', 'retention_time', 'purity', 'symmetry_factor']
+            }
+          },
+          {
+            type: 'export' as const, config: {
+              format: 'pdf',
+              include: ['chromatogram', 'peak_table', 'purity_report', 'system_suitability']
+            }
+          },
+          { type: 'notify' as const, config: { recipients: [] } }
         ],
         status: 'active' as const,
         estimatedTimeSaved: '25 min per run'
@@ -1143,24 +1185,32 @@ class WorkflowService {
         trigger_type: 'dataset_upload' as const,
         trigger_config: { tags: ['stability', 'degradation'] },
         steps: [
-          { type: 'quality_check' as const, config: {
-            threshold: 95,
-            temporal_consistency: true,
-            missing_timepoints: false
-          }},
-          { type: 'transform' as const, config: {
-            operations: ['time_series_analysis', 'degradation_modeling'],
-            models: ['zero_order', 'first_order']
-          }},
-          { type: 'analyze' as const, config: {
-            mode: 'analysis',
-            calculate: ['degradation_rate', 'shelf_life', 't90', 'arrhenius_plot']
-          }},
-          { type: 'export' as const, config: {
-            format: 'pdf',
-            include: ['stability_plot', 'kinetics_table', 'shelf_life_prediction', 'statistical_summary']
-          }},
-          { type: 'notify' as const, config: { recipients: [] }}
+          {
+            type: 'quality_check' as const, config: {
+              threshold: 95,
+              temporal_consistency: true,
+              missing_timepoints: false
+            }
+          },
+          {
+            type: 'transform' as const, config: {
+              operations: ['time_series_analysis', 'degradation_modeling'],
+              models: ['zero_order', 'first_order']
+            }
+          },
+          {
+            type: 'analyze' as const, config: {
+              mode: 'analysis',
+              calculate: ['degradation_rate', 'shelf_life', 't90', 'arrhenius_plot']
+            }
+          },
+          {
+            type: 'export' as const, config: {
+              format: 'pdf',
+              include: ['stability_plot', 'kinetics_table', 'shelf_life_prediction', 'statistical_summary']
+            }
+          },
+          { type: 'notify' as const, config: { recipients: [] } }
         ],
         status: 'active' as const,
         estimatedTimeSaved: '60 min per study'
@@ -1173,24 +1223,32 @@ class WorkflowService {
         trigger_type: 'dataset_upload' as const,
         trigger_config: { tags: ['dissolution', 'release-profile'] },
         steps: [
-          { type: 'quality_check' as const, config: {
-            threshold: 90,
-            check_timepoints: true,
-            vessel_variability: true
-          }},
-          { type: 'transform' as const, config: {
-            operations: ['cumulative_calculation', 'vessel_averaging'],
-            correction: 'volume_correction'
-          }},
-          { type: 'analyze' as const, config: {
-            mode: 'analysis',
-            calculate: ['dissolution_profile', 'f2_similarity', 'cv', 'model_fitting']
-          }},
-          { type: 'export' as const, config: {
-            format: 'pdf',
-            include: ['dissolution_curve', 'f2_calculation', 'statistical_comparison', 'specifications']
-          }},
-          { type: 'notify' as const, config: { recipients: [] }}
+          {
+            type: 'quality_check' as const, config: {
+              threshold: 90,
+              check_timepoints: true,
+              vessel_variability: true
+            }
+          },
+          {
+            type: 'transform' as const, config: {
+              operations: ['cumulative_calculation', 'vessel_averaging'],
+              correction: 'volume_correction'
+            }
+          },
+          {
+            type: 'analyze' as const, config: {
+              mode: 'analysis',
+              calculate: ['dissolution_profile', 'f2_similarity', 'cv', 'model_fitting']
+            }
+          },
+          {
+            type: 'export' as const, config: {
+              format: 'pdf',
+              include: ['dissolution_curve', 'f2_calculation', 'statistical_comparison', 'specifications']
+            }
+          },
+          { type: 'notify' as const, config: { recipients: [] } }
         ],
         status: 'active' as const,
         estimatedTimeSaved: '35 min per batch'
@@ -1203,28 +1261,38 @@ class WorkflowService {
         trigger_type: 'dataset_upload' as const,
         trigger_config: { tags: ['qc', 'batch-release'] },
         steps: [
-          { type: 'quality_check' as const, config: {
-            threshold: 98,
-            completeness_check: true,
-            duplicate_check: true
-          }},
-          { type: 'analyze' as const, config: {
-            mode: 'analysis',
-            tests: ['assay', 'impurities', 'dissolution', 'appearance'],
-            specifications: 'usp_standards'
-          }},
-          { type: 'transform' as const, config: {
-            operations: ['specification_check', 'ooc_flagging'],
-            criteria: 'acceptance_limits'
-          }},
-          { type: 'export' as const, config: {
-            format: 'pdf',
-            include: ['certificate_of_analysis', 'test_results', 'trend_charts', 'ooc_summary']
-          }},
-          { type: 'notify' as const, config: {
-            recipients: [],
-            urgent_if_failure: true
-          }}
+          {
+            type: 'quality_check' as const, config: {
+              threshold: 98,
+              completeness_check: true,
+              duplicate_check: true
+            }
+          },
+          {
+            type: 'analyze' as const, config: {
+              mode: 'analysis',
+              tests: ['assay', 'impurities', 'dissolution', 'appearance'],
+              specifications: 'usp_standards'
+            }
+          },
+          {
+            type: 'transform' as const, config: {
+              operations: ['specification_check', 'ooc_flagging'],
+              criteria: 'acceptance_limits'
+            }
+          },
+          {
+            type: 'export' as const, config: {
+              format: 'pdf',
+              include: ['certificate_of_analysis', 'test_results', 'trend_charts', 'ooc_summary']
+            }
+          },
+          {
+            type: 'notify' as const, config: {
+              recipients: [],
+              urgent_if_failure: true
+            }
+          }
         ],
         status: 'active' as const,
         estimatedTimeSaved: '50 min per batch'
@@ -1239,24 +1307,32 @@ class WorkflowService {
         trigger_type: 'dataset_upload' as const,
         trigger_config: { tags: ['nmr', '1h-nmr', '13c-nmr'] },
         steps: [
-          { type: 'quality_check' as const, config: {
-            threshold: 85,
-            check_shimming: true,
-            check_resolution: true
-          }},
-          { type: 'transform' as const, config: {
-            operations: ['baseline_correction', 'phase_correction', 'peak_picking'],
-            threshold: 'auto'
-          }},
-          { type: 'analyze' as const, config: {
-            mode: 'analysis',
-            calculate: ['chemical_shifts', 'coupling_constants', 'integrations', 'multiplicity']
-          }},
-          { type: 'export' as const, config: {
-            format: 'pdf',
-            include: ['spectrum', 'peak_table', 'integration', 'structure_assignment']
-          }},
-          { type: 'notify' as const, config: { recipients: [] }}
+          {
+            type: 'quality_check' as const, config: {
+              threshold: 85,
+              check_shimming: true,
+              check_resolution: true
+            }
+          },
+          {
+            type: 'transform' as const, config: {
+              operations: ['baseline_correction', 'phase_correction', 'peak_picking'],
+              threshold: 'auto'
+            }
+          },
+          {
+            type: 'analyze' as const, config: {
+              mode: 'analysis',
+              calculate: ['chemical_shifts', 'coupling_constants', 'integrations', 'multiplicity']
+            }
+          },
+          {
+            type: 'export' as const, config: {
+              format: 'pdf',
+              include: ['spectrum', 'peak_table', 'integration', 'structure_assignment']
+            }
+          },
+          { type: 'notify' as const, config: { recipients: [] } }
         ],
         status: 'active' as const,
         estimatedTimeSaved: '20 min per spectrum'
@@ -1269,29 +1345,39 @@ class WorkflowService {
         trigger_type: 'dataset_upload' as const,
         trigger_config: { tags: ['doe', 'optimization'] },
         steps: [
-          { type: 'quality_check' as const, config: {
-            threshold: 85,
-            design_check: true,
-            balance_check: true
-          }},
-          { type: 'analyze' as const, config: {
-            mode: 'analysis',
-            method: 'response_surface_methodology',
-            factors: ['temperature', 'time', 'concentration', 'catalyst']
-          }},
-          { type: 'train_model' as const, config: {
-            model_type: 'polynomial_regression',
-            interaction_terms: true
-          }},
-          { type: 'transform' as const, config: {
-            operations: ['optimization', 'desirability_function'],
-            target: 'maximize_yield'
-          }},
-          { type: 'export' as const, config: {
-            format: 'pdf',
-            include: ['response_surface', 'contour_plot', 'optimal_conditions', 'predicted_response']
-          }},
-          { type: 'notify' as const, config: { recipients: [] }}
+          {
+            type: 'quality_check' as const, config: {
+              threshold: 85,
+              design_check: true,
+              balance_check: true
+            }
+          },
+          {
+            type: 'analyze' as const, config: {
+              mode: 'analysis',
+              method: 'response_surface_methodology',
+              factors: ['temperature', 'time', 'concentration', 'catalyst']
+            }
+          },
+          {
+            type: 'train_model' as const, config: {
+              model_type: 'polynomial_regression',
+              interaction_terms: true
+            }
+          },
+          {
+            type: 'transform' as const, config: {
+              operations: ['optimization', 'desirability_function'],
+              target: 'maximize_yield'
+            }
+          },
+          {
+            type: 'export' as const, config: {
+              format: 'pdf',
+              include: ['response_surface', 'contour_plot', 'optimal_conditions', 'predicted_response']
+            }
+          },
+          { type: 'notify' as const, config: { recipients: [] } }
         ],
         status: 'active' as const,
         estimatedTimeSaved: '90 min per optimization'
@@ -1304,24 +1390,32 @@ class WorkflowService {
         trigger_type: 'dataset_upload' as const,
         trigger_config: { tags: ['gcms', 'mass-spec'] },
         steps: [
-          { type: 'quality_check' as const, config: {
-            threshold: 85,
-            check_calibration: true,
-            check_resolution: true
-          }},
-          { type: 'transform' as const, config: {
-            operations: ['peak_detection', 'deconvolution', 'library_search'],
-            library: 'nist'
-          }},
-          { type: 'analyze' as const, config: {
-            mode: 'analysis',
-            calculate: ['retention_indices', 'match_factors', 'quantification']
-          }},
-          { type: 'export' as const, config: {
-            format: 'pdf',
-            include: ['chromatogram', 'compound_list', 'spectra', 'quantification_table']
-          }},
-          { type: 'notify' as const, config: { recipients: [] }}
+          {
+            type: 'quality_check' as const, config: {
+              threshold: 85,
+              check_calibration: true,
+              check_resolution: true
+            }
+          },
+          {
+            type: 'transform' as const, config: {
+              operations: ['peak_detection', 'deconvolution', 'library_search'],
+              library: 'nist'
+            }
+          },
+          {
+            type: 'analyze' as const, config: {
+              mode: 'analysis',
+              calculate: ['retention_indices', 'match_factors', 'quantification']
+            }
+          },
+          {
+            type: 'export' as const, config: {
+              format: 'pdf',
+              include: ['chromatogram', 'compound_list', 'spectra', 'quantification_table']
+            }
+          },
+          { type: 'notify' as const, config: { recipients: [] } }
         ],
         status: 'active' as const,
         estimatedTimeSaved: '30 min per sample'
@@ -1334,23 +1428,31 @@ class WorkflowService {
         trigger_type: 'dataset_upload' as const,
         trigger_config: { tags: ['synthesis', 'yield'] },
         steps: [
-          { type: 'quality_check' as const, config: {
-            threshold: 90,
-            material_balance: true
-          }},
-          { type: 'transform' as const, config: {
-            operations: ['stoichiometry_calculation', 'yield_calculation', 'purity_assessment'],
-            limiting_reagent: 'auto_detect'
-          }},
-          { type: 'analyze' as const, config: {
-            mode: 'analysis',
-            calculate: ['theoretical_yield', 'actual_yield', 'percent_yield', 'purity', 'ee']
-          }},
-          { type: 'export' as const, config: {
-            format: 'excel',
-            include: ['reaction_scheme', 'yield_table', 'purity_data', 'mass_balance']
-          }},
-          { type: 'notify' as const, config: { recipients: [] }}
+          {
+            type: 'quality_check' as const, config: {
+              threshold: 90,
+              material_balance: true
+            }
+          },
+          {
+            type: 'transform' as const, config: {
+              operations: ['stoichiometry_calculation', 'yield_calculation', 'purity_assessment'],
+              limiting_reagent: 'auto_detect'
+            }
+          },
+          {
+            type: 'analyze' as const, config: {
+              mode: 'analysis',
+              calculate: ['theoretical_yield', 'actual_yield', 'percent_yield', 'purity', 'ee']
+            }
+          },
+          {
+            type: 'export' as const, config: {
+              format: 'excel',
+              include: ['reaction_scheme', 'yield_table', 'purity_data', 'mass_balance']
+            }
+          },
+          { type: 'notify' as const, config: { recipients: [] } }
         ],
         status: 'active' as const,
         estimatedTimeSaved: '15 min per reaction'
@@ -1365,24 +1467,32 @@ class WorkflowService {
         trigger_type: 'dataset_upload' as const,
         trigger_config: { tags: ['validation', 'clinical'] },
         steps: [
-          { type: 'quality_check' as const, config: {
-            threshold: 95,
-            completeness_check: true,
-            replicate_check: true
-          }},
-          { type: 'analyze' as const, config: {
-            mode: 'analysis',
-            validations: ['precision', 'accuracy', 'linearity', 'lod', 'loq', 'specificity']
-          }},
-          { type: 'transform' as const, config: {
-            operations: ['statistical_analysis', 'acceptance_criteria_check'],
-            standards: 'clsi_guidelines'
-          }},
-          { type: 'export' as const, config: {
-            format: 'pdf',
-            include: ['validation_report', 'statistical_summary', 'plots', 'acceptance_table']
-          }},
-          { type: 'notify' as const, config: { recipients: [] }}
+          {
+            type: 'quality_check' as const, config: {
+              threshold: 95,
+              completeness_check: true,
+              replicate_check: true
+            }
+          },
+          {
+            type: 'analyze' as const, config: {
+              mode: 'analysis',
+              validations: ['precision', 'accuracy', 'linearity', 'lod', 'loq', 'specificity']
+            }
+          },
+          {
+            type: 'transform' as const, config: {
+              operations: ['statistical_analysis', 'acceptance_criteria_check'],
+              standards: 'clsi_guidelines'
+            }
+          },
+          {
+            type: 'export' as const, config: {
+              format: 'pdf',
+              include: ['validation_report', 'statistical_summary', 'plots', 'acceptance_table']
+            }
+          },
+          { type: 'notify' as const, config: { recipients: [] } }
         ],
         status: 'active' as const,
         estimatedTimeSaved: '120 min per validation'
@@ -1395,29 +1505,39 @@ class WorkflowService {
         trigger_type: 'dataset_upload' as const,
         trigger_config: { tags: ['patient-samples', 'qc'] },
         steps: [
-          { type: 'quality_check' as const, config: {
-            threshold: 98,
-            check_controls: true,
-            check_calibrators: true,
-            delta_check: true
-          }},
-          { type: 'analyze' as const, config: {
-            mode: 'analysis',
-            qc_rules: 'westgard_rules',
-            reference_ranges: true
-          }},
-          { type: 'transform' as const, config: {
-            operations: ['outlier_flagging', 'critical_value_alert'],
-            flag_criteria: 'clinical_significance'
-          }},
-          { type: 'export' as const, config: {
-            format: 'csv',
-            include: ['patient_results', 'qc_summary', 'flags', 'trending']
-          }},
-          { type: 'notify' as const, config: {
-            recipients: [],
-            urgent_if_critical: true
-          }}
+          {
+            type: 'quality_check' as const, config: {
+              threshold: 98,
+              check_controls: true,
+              check_calibrators: true,
+              delta_check: true
+            }
+          },
+          {
+            type: 'analyze' as const, config: {
+              mode: 'analysis',
+              qc_rules: 'westgard_rules',
+              reference_ranges: true
+            }
+          },
+          {
+            type: 'transform' as const, config: {
+              operations: ['outlier_flagging', 'critical_value_alert'],
+              flag_criteria: 'clinical_significance'
+            }
+          },
+          {
+            type: 'export' as const, config: {
+              format: 'csv',
+              include: ['patient_results', 'qc_summary', 'flags', 'trending']
+            }
+          },
+          {
+            type: 'notify' as const, config: {
+              recipients: [],
+              urgent_if_critical: true
+            }
+          }
         ],
         status: 'active' as const,
         estimatedTimeSaved: '40 min per batch'

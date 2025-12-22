@@ -10,7 +10,7 @@ import { registerServices, getLogger } from "./lib/di";
 registerServices();
 
 const logger = getLogger();
-logger.info("Lab-IQ starting...");
+logger.info("LabIQ Health starting...");
 logger.debug("DI container initialized");
 
 createRoot(document.getElementById("root")!).render(<App />);

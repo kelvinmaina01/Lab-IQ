@@ -128,7 +128,7 @@ const Collaboration = () => {
           <div className="flex items-center justify-center h-[calc(100vh-64px)]">
             <div className="text-center space-y-4">
               <div className="w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto" />
-              <p className="text-muted-foreground">Loading your lab workspace...</p>
+              <p className="text-muted-foreground">Loading your workspace...</p>
             </div>
           </div>
         </MainLayout>
@@ -146,9 +146,9 @@ const Collaboration = () => {
               <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mx-auto">
                 <Shield className="w-8 h-8 text-destructive" />
               </div>
-              <h2 className="text-2xl font-bold">Lab Access Required</h2>
+              <h2 className="text-2xl font-bold">Workspace Access Required</h2>
               <p className="text-muted-foreground">
-                {labError || "You don't have access to any lab workspace. Please contact your administrator to get invited to a lab."}
+                {labError || "You don't have access to any workspace. Please contact your administrator to get invited."}
               </p>
               <Button onClick={() => window.location.reload()} variant="outline">
                 Retry
@@ -163,7 +163,7 @@ const Collaboration = () => {
   return (
     <AuthGuard>
       <MainLayout>
-        <div className="flex h-[calc(100vh-64px)] overflow-hidden bg-background">
+        <div className="flex h-[calc(100vh-64px)] overflow-hidden bg-background" data-tour="team-section">
           {/* Sidebar */}
           {labId && (
             <CollaborationSidebar
@@ -272,7 +272,7 @@ const Collaboration = () => {
                             <Shield className="h-3.5 w-3.5" /> ISO-27001 SECURE
                           </div>
                           <p className="text-[10px] text-muted-foreground/80 leading-relaxed font-medium">
-                            End-to-end encrypted research environment. All data persists on immutable laboratory blockchains.
+                            End-to-end encrypted research environment. All data is protected with enterprise-grade security.
                           </p>
                         </div>
                       </div>
@@ -306,7 +306,7 @@ const Collaboration = () => {
                           )}
                         </div>
                         <Button variant="outline" className="w-full text-[10px] font-black uppercase tracking-widest h-9 rounded-xl border-border/40 hover:bg-primary/5 hover:text-primary hover:border-primary/20 transition-all">
-                          Manage Lab Directory
+                          Manage Team Directory
                         </Button>
                       </div>
 
@@ -314,7 +314,7 @@ const Collaboration = () => {
                       <div className="pt-6 mt-6 border-t border-border/20">
                         <div className="flex items-center gap-2 mb-2">
                           <Atom className="h-3 w-3 text-primary/40 animate-spin-slow" />
-                          <p className="text-[9px] font-black text-muted-foreground/40 tracking-widest">LAB-IQ QUANTUM SYNC v4.2</p>
+                          <p className="text-[9px] font-black text-muted-foreground/40 tracking-widest">LABIQ HEALTH SYNC v4.2</p>
                         </div>
                         <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
                           <div className="w-2/3 h-full bg-gradient-to-r from-primary/50 to-cyan-500/50" />

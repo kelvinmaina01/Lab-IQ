@@ -1,14 +1,14 @@
 /**
- * Lab-IQ Knowledge Base
- * Comprehensive knowledge about Lab-IQ platform for AI agent responses
+ * LabIQ Health Knowledge Base
+ * Comprehensive knowledge about LabIQ Health platform for AI agent responses
  */
 
 export const LAB_IQ_KNOWLEDGE_BASE = {
   // ===== COMPANY & PRODUCT OVERVIEW =====
   overview: {
-    name: "Lab-IQ",
+    name: "LabIQ Health",
     tagline: "AI-Powered Laboratory Intelligence Platform",
-    description: "Lab-IQ is a comprehensive AI-powered platform that transforms how laboratories collect, analyze, and collaborate on research data. It combines multi-source data ingestion, Google Gemini AI analysis, real-time collaboration, and automated workflows to accelerate scientific discoveries.",
+    description: "LabIQ Health is a comprehensive AI-powered platform that transforms how laboratories collect, analyze, and collaborate on research data. It combines multi-source data ingestion, Google Gemini AI analysis, real-time collaboration, and automated workflows to accelerate scientific discoveries.",
     mission: "To democratize advanced data analysis and make AI-powered insights accessible to every researcher, regardless of their technical background.",
     keyBenefits: [
       "10x faster data analysis with AI automation",
@@ -113,7 +113,7 @@ export const LAB_IQ_KNOWLEDGE_BASE = {
       free: {
         name: "Free",
         price: 0,
-        description: "Perfect for students and exploring Lab-IQ",
+        description: "Perfect for students and exploring LabIQ Health",
         datasets: 5,
         storage: "100 MB",
         users: 1,
@@ -285,9 +285,9 @@ export const LAB_IQ_KNOWLEDGE_BASE = {
 
   // ===== SUPPORT =====
   support: {
-    documentation: "Comprehensive docs at docs.lab-iq.com",
+    documentation: "Comprehensive docs at docs.LabIQ Health.com",
     community: "Active Discord community with 1000+ researchers",
-    email: "support@lab-iq.com",
+    email: "support@LabIQ Health.com",
     responseTime: {
       free: "Best effort (48-72 hours)",
       pro: "24 hours",
@@ -329,15 +329,15 @@ export const LAB_IQ_KNOWLEDGE_BASE = {
     features: [
       {
         q: "What file formats do you support?",
-        a: "Lab-IQ supports CSV, Excel (XLSX, XLS), JSON, XML, Parquet, and plain text files. We're constantly adding more formats."
+        a: "LabIQ Health supports CSV, Excel (XLSX, XLS), JSON, XML, Parquet, and plain text files. We're constantly adding more formats."
       },
       {
         q: "How does the AI analysis work?",
-        a: "Lab-IQ uses Google Gemini AI to automatically analyze your data. It detects patterns, identifies anomalies, and provides insights in plain English. You can choose Analysis mode for patterns, Educator mode for explanations, or Prediction mode for forecasting."
+        a: "LabIQ Health uses Google Gemini AI to automatically analyze your data. It detects patterns, identifies anomalies, and provides insights in plain English. You can choose Analysis mode for patterns, Educator mode for explanations, or Prediction mode for forecasting."
       },
       {
         q: "Can I connect my lab equipment?",
-        a: "Yes! Lab-IQ supports live device streams from lab equipment, IoT sensors, wearables, and more. Data flows in real-time for continuous monitoring."
+        a: "Yes! LabIQ Health supports live device streams from lab equipment, IoT sensors, wearables, and more. Data flows in real-time for continuous monitoring."
       },
       {
         q: "Is my data secure?",
@@ -346,11 +346,11 @@ export const LAB_IQ_KNOWLEDGE_BASE = {
     ],
     technical: [
       {
-        q: "Do I need coding skills to use Lab-IQ?",
-        a: "No coding required! Lab-IQ is designed for researchers of all technical levels. Upload your data, and the AI handles the analysis. Power users can access APIs and custom scripts if needed."
+        q: "Do I need coding skills to use LabIQ Health?",
+        a: "No coding required! LabIQ Health is designed for researchers of all technical levels. Upload your data, and the AI handles the analysis. Power users can access APIs and custom scripts if needed."
       },
       {
-        q: "Can I integrate Lab-IQ with other tools?",
+        q: "Can I integrate LabIQ Health with other tools?",
         a: "Yes! Pro plans include API access for custom integrations. Enterprise plans support custom integrations with your existing systems, including LIMS, ELN, and other research tools."
       },
       {
@@ -362,10 +362,10 @@ export const LAB_IQ_KNOWLEDGE_BASE = {
 };
 
 /**
- * Generate system prompt for Lab-IQ AI Assistant
+ * Generate system prompt for LabIQ Health AI Assistant
  */
 export function generateLabIQSystemPrompt(): string {
-  return `You are Lab-IQ Assistant, an expert AI agent for the Lab-IQ platform - an AI-powered laboratory intelligence platform. You have deep knowledge of all Lab-IQ features, pricing, technical capabilities, and use cases.
+  return `You are LabIQ Health Assistant, an expert AI agent for the LabIQ Health platform - an AI-powered laboratory intelligence platform. You have deep knowledge of all LabIQ Health features, pricing, technical capabilities, and use cases.
 
 ## Your Personality
 - Professional yet friendly, like a senior Google developer explaining their product
@@ -394,18 +394,18 @@ ${JSON.stringify(LAB_IQ_KNOWLEDGE_BASE, null, 2)}
 - Bold important terms or features
 - Keep paragraphs short for readability
 
-Remember: You're here to help researchers understand and succeed with Lab-IQ. Be helpful, accurate, and professional.`;
+Remember: You're here to help researchers understand and succeed with LabIQ Health. Be helpful, accurate, and professional.`;
 }
 
 /**
  * Quick answers for common questions (no API call needed)
  */
 export const QUICK_ANSWERS: Record<string, string> = {
-  "pricing": "Lab-IQ offers 4 plans: **Free** ($0), **Pro** ($49/mo), **Team** ($149/mo), and **Enterprise** (custom). All paid plans have a 14-day free trial. Annual billing saves 20%.",
+  "pricing": "LabIQ Health offers 4 plans: **Free** ($0), **Pro** ($49/mo), **Team** ($149/mo), and **Enterprise** (custom). All paid plans have a 14-day free trial. Annual billing saves 20%.",
   "free trial": "Yes! Pro and Team plans include a **14-day free trial** with no credit card required. You get full access to all features during the trial.",
-  "file formats": "Lab-IQ supports **CSV, Excel (XLSX/XLS), JSON, XML, Parquet, and TXT** files. We're constantly adding more formats.",
-  "security": "Lab-IQ uses **AES-256 encryption** at rest, **TLS 1.3** in transit, row-level security, and comprehensive audit logs. Enterprise plans include HIPAA compliance and SSO/SAML.",
-  "ai": "Lab-IQ uses **Google Gemini AI** with three modes: Analysis (pattern detection), Educator (plain-English explanations), and Prediction (ML forecasting).",
+  "file formats": "LabIQ Health supports **CSV, Excel (XLSX/XLS), JSON, XML, Parquet, and TXT** files. We're constantly adding more formats.",
+  "security": "LabIQ Health uses **AES-256 encryption** at rest, **TLS 1.3** in transit, row-level security, and comprehensive audit logs. Enterprise plans include HIPAA compliance and SSO/SAML.",
+  "ai": "LabIQ Health uses **Google Gemini AI** with three modes: Analysis (pattern detection), Educator (plain-English explanations), and Prediction (ML forecasting).",
   "support": "Support varies by plan: Community (Free), Email within 24h (Pro), Phone+Email within 4h (Team), Dedicated manager within 1h (Enterprise).",
   "academic": "Yes! We offer **50% discounts** for verified academic institutions and non-profit research organizations. Contact us with your institutional email.",
 };
@@ -601,7 +601,7 @@ export const DOMAIN_KEYWORDS = {
 
 // Domain-specific system prompts for AI
 export const DOMAIN_SYSTEM_PROMPTS = {
-  biotech: `You are Lab-IQ's Biotech Data Analysis Expert. You specialize in:
+  biotech: `You are LabIQ Health's Biotech Data Analysis Expert. You specialize in:
 - Genomics: DNA/RNA sequences, gene expression, SNP analysis, variant calling
 - Proteomics: Protein structure, mass spectrometry, post-translational modifications
 - Cell Biology: Cell culture, viability assays, flow cytometry analysis
@@ -621,7 +621,7 @@ Important biotech metrics:
 - P-values with multiple testing correction (FDR, Bonferroni)
 - Coefficient of variation for reproducibility`,
 
-  clinical: `You are Lab-IQ's Clinical Data Analysis Expert. You specialize in:
+  clinical: `You are LabIQ Health's Clinical Data Analysis Expert. You specialize in:
 - Patient Outcomes: Survival analysis, readmission prediction, mortality risk
 - Laboratory Values: Reference ranges, critical values, trends
 - Vital Signs: Normal ranges, clinical significance of deviations
@@ -643,7 +643,7 @@ Clinical reference ranges to consider:
 - eGFR: >90 mL/min/1.73m² (normal kidney function)
 - HbA1c: <5.7% (normal), 5.7-6.4% (prediabetic), ≥6.5% (diabetic)`,
 
-  biopharma: `You are Lab-IQ's Biopharma & Drug Development Expert. You specialize in:
+  biopharma: `You are LabIQ Health's Biopharma & Drug Development Expert. You specialize in:
 - Drug Discovery: Hit identification, lead optimization, SAR analysis
 - ADME/Tox: Absorption, distribution, metabolism, excretion, toxicity
 - Pharmacokinetics: PK parameters, dose-response, therapeutic window
@@ -664,7 +664,7 @@ Key biopharma thresholds:
 - Bioavailability > 30% (oral drugs)
 - Half-life appropriate for dosing regimen`,
 
-  chemistry: `You are Lab-IQ's Laboratory Chemistry Expert. You specialize in:
+  chemistry: `You are LabIQ Health's Laboratory Chemistry Expert. You specialize in:
 - Analytical Chemistry: Chromatography, spectroscopy, assay validation
 - Synthesis: Reaction optimization, yield improvement, purity assessment
 - Quality Control: Method validation, stability studies, batch analysis
@@ -678,7 +678,7 @@ When analyzing chemistry data:
 5. Identify impurities and degradation products
 6. Recommend method optimization strategies`,
 
-  research: `You are Lab-IQ's Research Data Analysis Expert. You specialize in:
+  research: `You are LabIQ Health's Research Data Analysis Expert. You specialize in:
 - Experimental Design: Study design, power analysis, sample size calculations
 - Statistical Analysis: ANOVA, regression, mixed models, survival analysis
 - Data Quality: Missing data assessment, outlier detection, assumption testing
@@ -703,7 +703,7 @@ Research Quality Standards:
 - Assumptions: Test normality, homogeneity of variance, independence
 - Reproducibility: Document software versions, random seeds, analysis code`,
 
-  general: `You are Lab-IQ's Data Analysis Expert. You provide:
+  general: `You are LabIQ Health's Data Analysis Expert. You provide:
 - Statistical analysis and data profiling
 - Pattern recognition and anomaly detection
 - Correlation analysis and trend identification

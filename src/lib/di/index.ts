@@ -1,6 +1,6 @@
 /**
  * Dependency Injection Module
- * Enterprise-grade IoC for Lab-IQ
+ * Enterprise-grade IoC for LabIQ Health
  *
  * Usage:
  * ```typescript

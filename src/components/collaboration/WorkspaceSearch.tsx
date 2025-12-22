@@ -97,7 +97,7 @@ export const WorkspaceSearch = ({ open, onOpenChange, labId, onSelect }: Workspa
                     {loading ? (
                         <div className="p-12 text-center space-y-4">
                             <Loader2 className="h-8 w-8 text-primary animate-spin mx-auto" />
-                            <p className="text-sm text-muted-foreground animate-pulse">Scanning Lab-IQ Neurons...</p>
+                            <p className="text-sm text-muted-foreground animate-pulse">Scanning LabIQ Health Neurons...</p>
                         </div>
                     ) : query && !hasResults ? (
                         <div className="p-12 text-center text-muted-foreground">

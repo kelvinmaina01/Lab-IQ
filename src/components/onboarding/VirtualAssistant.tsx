@@ -36,8 +36,8 @@ export interface TourStep {
 const systemWalkthrough: TourStep[] = [
   {
     id: "welcome",
-    title: "Welcome to Lab-IQ",
-    description: "Hello! I'm your Lab-IQ guide. In just a few minutes, I will walk you through every feature of our platform. Let's explore what makes Lab-IQ the most powerful tool for your research.",
+    title: "Welcome to LabIQ Health",
+    description: "Hello! I'm your LabIQ Health guide. In just a few minutes, I will walk you through every feature of our platform. Let's explore what makes LabIQ Health the most powerful tool for your research.",
     route: "/dashboard",
     targetSelector: "",
     position: "bottom",
@@ -53,7 +53,7 @@ const systemWalkthrough: TourStep[] = [
   {
     id: "upload",
     title: "UPLOAD - Start Your Research Journey",
-    description: "Here you upload your research data. Drag and drop CSV, Excel, or JSON files. Lab-IQ automatically validates data quality, detects column types, and flags any issues before processing.",
+    description: "Here you upload your research data. Drag and drop CSV, Excel, or JSON files. LabIQ Health automatically validates data quality, detects column types, and flags any issues before processing.",
     route: "/upload",
     targetSelector: "[data-tour='upload-zone']",
     position: "top",
@@ -117,7 +117,7 @@ const systemWalkthrough: TourStep[] = [
   {
     id: "reports",
     title: "REPORTS - Professional Output",
-    description: "Here you generate publication-ready reports automatically. Choose a template, select datasets and visualizations, and Lab-IQ compiles everything into PDF, Word, or HTML formats. Perfect for presentations, papers, or regulatory submissions.",
+    description: "Here you generate publication-ready reports automatically. Choose a template, select datasets and visualizations, and LabIQ Health compiles everything into PDF, Word, or HTML formats. Perfect for presentations, papers, or regulatory submissions.",
     route: "/reports",
     targetSelector: "[data-tour='reports-builder']",
     position: "top",
@@ -133,7 +133,7 @@ const systemWalkthrough: TourStep[] = [
   {
     id: "complete",
     title: "Tour Complete - You're Ready!",
-    description: "Excellent! You now know every major feature in Lab-IQ. Start by uploading your first dataset, or explore the automation templates. Remember, you can restart this tour anytime from Settings. Happy researching!",
+    description: "Excellent! You now know every major feature in LabIQ Health. Start by uploading your first dataset, or explore the automation templates. Remember, you can restart this tour anytime from Settings. Happy researching!",
     route: "/dashboard",
     targetSelector: "",
     position: "bottom",
@@ -160,7 +160,7 @@ const dashboardWalkthrough: TourStep[] = [
   {
     id: "insights",
     title: "PREDICTIVE INSIGHTS - AI Suggestions",
-    description: "Here you get AI-powered predictions and recommendations. Lab-IQ analyzes your patterns and suggests next best actions, predicts experiment outcomes, and identifies potential bottlenecks before they slow you down.",
+    description: "Here you get AI-powered predictions and recommendations. LabIQ Health analyzes your patterns and suggests next best actions, predicts experiment outcomes, and identifies potential bottlenecks before they slow you down.",
     route: "/dashboard",
     targetSelector: "",
     position: "left",
@@ -282,7 +282,7 @@ export const VirtualAssistant = ({
                   <Bot className="w-9 h-9 text-white" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-lg">Lab-IQ Virtual Assistant</h3>
+                  <h3 className="font-semibold text-lg">LabIQ Health Virtual Assistant</h3>
                   <p className="text-sm text-muted-foreground">Your research guide</p>
                 </div>
               </div>

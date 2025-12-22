@@ -38,7 +38,7 @@ export const AuthForm = ({ onSuccess }: AuthFormProps) => {
         if (error) throw error;
         toast({
           title: 'Account created!',
-          description: 'You can now start using LabIQ.',
+          description: 'You can now start using LabIQ Health.',
         });
       }
       onSuccess?.();
@@ -60,7 +60,7 @@ export const AuthForm = ({ onSuccess }: AuthFormProps) => {
           {isLogin ? 'Sign In' : 'Create Account'}
         </h2>
         <p className="text-muted-foreground">
-          {isLogin ? 'Welcome back to LabIQ' : 'Start your lab intelligence journey'}
+          {isLogin ? 'Welcome back to LabIQ Health' : 'Start your health data intelligence journey'}
         </p>
       </div>
 

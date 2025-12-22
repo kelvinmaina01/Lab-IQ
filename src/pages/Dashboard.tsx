@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Database, Brain, FlaskConical, Award, Activity, BarChart3, Zap, Info, Wifi, Shield, ArrowRight, Bot } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import MetricCard from "@/components/MetricCard";
 import Sidebar from "@/components/Sidebar";
 import TopBar from "@/components/TopBar";
@@ -11,7 +11,6 @@ import MobileNav from "@/components/MobileNav";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { useSubscription } from "@/hooks/useSubscription";
 import { UsageCard } from "@/components/UsageCard";
-import { UpgradeDialog } from "@/components/UpgradeDialog";
 import { Badge } from "@/components/ui/badge";
 import { PredictiveInsightCard } from "@/components/dashboard/PredictiveInsightCard";
 import { BottleneckCard } from "@/components/dashboard/BottleneckCard";
@@ -24,8 +23,8 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { useOnboarding } from "@/hooks/use-onboarding";
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const { subscription, usage, loading, isPro } = useSubscription();
-  const [upgradeOpen, setUpgradeOpen] = useState(false);
   const { resetOnboarding } = useOnboarding();
 
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
@@ -118,10 +117,10 @@ const Dashboard = () => {
         <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-4xl font-bold mb-2">Mission Control</h1>
-            <p className="text-muted-foreground">Real-time pulse of your research lab with predictive insights</p>
+            <p className="text-muted-foreground">Real-time pulse of your health data projects with predictive insights</p>
           </div>
           <div className="flex items-center gap-3">
-            {!isPro && <ProUnlocksDrawer onUpgrade={() => setUpgradeOpen(true)} />}
+            {!isPro && <ProUnlocksDrawer onUpgrade={() => navigate('/pricing')} />}
             <LabProfileSelector />
           </div>
         </div>
@@ -180,7 +179,7 @@ const Dashboard = () => {
             used={usage?.storage_used_mb || 0}
             limit={subscription?.storage_limit_mb || 200}
             unit="MB"
-            onUpgrade={() => setUpgradeOpen(true)}
+            onUpgrade={() => navigate('/pricing')}
             isPro={isPro}
           />
           <UsageCard
@@ -188,7 +187,7 @@ const Dashboard = () => {
             used={usage?.ai_requests_used || 0}
             limit={subscription?.ai_requests_per_month || 100}
             unit="requests"
-            onUpgrade={() => setUpgradeOpen(true)}
+            onUpgrade={() => navigate('/pricing')}
             isPro={isPro}
           />
           <UsageCard
@@ -196,7 +195,7 @@ const Dashboard = () => {
             used={usage?.datasets_count || 0}
             limit={subscription?.max_datasets || 5}
             unit="datasets"
-            onUpgrade={() => setUpgradeOpen(true)}
+            onUpgrade={() => navigate('/pricing')}
             isPro={isPro}
           />
         </div>
@@ -213,7 +212,7 @@ const Dashboard = () => {
               </div>
               <h3 className="text-lg font-semibold mb-2">Live Device Streams</h3>
               <p className="text-sm text-muted-foreground mb-3">
-                Real-time monitoring of connected IoT laboratory devices with live metrics and alerts
+                Real-time monitoring of connected IoT health monitoring devices with live metrics and alerts
               </p>
               <Badge variant="secondary" className="text-xs">
                 {isPro ? "Pro Feature" : "1 stream on free"}
@@ -279,7 +278,7 @@ const Dashboard = () => {
 
           <Card className="p-6">
             <div className="flex items-center gap-2 mb-4">
-              <h2 className="text-xl font-semibold">Lab Efficiency Score</h2>
+              <h2 className="text-xl font-semibold">Analysis Efficiency Score</h2>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger>
@@ -341,7 +340,7 @@ const Dashboard = () => {
                 <Award className="w-8 h-8 text-primary" />
                 <div>
                   <div className="flex items-center gap-2">
-                    <p className="font-semibold">92% Lab Efficiency</p>
+                    <p className="font-semibold">92% Analysis Efficiency</p>
                     {isPro && <Badge variant="secondary" className="text-xs">Top 15%</Badge>}
                   </div>
                   <p className="text-xs text-muted-foreground">
@@ -356,7 +355,7 @@ const Dashboard = () => {
         {/* Auto-Prioritized Actions */}
         <NextActionsPanel />
 
-        <UpgradeDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} />
+
 
         {/* Tour CTA Button - Floating */}
         <Button

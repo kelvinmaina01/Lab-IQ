@@ -1,0 +1,2475 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  LabIQ Health V1 - Implementation Blueprint
+  An Automation-First Health Data Intelligence Platform
+  
+  This XML document serves as the structured specification for building LabIQ Health V1.
+  Follow phases in order. Each phase has dependencies marked.
+-->
+<labiq_health_v1 version="1.0" created="2025-12-22">
+  
+  <meta>
+    <project_name>LabIQ Health</project_name>
+    <tagline>Upload health data. We handle the science.</tagline>
+    <version>V1</version>
+    <deployment_cost>$0 - Near Zero (Open Source Stack)</deployment_cost>
+    <primary_stack>
+      <frontend>React + Vite + TypeScript</frontend>
+      <backend>FastAPI (Python)</backend>
+      <database>Supabase (PostgreSQL)</database>
+      <ai>LangChain + GROQ + Gemini</ai>
+      <ml>scikit-learn + PyCaret</ml>
+      <visualization>PromptBI API</visualization>
+    </primary_stack>
+  </meta>
+
+  <!-- ================================================================== -->
+  <!-- COMPREHENSIVE GAP ANALYSIS: EXISTING vs PLANNED -->
+  <!-- ================================================================== -->
+  
+  <gap_analysis last_analyzed="2025-12-22">
+    <legend>
+      <status code="DONE" symbol="✅">Fully Implemented</status>
+      <status code="PARTIAL" symbol="🔶">Partially Implemented - Needs Enhancement</status>
+      <status code="MISSING" symbol="❌">Not Implemented - Build Required</status>
+      <status code="REFACTOR" symbol="🔄">Needs Refactoring</status>
+    </legend>
+
+    <!-- DATA INGESTION GAP ANALYSIS -->
+    <component_gap name="Data Ingestion">
+      <existing>
+        <feature status="DONE" file="src/lib/parsers/csvParser.ts" size="7KB">CSV Parser</feature>
+        <feature status="DONE" file="src/lib/parsers/excelParser.ts" size="5.5KB">Excel Parser</feature>
+        <feature status="DONE" file="src/lib/parsers/jsonParser.ts" size="5KB">JSON Parser</feature>
+        <feature status="DONE" file="src/lib/parsers/types.ts" size="3KB">Parser Types</feature>
+        <feature status="DONE" file="src/lib/services/datasetService.ts" size="9.5KB">Dataset Save</feature>
+        <feature status="PARTIAL" file="src/components/ConnectDataSources.tsx" size="17KB">Cloud Sources UI - No OAuth backend</feature>
+      </existing>
+      <missing>
+        <feature file="src/lib/parsers/xmlParser.ts">XML Parser</feature>
+        <feature file="src/lib/services/ingestionService.ts">Enhanced Ingestion Pipeline</feature>
+        <feature file="src/lib/services/cloudSourceService.ts">Cloud OAuth Integrations</feature>
+        <feature file="src/lib/services/anonymizationService.ts">PHI/PII Anonymization</feature>
+      </missing>
+      <build_checklist>
+        <task id="ING-001" status="pending">Create XML parser</task>
+        <task id="ING-002" status="pending">Build enhanced ingestion service with normalization</task>
+        <task id="ING-003" status="pending">Implement cloud source OAuth</task>
+        <task id="ING-004" status="pending">Build anonymization with PHI detection</task>
+        <task id="ING-005" status="pending">Add event emission on dataset upload</task>
+      </build_checklist>
+    </component_gap>
+
+    <!-- WORKFLOW ENGINE GAP ANALYSIS -->
+    <component_gap name="Workflow Engine" critical="true">
+      <existing>
+        <feature status="DONE" file="src/lib/services/workflowService.ts" size="50KB" lines="1550">Full Workflow Service</feature>
+        <feature status="DONE">Workflow CRUD operations</feature>
+        <feature status="DONE">7 trigger types defined</feature>
+        <feature status="DONE">Step execution with ML integration</feature>
+        <feature status="DONE">Execution history tracking</feature>
+        <feature status="DONE">WorkflowInsight with severity</feature>
+      </existing>
+      <missing>
+        <feature file="src/lib/services/eventBus.ts">Event Bus System</feature>
+        <feature file="src/lib/services/rulesEngine.ts">Rules Engine with conditions</feature>
+        <feature>5 Canonical V1 Rules</feature>
+        <feature>LangChain/LangGraph integration</feature>
+        <feature>LabAI reasoning hook</feature>
+      </missing>
+      <build_checklist>
+        <task id="WF-001" status="pending" critical="true">Create EventBus singleton with all event types</task>
+        <task id="WF-002" status="pending" critical="true">Build RulesEngine with condition evaluator</task>
+        <task id="WF-003" status="pending" critical="true">Implement 5 canonical rules</task>
+        <task id="WF-004" status="pending">Integrate workflowService with EventBus</task>
+        <task id="WF-005" status="pending">Add AI reasoning hook</task>
+      </build_checklist>
+    </component_gap>
+
+    <!-- AI ASSISTANT GAP ANALYSIS -->
+    <component_gap name="AI Assistant (LabAI)" critical="true">
+      <existing>
+        <feature status="DONE" file="src/lib/ai/LabIQAI.ts" size="47KB" lines="1471">Multi-Agent AI System</feature>
+        <feature status="DONE">Multi-provider support (Anthropic, GROQ, Gemini, OpenAI)</feature>
+        <feature status="DONE">DataAnalysisAgent</feature>
+        <feature status="DONE">MLPipelineAgent</feature>
+        <feature status="DONE">InsightAgent, ExperimentAgent</feature>
+        <feature status="DONE">Advanced cache with LRU</feature>
+        <feature status="DONE" file="src/components/AIAssistantChat.tsx" size="16.5KB">Chat UI Component</feature>
+        <feature status="DONE" file="src/pages/Assistant.tsx" size="11.4KB">Assistant Page</feature>
+        <feature status="PARTIAL">analysis/automl/educator modes - needs 3-mode spec</feature>
+      </existing>
+      <missing>
+        <feature file="src/lib/services/labAIService.ts">LabAI Service Wrapper with 3 modes</feature>
+        <feature file="src/lib/services/safetyFilter.ts">Health Safety Guardrails</feature>
+        <feature file="src/lib/services/aiOrchestrator.ts">GROQ + Gemini Orchestration</feature>
+        <feature file="src/components/ai/ExplainabilityPanel.tsx">Explainability UI</feature>
+        <feature file="src/components/ai/ModeSelector.tsx">3-Mode Toggle</feature>
+        <feature file="ml-service/agents/labai_agent.py">Python LabAI Agent</feature>
+        <feature>LEARN mode for education</feature>
+        <feature>Workflow integration for events</feature>
+      </missing>
+      <build_checklist>
+        <task id="AI-001" status="pending" critical="true">Create LabAIService with 3-mode routing</task>
+        <task id="AI-002" status="pending" critical="true">Build safety filter for clinical advice detection</task>
+        <task id="AI-003" status="pending">Implement GROQ+Gemini orchestration</task>
+        <task id="AI-004" status="pending">Create ExplainabilityPanel component</task>
+        <task id="AI-005" status="pending">Build ModeSelector toggle</task>
+        <task id="AI-006" status="pending">Create Python labai_agent</task>
+        <task id="AI-007" status="pending">Connect AI to EventBus</task>
+      </build_checklist>
+    </component_gap>
+
+    <!-- EXPERIMENTS GAP ANALYSIS -->
+    <component_gap name="Experiments">
+      <existing>
+        <feature status="DONE" file="src/pages/Experiments.tsx" lines="589">Experiments Page</feature>
+        <feature status="DONE">Experiment CRUD via database</feature>
+        <feature status="DONE">Dataset linking</feature>
+        <feature status="DONE" file="src/components/experiments/ExperimentTemplates.tsx">Templates</feature>
+        <feature status="PARTIAL">Basic status field - needs state machine</feature>
+      </existing>
+      <missing>
+        <feature file="src/lib/services/experimentService.ts">Experiment Service Class</feature>
+        <feature>State Machine (PLANNED → RUNNING → COMPLETED → FAILED)</feature>
+        <feature>AI Proposals table and display</feature>
+        <feature>Protocol/Method tracking</feature>
+        <feature>Auto-creation from datasets</feature>
+        <feature>Database migrations for new fields</feature>
+      </missing>
+      <build_checklist>
+        <task id="EXP-001" status="pending">Create experimentService with state machine</task>
+        <task id="EXP-002" status="pending">Add database migration for new fields</task>
+        <task id="EXP-003" status="pending">Create experiment_proposals table</task>
+        <task id="EXP-004" status="pending">Implement createFromDataset method</task>
+        <task id="EXP-005" status="pending">Update page with state visualization</task>
+      </build_checklist>
+    </component_gap>
+
+    <!-- ML MODELS GAP ANALYSIS -->
+    <component_gap name="ML Models">
+      <existing>
+        <feature status="DONE" file="src/pages/Models.tsx" size="54KB" lines="1406">Models Page</feature>
+        <feature status="DONE" file="ml-service/agents/orchestrator.py" lines="253">ML Orchestrator</feature>
+        <feature status="DONE">7 ML Agents (Data, Feature, ModelSelection, Hyperparameter, Training, Insights, Domain)</feature>
+        <feature status="DONE" file="src/lib/services/automlService.ts" size="5.3KB">AutoML Frontend Service</feature>
+        <feature status="DONE">Database table for ml_models</feature>
+      </existing>
+      <missing>
+        <feature file="src/lib/services/signalEmitter.ts">Signal Emitter Service</feature>
+        <feature>LabAI integration in orchestrator</feature>
+        <feature>Event emission after training</feature>
+        <feature>Signal → AI → Workflow loop</feature>
+      </missing>
+      <build_checklist>
+        <task id="ML-001" status="pending">Create signalEmitter service</task>
+        <task id="ML-002" status="pending">Update orchestrator with LabAI integration</task>
+        <task id="ML-003" status="pending">Add signal emission to ML pipeline</task>
+        <task id="ML-004" status="pending">Update Models page with signals display</task>
+      </build_checklist>
+    </component_gap>
+
+    <!-- DASHBOARDS GAP ANALYSIS -->
+    <component_gap name="Dashboards">
+      <existing>
+        <feature status="PARTIAL" file="src/pages/Dashboards.tsx" lines="49">Placeholder page - "Coming Soon"</feature>
+        <feature status="DONE" file="src/lib/services/dashboardService.ts" size="20.8KB">Dashboard Service backend</feature>
+        <feature status="DONE">Database migration for pinned_dashboards</feature>
+      </existing>
+      <missing>
+        <feature file="src/lib/services/promptBIService.ts">PromptBI Integration</feature>
+        <feature file="src/components/ai/ChartRenderer.tsx">Data-Validated Chart Renderer</feature>
+        <feature>Functional dashboard page</feature>
+        <feature>Auto-update on data changes</feature>
+        <feature>AI insight highlights</feature>
+      </missing>
+      <build_checklist>
+        <task id="DASH-001" status="pending">Create PromptBI service interface</task>
+        <task id="DASH-002" status="pending">Build ChartRenderer with validation</task>
+        <task id="DASH-003" status="pending">Replace placeholder with functional page</task>
+        <task id="DASH-004" status="pending">Implement batch refresh mechanism</task>
+      </build_checklist>
+    </component_gap>
+
+    <!-- REPORTS GAP ANALYSIS -->
+    <component_gap name="Reports">
+      <existing>
+        <feature status="DONE" file="src/pages/Reports.tsx" size="58.7KB" lines="1369">Full Reports Page</feature>
+        <feature status="DONE">Report Types, Formats, Status defined</feature>
+        <feature status="DONE">Scheduling (daily/weekly/monthly)</feature>
+        <feature status="DONE">AI Insights interface</feature>
+        <feature status="DONE" file="src/lib/services/reportService.ts">Report Service</feature>
+        <feature status="PARTIAL">Export formats defined but backend incomplete</feature>
+      </existing>
+      <missing>
+        <feature file="src/lib/services/reportTemplateService.ts">International Templates</feature>
+        <feature file="ml-service/report_generator.py">Server-side PDF/DOCX generation</feature>
+        <feature>WHO, ICH-GCP, ISO/IEEE templates</feature>
+        <feature>Workflow trigger for auto-reports</feature>
+      </missing>
+      <build_checklist>
+        <task id="RPT-001" status="pending">Create reportTemplateService with 5 templates</task>
+        <task id="RPT-002" status="pending">Build Python report generator</task>
+        <task id="RPT-003" status="pending">Create Jinja2 HTML templates</task>
+        <task id="RPT-004" status="pending">Connect to workflow for auto-generation</task>
+      </build_checklist>
+    </component_gap>
+
+    <!-- COLLABORATION GAP ANALYSIS -->
+    <component_gap name="Collaboration">
+      <existing>
+        <feature status="DONE" file="src/lib/services/collaborationService.ts" size="30.6KB" lines="1192">Comprehensive Collaboration Service</feature>
+        <feature status="DONE" file="src/pages/Collaboration.tsx" size="18.5KB">Collaboration Page</feature>
+        <feature status="DONE">Team members, channels, DMs, notifications</feature>
+        <feature status="DONE">Real-time with Supabase</feature>
+      </existing>
+      <missing>
+        <feature file="src/lib/services/notificationService.ts">Enhanced Notification Service</feature>
+        <feature>@LabAI mention handler</feature>
+        <feature>AI task auto-creation from escalations</feature>
+        <feature>Workflow event integration</feature>
+      </missing>
+      <build_checklist>
+        <task id="COLLAB-001" status="pending">Create notificationService with multi-channel</task>
+        <task id="COLLAB-002" status="pending">Add @LabAI mention handler</task>
+        <task id="COLLAB-003" status="pending">Implement task auto-creation</task>
+        <task id="COLLAB-004" status="pending">Connect to EventBus</task>
+      </build_checklist>
+    </component_gap>
+
+    <!-- MOBILE RESPONSIVENESS GAP ANALYSIS -->
+    <component_gap name="Mobile Responsiveness">
+      <existing>
+        <feature status="DONE" file="src/components/MobileNav.tsx" size="2KB">Mobile Navigation</feature>
+        <feature status="DONE" file="src/components/Sidebar.tsx" size="7.3KB">Collapsible Sidebar</feature>
+        <feature status="DONE" file="tailwind.config.ts">Tailwind with breakpoints</feature>
+        <feature status="PARTIAL">Some pages responsive, not all</feature>
+      </existing>
+      <missing>
+        <feature file="src/hooks/useMediaQuery.ts">useMediaQuery Hook</feature>
+        <feature file="src/components/layout/ResponsiveGrid.tsx">Responsive Grid Component</feature>
+        <feature>Full mobile audit of all pages</feature>
+        <feature>PWA support</feature>
+      </missing>
+      <build_checklist>
+        <task id="MOB-001" status="pending">Create useMediaQuery hook</task>
+        <task id="MOB-002" status="pending">Build ResponsiveGrid component</task>
+        <task id="MOB-003" status="pending">Audit Datasets page for mobile</task>
+        <task id="MOB-004" status="pending">Audit Experiments page for mobile</task>
+        <task id="MOB-005" status="pending">Audit Models page for mobile</task>
+        <task id="MOB-006" status="pending">Audit AI Assistant for mobile</task>
+        <task id="MOB-007" status="pending">Audit Settings for mobile</task>
+      </build_checklist>
+    </component_gap>
+
+    <!-- COMPLIANCE GAP ANALYSIS -->
+    <component_gap name="Compliance">
+      <existing>
+        <feature status="DONE">RLS policies on all tables</feature>
+        <feature status="DONE" file="src/components/auth/AuthGuard.tsx">Auth Guard</feature>
+        <feature status="DONE">User profiles in database</feature>
+      </existing>
+      <missing>
+        <feature file="src/lib/services/complianceService.ts">Compliance Service</feature>
+        <feature file="supabase/migrations/20251223_compliance.sql">Audit Log Tables</feature>
+        <feature>GDPR compliance hooks</feature>
+        <feature>Data subject request handling</feature>
+      </missing>
+      <build_checklist>
+        <task id="COMP-001" status="pending">Create audit_log table</task>
+        <task id="COMP-002" status="pending">Create complianceService</task>
+        <task id="COMP-003" status="pending">Implement audit trail logging</task>
+        <task id="COMP-004" status="pending">Add GDPR hooks</task>
+      </build_checklist>
+    </component_gap>
+
+    <!-- SUMMARY STATISTICS -->
+    <summary>
+      <total_components>10</total_components>
+      <fully_implemented>0</fully_implemented>
+      <partially_implemented>10</partially_implemented>
+      <critical_gaps>3</critical_gaps>
+      <critical_gap_names>Workflow Engine (EventBus, Rules), AI Assistant (3-Mode, Safety), Signal Loop</critical_gap_names>
+      <total_build_tasks>47</total_build_tasks>
+      <critical_tasks>7</critical_tasks>
+    </summary>
+  </gap_analysis>
+
+  <!-- ================================================================== -->
+  <!-- CORE ARCHITECTURE: THE AUTOMATION TRINITY + ORCHESTRATOR -->
+  <!-- ================================================================== -->
+  
+  <architecture>
+    <description>
+      The system has 4 interconnected brains:
+      1. Workflows (Conductor/Orchestrator)
+      2. AI Assistant/LabAI (Scientist/Reasoning)
+      3. Experiments (Memory/Structure)
+      4. Models (Prediction Engine)
+      
+      Key Principle: Everything flows through the Workflow Engine.
+    </description>
+    
+    <components>
+      <component name="Workflow Engine" role="Control Plane">
+        <responsibility>Event-driven orchestration that decides what happens next</responsibility>
+        <listens_to>
+          <event>DATASET_UPLOADED</event>
+          <event>DATASET_UPDATED</event>
+          <event>EXPERIMENT_CREATED</event>
+          <event>EXPERIMENT_RUNNING</event>
+          <event>EXPERIMENT_COMPLETED</event>
+          <event>MODEL_TRAINED</event>
+          <event>ANOMALY_DETECTED</event>
+          <event>REPORT_GENERATED</event>
+        </listens_to>
+        <analogy>The Nervous System</analogy>
+      </component>
+      
+      <component name="AI Assistant (LabAI)" role="Cognitive Plane">
+        <responsibility>Domain-aware reasoning engine for decisions, suggestions, interpretations</responsibility>
+        <capabilities>
+          <capability>Classify data domain</capability>
+          <capability>Propose experiments</capability>
+          <capability>Recommend models</capability>
+          <capability>Interpret results</capability>
+          <capability>Explain anomalies</capability>
+          <capability>Decide when humans must intervene</capability>
+        </capabilities>
+        <critical_rule>LabAI does NOT execute actions directly. It recommends → Workflows execute.</critical_rule>
+        <analogy>The Scientist with Judgment</analogy>
+      </component>
+      
+      <component name="Experiments" role="State Plane">
+        <responsibility>Stateful record of scientific intent</responsibility>
+        <tracks>
+          <item>Why are we analyzing this data?</item>
+          <item>What hypothesis are we testing?</item>
+          <item>What methods are allowed?</item>
+          <item>What outcome defines success?</item>
+        </tracks>
+        <analogy>The Lab Notebook + Control State</analogy>
+      </component>
+      
+      <component name="Models" role="Execution Plane">
+        <responsibility>Executable statistical instruments that learn, predict, and signal</responsibility>
+        <capabilities>
+          <capability>Train on datasets</capability>
+          <capability>Generate predictions</capability>
+          <capability>Quantify uncertainty</capability>
+          <capability>Detect anomalies</capability>
+          <capability>Emit signals back into system</capability>
+        </capabilities>
+        <critical_rule>Models do not decide meaning. They emit signals, not conclusions.</critical_rule>
+        <analogy>The Measurement Instrument</analogy>
+      </component>
+    </components>
+    
+    <automation_loop>
+      <description>The Closed Loop (This is the breakthrough)</description>
+      <flow>DATA → EXPERIMENT → MODEL → SIGNAL → AI INTERPRETATION → WORKFLOW ACTION → (back to DATA)</flow>
+    </automation_loop>
+  </architecture>
+
+  <!-- ================================================================== -->
+  <!-- PHASE 0: DATA SOURCES / INPUTS -->
+  <!-- ================================================================== -->
+  
+  <phase id="0" name="Data Sources" priority="CRITICAL">
+    <goal>Capture all possible health-related datasets</goal>
+    
+    <source type="manual_upload">
+      <formats>
+        <format>CSV</format>
+        <format>XLSX (Excel)</format>
+        <format>JSON</format>
+        <format>XML</format>
+      </formats>
+      <examples>
+        <example>Heart rate, steps, sleep stages (CSV from Fitbit)</example>
+        <example>Blood glucose measurements (Excel from Dexcom)</example>
+        <example>Blood pressure readings (CSV from Withings)</example>
+      </examples>
+      <integration>User drag-drop → system validates → AI auto-tags and profiles</integration>
+    </source>
+    
+    <source type="cloud_platforms">
+      <providers>
+        <provider>Google Drive</provider>
+        <provider>Dropbox</provider>
+        <provider>AWS S3</provider>
+        <provider>Microsoft OneDrive</provider>
+      </providers>
+      <examples>
+        <example>Population health survey exports (JSON)</example>
+        <example>Lab CSV datasets from research teams</example>
+      </examples>
+      <integration>OAuth-based API access → automatic fetch → scheduled sync</integration>
+    </source>
+    
+    <source type="live_devices">
+      <device_types>
+        <type name="wearables">
+          <devices>Apple Watch, Fitbit, Garmin, Whoop, Mi Band, Oura Ring</devices>
+          <data>HR, HRV, activity, sleep, temperature</data>
+          <integration>Cloud API pull (HealthKit, Fitbit API, Garmin Connect)</integration>
+        </type>
+        <type name="biosensors">
+          <devices>Continuous glucose monitors, ECG patches</devices>
+          <data>Glucose levels, ECG readings</data>
+          <integration>CSV export, manufacturer APIs</integration>
+        </type>
+        <type name="research_monitors">
+          <devices>Blood pressure cuffs, oximeters, spirometers, thermometers</devices>
+          <data>BP, oxygen saturation, spirometry, temperature</data>
+          <integration>CSV/JSON exports, Bluetooth/USB sync</integration>
+        </type>
+        <type name="environmental_sensors">
+          <devices>Air quality (PM2.5, CO2), UV, humidity, water quality</devices>
+          <data>Environmental metrics, geotagged</data>
+          <integration>IoT cloud APIs (AWS IoT, Azure IoT), CSV batch</integration>
+        </type>
+      </device_types>
+      <v1_approach>Batch pull every few minutes/hours. NO real-time streaming in V1.</v1_approach>
+    </source>
+  </phase>
+
+  <!-- ================================================================== -->
+  <!-- PHASE 1: DATA INGESTION & PREPROCESSING -->
+  <!-- ================================================================== -->
+  
+  <phase id="1" name="Data Ingestion" priority="CRITICAL" depends_on="0">
+    <goal>Automatically normalize, clean, and anonymize health data</goal>
+    
+    <modules>Datasets, AI Assistant, Automation</modules>
+    
+    <pipeline>
+      <step order="1" name="data_validation">
+        <description>Check format, completeness, timestamps</description>
+        <example>Fitbit CSV missing sleep stage → AI flags incomplete</example>
+        <implementation>
+          <file>src/lib/services/ingestionService.ts</file>
+          <file>src/lib/parsers/</file>
+        </implementation>
+      </step>
+      
+      <step order="2" name="normalization">
+        <description>Convert units to ISO standards, timestamp standardization</description>
+        <conversions>
+          <conversion from="mmHg" to="kPa" />
+          <conversion from="lbs" to="kg" />
+          <conversion from="fahrenheit" to="celsius" />
+          <conversion from="various_timestamps" to="ISO 8601 UTC" />
+        </conversions>
+        <implementation>
+          <file>src/lib/services/ingestionService.ts</file>
+          <code_example language="typescript">
+            df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
+          </code_example>
+        </implementation>
+      </step>
+      
+      <step order="3" name="anonymization">
+        <description>Detect and mask PHI/PII</description>
+        <phi_types>
+          <type>Names</type>
+          <type>Email addresses</type>
+          <type>Device IDs</type>
+          <type>Social Security Numbers</type>
+          <type>Date of Birth → Age bracket</type>
+        </phi_types>
+        <techniques>
+          <technique>Regex-based PHI detection</technique>
+          <technique>SHA-256 hash identifiers</technique>
+          <technique>Age bracketing for DOB</technique>
+        </techniques>
+        <implementation>
+          <file>src/lib/services/anonymizationService.ts</file>
+          <code_example language="python">
+            import hashlib
+            df["user_id"] = df["user_id"].apply(lambda x: hashlib.sha256(x.encode()).hexdigest())
+          </code_example>
+        </implementation>
+      </step>
+      
+      <step order="4" name="domain_tagging">
+        <description>AI Assistant detects and classifies data domain</description>
+        <domains>
+          <domain>General Health</domain>
+          <domain>Clinical</domain>
+          <domain>Biopharma</domain>
+          <domain>Environmental</domain>
+          <domain>Population</domain>
+        </domains>
+        <implementation>
+          <file>src/lib/services/labAIService.ts</file>
+          <file>ml-service/agents/labai_agent.py</file>
+        </implementation>
+      </step>
+    </pipeline>
+    
+    <automation_triggers>
+      <trigger>New data ready → Auto-trigger next step</trigger>
+      <trigger>Generate dataset profile summary</trigger>
+    </automation_triggers>
+  </phase>
+
+  <!-- ================================================================== -->
+  <!-- PHASE 2: EXPERIMENT SETUP & ASSOCIATION -->
+  <!-- ================================================================== -->
+  
+  <phase id="2" name="Experiments" priority="HIGH" depends_on="1">
+    <goal>Link datasets to experiments for tracking and reproducibility</goal>
+    
+    <modules>Experiments, Automation, AI Assistant</modules>
+    
+    <features>
+      <feature name="auto_create_experiments">
+        <description>Auto-create experiments based on dataset type</description>
+        <examples>
+          <example dataset="Blood glucose CSV" experiment="Glucose Trend Analysis" />
+          <example dataset="Wearable HR dataset" experiment="Activity &amp; HRV Analysis" />
+        </examples>
+      </feature>
+      
+      <feature name="protocol_suggestion">
+        <description>AI Assistant recommends basic experiment steps</description>
+        <example>Calculate average HR, detect anomalies above 120 BPM</example>
+      </feature>
+      
+      <feature name="team_assignment">
+        <description>Automatically assign responsible team members for review</description>
+      </feature>
+    </features>
+    
+    <state_machine>
+      <state name="PLANNED" description="Experiment defined but not started" />
+      <state name="RUNNING" description="Experiment in progress" />
+      <state name="COMPLETED" description="Experiment finished successfully" />
+      <state name="FAILED" description="Experiment encountered errors" />
+    </state_machine>
+    
+    <experiment_structure>
+      <field>id</field>
+      <field>objective</field>
+      <field>hypothesis</field>
+      <field>dataset_ids (linked)</field>
+      <field>allowed_models</field>
+      <field>success_metrics</field>
+      <field>protocol_steps</field>
+      <field>results</field>
+    </experiment_structure>
+    
+    <automation_triggers>
+      <trigger>Experiment auto-updates when datasets are modified</trigger>
+      <trigger>Alerts sent when new dataset triggers experiment</trigger>
+    </automation_triggers>
+    
+    <implementation>
+      <file>src/lib/services/experimentService.ts</file>
+      <file>src/pages/Experiments.tsx</file>
+      <migration>supabase/migrations/20251223_experiments_v2.sql</migration>
+    </implementation>
+  </phase>
+
+  <!-- ================================================================== -->
+  <!-- PHASE 3: ML MODELS & PREDICTIVE ANALYTICS -->
+  <!-- ================================================================== -->
+  
+  <phase id="3" name="ML Models" priority="HIGH" depends_on="2">
+    <goal>Use AI to analyze datasets and generate predictive insights</goal>
+    
+    <modules>Models, AI Assistant, Automation</modules>
+    
+    <pipeline>
+      <step name="model_selection">
+        <description>AutoML recommends algorithms</description>
+        <examples>
+          <example dataset="Heart rate" model="Random Forest (anomaly detection)" />
+          <example dataset="Population survey" model="Logistic Regression (risk prediction)" />
+        </examples>
+      </step>
+      
+      <step name="hyperparameter_tuning">
+        <description>Automated via backend ML service</description>
+        <tools>
+          <tool>scikit-learn</tool>
+          <tool>XGBoost</tool>
+          <tool>LightGBM</tool>
+          <tool>PyCaret (AutoML wrapper)</tool>
+        </tools>
+      </step>
+      
+      <step name="model_evaluation">
+        <metrics>
+          <metric>Accuracy</metric>
+          <metric>Precision</metric>
+          <metric>Recall</metric>
+          <metric>RMSE</metric>
+          <metric>F1 Score</metric>
+        </metrics>
+      </step>
+      
+      <step name="deployment_predictions">
+        <examples>
+          <example>Predict future HR trend for next week</example>
+          <example>Flag abnormal values for research review</example>
+        </examples>
+      </step>
+    </pipeline>
+    
+    <signal_emission>
+      <description>Models output signals, not insights</description>
+      <signal_types>
+        <type>anomaly</type>
+        <type>prediction</type>
+        <type>threshold_breach</type>
+        <type>trend_change</type>
+        <type>correlation</type>
+      </signal_types>
+      <signal_structure>
+        <field>type</field>
+        <field>score (0-1)</field>
+        <field>confidence</field>
+        <field>timestamp</field>
+        <field>metadata</field>
+      </signal_structure>
+      <flow>Signals → AI Interpretation → Workflow → Human (if needed)</flow>
+    </signal_emission>
+    
+    <automation_triggers>
+      <trigger>Training triggered when dataset updates</trigger>
+      <trigger>Dashboards updated with metrics (via PromptBI)</trigger>
+    </automation_triggers>
+    
+    <implementation>
+      <file>ml-service/agents/orchestrator.py</file>
+      <file>ml-service/agents/training_agent.py</file>
+      <file>ml-service/agents/model_selection_agent.py</file>
+      <file>src/lib/services/signalEmitter.ts</file>
+      <file>src/pages/Models.tsx</file>
+    </implementation>
+  </phase>
+
+  <!-- ================================================================== -->
+  <!-- PHASE 4: DASHBOARDS & VISUALIZATION -->
+  <!-- ================================================================== -->
+  
+  <phase id="4" name="Dashboards" priority="MEDIUM" depends_on="3">
+    <goal>Provide actionable insights in real-time, visually</goal>
+    
+    <modules>Dashboards, Analytics, AI Assistant</modules>
+    
+    <visualization_engine>
+      <provider>PromptBI API</provider>
+      <note>API to be provided later. Use interface abstraction.</note>
+    </visualization_engine>
+    
+    <chart_types>
+      <chart type="line">HR trends, glucose trends</chart>
+      <chart type="histogram">Population BMI distribution</chart>
+      <chart type="heatmap">Environmental sensor readings, correlations</chart>
+      <chart type="bar">Comparisons, categorical data</chart>
+      <chart type="scatter">Relationships between variables</chart>
+      <chart type="pie">Proportional distributions</chart>
+    </chart_types>
+    
+    <features>
+      <feature>Dynamic dashboards auto-created per project</feature>
+      <feature>Automated updates when new data arrives (batch, V1)</feature>
+      <feature>AI Assistant insight highlights</feature>
+      <feature>Alert threshold configuration</feature>
+    </features>
+    
+    <insight_examples>
+      <example>HR spikes above 140 BPM observed on 3 consecutive days</example>
+      <example>Glucose trending upward, recommend monitoring</example>
+    </insight_examples>
+    
+    <automation_triggers>
+      <trigger>Auto-refresh every few minutes (batch mode V1)</trigger>
+      <trigger>Trigger alerts if thresholds exceeded</trigger>
+    </automation_triggers>
+    
+    <implementation>
+      <file>src/lib/services/promptBIService.ts</file>
+      <file>src/pages/Dashboards.tsx</file>
+    </implementation>
+  </phase>
+
+  <!-- ================================================================== -->
+  <!-- PHASE 5: REPORTS GENERATION -->
+  <!-- ================================================================== -->
+  
+  <phase id="5" name="Reports" priority="MEDIUM" depends_on="4">
+    <goal>Turn analyses into standardized, actionable reports</goal>
+    
+    <modules>Reports, AI Assistant, Automation</modules>
+    
+    <templates international="true">
+      <template name="clinical_research" standard="ICH-GCP">
+        <sections>
+          <section>Executive Summary</section>
+          <section>Study Objectives</section>
+          <section>Methodology</section>
+          <section>Results</section>
+          <section>Adverse Events</section>
+          <section>Conclusions</section>
+        </sections>
+      </template>
+      
+      <template name="population_health" standard="WHO/CDC">
+        <sections>
+          <section>Population Overview</section>
+          <section>Health Indicators</section>
+          <section>Risk Factor Analysis</section>
+          <section>Trends</section>
+          <section>Recommendations</section>
+        </sections>
+      </template>
+      
+      <template name="wearables_study" standard="ISO/IEEE">
+        <sections>
+          <section>Device Specifications</section>
+          <section>Data Collection Protocol</section>
+          <section>Signal Processing</section>
+          <section>Activity Recognition</section>
+          <section>Health Metrics</section>
+        </sections>
+      </template>
+      
+      <template name="environmental_health" standard="ISO 14001/WHO">
+        <sections>
+          <section>Environmental Assessment</section>
+          <section>Air/Water Quality</section>
+          <section>Health Impact</section>
+          <section>Recommendations</section>
+        </sections>
+      </template>
+      
+      <template name="gdpr_compliance" standard="GDPR">
+        <sections>
+          <section>Data Processing Summary</section>
+          <section>Anonymization Report</section>
+          <section>Consent Tracking</section>
+          <section>Retention Policies</section>
+        </sections>
+      </template>
+    </templates>
+    
+    <export_formats>
+      <format>PDF (WeasyPrint)</format>
+      <format>DOCX (python-docx)</format>
+      <format>CSV</format>
+    </export_formats>
+    
+    <features>
+      <feature>AI populates report with charts, metrics, key insights</feature>
+      <feature>Scheduled or triggered delivery to team/collaborators</feature>
+    </features>
+    
+    <automation_triggers>
+      <trigger>Every completed experiment → auto-generate report</trigger>
+      <trigger>Recurring datasets → auto-create weekly/monthly summary</trigger>
+    </automation_triggers>
+    
+    <implementation>
+      <file>src/lib/services/reportTemplateService.ts</file>
+      <file>ml-service/report_generator.py</file>
+      <file>src/pages/Reports.tsx</file>
+    </implementation>
+  </phase>
+
+  <!-- ================================================================== -->
+  <!-- PHASE 6: COLLABORATION & NOTIFICATIONS -->
+  <!-- ================================================================== -->
+  
+  <phase id="6" name="Collaboration" priority="MEDIUM" depends_on="5">
+    <goal>Keep teams aligned automatically</goal>
+    
+    <modules>Collaboration, AI Assistant, Automation</modules>
+    
+    <features>
+      <feature>New dataset/experiment/report → automated notification to team</feature>
+      <feature>@LabAI can answer questions directly in threads</feature>
+      <feature>Tasks assigned automatically if AI detects anomalies</feature>
+      <feature>Discussion threads linked to specific datasets/experiments</feature>
+    </features>
+    
+    <notification_channels>
+      <channel>In-app notifications</channel>
+      <channel>Email</channel>
+      <channel>Slack (future)</channel>
+      <channel>Webhooks</channel>
+    </notification_channels>
+    
+    <implementation>
+      <file>src/lib/services/notificationService.ts</file>
+      <file>src/lib/services/collaborationService.ts</file>
+      <file>src/pages/Collaboration.tsx</file>
+    </implementation>
+  </phase>
+
+  <!-- ================================================================== -->
+  <!-- PHASE 7: WORKFLOW ENGINE (THE BRAIN) -->
+  <!-- ================================================================== -->
+  
+  <phase id="7" name="Workflow Engine" priority="CRITICAL">
+    <goal>Event-driven orchestration that runs everything</goal>
+    <note>This is the MOAT of the product. Most important component.</note>
+    
+    <event_model>
+      <event_types>
+        <type>DATASET_UPLOADED</type>
+        <type>DATASET_UPDATED</type>
+        <type>EXPERIMENT_CREATED</type>
+        <type>EXPERIMENT_RUNNING</type>
+        <type>EXPERIMENT_COMPLETED</type>
+        <type>MODEL_TRAINING_STARTED</type>
+        <type>MODEL_TRAINING_COMPLETED</type>
+        <type>ANOMALY_DETECTED</type>
+        <type>AI_INSIGHT_GENERATED</type>
+        <type>REPORT_GENERATED</type>
+        <type>THRESHOLD_EXCEEDED</type>
+      </event_types>
+    </event_model>
+    
+    <rule_engine>
+      <rule_structure>
+        <field>id</field>
+        <field>name</field>
+        <field>trigger (event type)</field>
+        <field>conditions (array)</field>
+        <field>actions (array)</field>
+        <field>priority</field>
+        <field>is_active</field>
+      </rule_structure>
+      
+      <canonical_rules>
+        <rule id="dataset-to-experiment">
+          <name>Auto-create experiment for health datasets</name>
+          <trigger>DATASET_UPLOADED</trigger>
+          <conditions>
+            <condition field="domain" operator="in" value="['health', 'clinical']" />
+          </conditions>
+          <actions>
+            <action type="CREATE_EXPERIMENT" />
+            <action type="REQUEST_AI_INTERPRETATION" />
+          </actions>
+        </rule>
+        
+        <rule id="experiment-to-model">
+          <name>Trigger AutoML for running experiments</name>
+          <trigger>EXPERIMENT_RUNNING</trigger>
+          <conditions>
+            <condition field="dataset.is_time_series" operator="equals" value="true" />
+          </conditions>
+          <actions>
+            <action type="TRIGGER_AUTOML" />
+          </actions>
+        </rule>
+        
+        <rule id="model-to-ai">
+          <name>Request AI interpretation after model training</name>
+          <trigger>MODEL_TRAINING_COMPLETED</trigger>
+          <actions>
+            <action type="REQUEST_AI_INTERPRETATION" config="includeModelOutputs:true" />
+          </actions>
+        </rule>
+        
+        <rule id="ai-escalation">
+          <name>Escalate high-confidence anomalies to humans</name>
+          <trigger>AI_INSIGHT_GENERATED</trigger>
+          <conditions>
+            <condition field="confidence" operator="greaterThan" value="0.8" />
+            <condition field="is_anomaly" operator="equals" value="true" />
+          </conditions>
+          <actions>
+            <action type="CREATE_TASK" config="assign_to:team_lead" />
+            <action type="NOTIFY_TEAM" config="urgency:high" />
+          </actions>
+        </rule>
+        
+        <rule id="experiment-to-report">
+          <name>Auto-generate report on experiment completion</name>
+          <trigger>EXPERIMENT_COMPLETED</trigger>
+          <actions>
+            <action type="GENERATE_REPORT" config="template:auto" />
+          </actions>
+        </rule>
+      </canonical_rules>
+    </rule_engine>
+    
+    <execution_flow>
+      Event → Rule Evaluation → AI Reasoning (optional) → Action(s)
+    </execution_flow>
+    
+    <technology_stack>
+      <primary>LangGraph (recommended for reasoning loops)</primary>
+      <alternative>LangChain</alternative>
+      <alternative>Simple Python rule engine</alternative>
+    </technology_stack>
+    
+    <implementation>
+      <file>src/lib/services/eventBus.ts</file>
+      <file>src/lib/services/rulesEngine.ts</file>
+      <file>src/lib/services/workflowService.ts</file>
+    </implementation>
+  </phase>
+
+  <!-- ================================================================== -->
+  <!-- PHASE 8: GLOBAL COMPLIANCE & PROTOCOLS -->
+  <!-- ================================================================== -->
+  
+  <phase id="8" name="Compliance" priority="HIGH">
+    <goal>Ensure regulatory compliance and data protection</goal>
+    
+    <privacy_regulations>
+      <regulation name="GDPR" region="EU">
+        <requirements>
+          <requirement>Data subject access requests</requirement>
+          <requirement>Right to erasure</requirement>
+          <requirement>Data processing records</requirement>
+          <requirement>Consent management</requirement>
+        </requirements>
+      </regulation>
+      <regulation name="HIPAA Safe Harbor" region="US">
+        <requirements>
+          <requirement>18 identifiers removed or generalized</requirement>
+          <requirement>Expert determination</requirement>
+        </requirements>
+      </regulation>
+    </privacy_regulations>
+    
+    <data_standards>
+      <standard>ISO/IEEE (biosensors)</standard>
+      <standard>ICH-GCP (clinical research)</standard>
+      <standard>WHO (population health)</standard>
+      <standard>HL7/FHIR (healthcare data exchange)</standard>
+    </data_standards>
+    
+    <security>
+      <feature>End-to-end encryption</feature>
+      <feature>Role-based access control (RBAC)</feature>
+      <feature>Full audit trail logging</feature>
+      <feature>De-identification by default</feature>
+    </security>
+    
+    <implementation>
+      <file>src/lib/services/complianceService.ts</file>
+      <migration>supabase/migrations/20251223_compliance.sql</migration>
+    </implementation>
+  </phase>
+
+  <!-- ================================================================== -->
+  <!-- PHASE 9: DEPLOYMENT ARCHITECTURE -->
+  <!-- ================================================================== -->
+  
+  <phase id="9" name="Deployment" priority="MEDIUM">
+    <goal>Deploy with $0 or minimal cost using FREE APIs and services</goal>
+    
+    <!-- FREE INFRASTRUCTURE STACK -->
+    <free_infrastructure>
+      <principle>100% FREE tier deployment for V1 MVP</principle>
+      
+      <!-- FRONTEND HOSTING -->
+      <service name="Frontend Hosting" provider="Vercel">
+        <cost>$0 (Free tier: 100GB bandwidth, unlimited deploys)</cost>
+        <what_lives_here>
+          <location>React + Vite application</location>
+          <location>All static assets</location>
+          <location>Client-side routing</location>
+        </what_lives_here>
+        <migration_url>https://vercel.com</migration_url>
+        <deploy_command>vercel --prod</deploy_command>
+      </service>
+      
+      <!-- BACKEND API HOSTING -->
+      <service name="ML Service Backend" provider="Render">
+        <cost>$0 (Free tier: 750 hrs/month, auto-sleep)</cost>
+        <what_lives_here>
+          <location>FastAPI Python backend</location>
+          <location>ML Orchestrator Agent</location>
+          <location>Data Agent</location>
+          <location>Feature Engineering Agent</location>
+          <location>Model Selection Agent</location>
+          <location>Hyperparameter Agent</location>
+          <location>Training Agent</location>
+          <location>Insights Agent</location>
+          <location>LabAI Agent (Python)</location>
+          <location>Report Generator</location>
+        </what_lives_here>
+        <migration_url>https://render.com</migration_url>
+        <alternative provider="Fly.io" cost="$0 (Free tier: 3 shared VMs)" />
+        <alternative provider="Railway" cost="$0 (500 hrs/month)" />
+      </service>
+      
+      <!-- DATABASE -->
+      <service name="Database" provider="Supabase">
+        <cost>$0 (Free tier: 500MB, 50K monthly requests)</cost>
+        <what_lives_here>
+          <location>PostgreSQL database</location>
+          <location>All tables (datasets, experiments, models, workflows, etc.)</location>
+          <location>Row Level Security (RLS)</location>
+          <location>Auth users</location>
+          <location>Audit logs</location>
+        </what_lives_here>
+        <migration_url>https://supabase.com</migration_url>
+      </service>
+      
+      <!-- AUTH -->
+      <service name="Authentication" provider="Supabase Auth">
+        <cost>$0 (Included in Supabase free tier)</cost>
+        <what_lives_here>
+          <location>User authentication</location>
+          <location>OAuth (Google, GitHub)</location>
+          <location>Magic link emails</location>
+          <location>Session management</location>
+          <location>User profiles</location>
+        </what_lives_here>
+      </service>
+      
+      <!-- FILE STORAGE -->
+      <service name="File Storage" provider="Supabase Storage">
+        <cost>$0 (1GB free storage)</cost>
+        <what_lives_here>
+          <location>Uploaded datasets (CSV, Excel, JSON)</location>
+          <location>Generated reports (PDF, DOCX)</location>
+          <location>User avatars</location>
+          <location>Collaboration attachments</location>
+        </what_lives_here>
+        <alternative provider="Cloudflare R2" cost="$0 (10GB free)" />
+      </service>
+      
+      <!-- AI APIS (FREE TIERS) -->
+      <service name="AI APIs" providers="Multi-provider">
+        <provider name="GROQ" priority="1">
+          <cost>$0 (Free tier: generous rate limits)</cost>
+          <model>Llama 3.1 8B Instant</model>
+          <use_for>Fast summaries, Analyst mode, graph descriptions</use_for>
+          <api_key_env>VITE_GROQ_API_KEY</api_key_env>
+        </provider>
+        <provider name="Google Gemini" priority="2">
+          <cost>$0 (Free tier: 1500 requests/day)</cost>
+          <model>Gemini 2.0 Flash</model>
+          <use_for>Deep reasoning, Learn mode, educational explanations</use_for>
+          <api_key_env>VITE_GEMINI_API_KEY</api_key_env>
+        </provider>
+        <provider name="Anthropic Claude" priority="3">
+          <cost>$0 (Free tier with limits)</cost>
+          <model>Claude 3 Haiku</model>
+          <use_for>Complex reasoning, fallback provider</use_for>
+          <api_key_env>VITE_ANTHROPIC_API_KEY</api_key_env>
+        </provider>
+      </service>
+      
+      <!-- ML COMPUTE -->
+      <service name="ML Compute" provider="CPU-based (Free)">
+        <cost>$0</cost>
+        <what_lives_here>
+          <location>scikit-learn models</location>
+          <location>PyCaret AutoML</location>
+          <location>XGBoost, LightGBM</location>
+          <location>Pandas data processing</location>
+        </what_lives_here>
+        <note>All ML runs on Render free tier CPU. No GPU needed for V1.</note>
+      </service>
+      
+      <!-- SCHEDULING -->
+      <service name="Scheduling" provider="GitHub Actions">
+        <cost>$0 (2000 mins/month for public repos)</cost>
+        <what_lives_here>
+          <location>Cron jobs for batch processing</location>
+          <location>Scheduled report generation</location>
+          <location>Data sync from cloud sources</location>
+        </what_lives_here>
+        <alternative provider="Railway Cron" cost="$0 (included)" />
+      </service>
+      
+      <!-- EMAIL -->
+      <service name="Email" provider="Resend">
+        <cost>$0 (100 emails/day free)</cost>
+        <what_lives_here>
+          <location>Magic link authentication</location>
+          <location>Report delivery</location>
+          <location>Anomaly notifications</location>
+          <location>Team invitations</location>
+        </what_lives_here>
+        <alternative provider="Supabase Email" cost="$0 (built-in)" />
+      </service>
+      
+      <!-- REALTIME -->
+      <service name="Realtime" provider="Supabase Realtime">
+        <cost>$0 (Included free)</cost>
+        <what_lives_here>
+          <location>Collaboration chat</location>
+          <location>Presence indicators</location>
+          <location>Dashboard auto-updates</location>
+          <location>Notification pushes</location>
+        </what_lives_here>
+      </service>
+    </free_infrastructure>
+    
+    <!-- AGENT HOSTING MATRIX -->
+    <agent_hosting_matrix>
+      <description>Where each agent lives in the free infrastructure</description>
+      <agent name="Data Agent" host="Render (ml-service)" file="ml-service/agents/data_agent.py" />
+      <agent name="Feature Agent" host="Render (ml-service)" file="ml-service/agents/feature_agent.py" />
+      <agent name="Model Selection Agent" host="Render (ml-service)" file="ml-service/agents/model_selection_agent.py" />
+      <agent name="Hyperparameter Agent" host="Render (ml-service)" file="ml-service/agents/hyperparameter_agent.py" />
+      <agent name="Training Agent" host="Render (ml-service)" file="ml-service/agents/training_agent.py" />
+      <agent name="Insights Agent" host="Render (ml-service)" file="ml-service/agents/insights_agent.py" />
+      <agent name="LabAI Agent" host="Render (ml-service)" file="ml-service/agents/labai_agent.py" />
+      <agent name="Orchestrator Agent" host="Render (ml-service)" file="ml-service/agents/orchestrator.py" />
+      <agent name="Report Generator" host="Render (ml-service)" file="ml-service/report_generator.py" />
+      <agent name="LabIQAI (Frontend)" host="Vercel (client-side)" file="src/lib/ai/LabIQAI.ts" />
+      <agent name="Event Bus" host="Vercel (client-side)" file="src/lib/services/eventBus.ts" />
+      <agent name="Rules Engine" host="Vercel (client-side)" file="src/lib/services/rulesEngine.ts" />
+      <agent name="Workflow Service" host="Vercel (client-side)" file="src/lib/services/workflowService.ts" />
+    </agent_hosting_matrix>
+    
+    <!-- WHY FREE WORKS FOR V1 -->
+    <why_free_works>
+      <reason>Batch processing, not real-time streaming (low compute)</reason>
+      <reason>Open-source ML libraries (no API costs for models)</reason>
+      <reason>Free AI APIs with generous tiers (GROQ, Gemini)</reason>
+      <reason>Event-driven architecture (efficient resource usage)</reason>
+      <reason>Supabase does auth + database + storage + realtime in one free tier</reason>
+      <reason>Vercel + Render free tiers handle light traffic easily</reason>
+    </why_free_works>
+    
+    <!-- MIGRATION CHECKLIST -->
+    <migration_checklist>
+      <task id="DEPLOY-001" status="pending">Create Vercel project and link repo</task>
+      <task id="DEPLOY-002" status="pending">Create Render web service for ml-service</task>
+      <task id="DEPLOY-003" status="pending">Set up Supabase project with production keys</task>
+      <task id="DEPLOY-004" status="pending">Configure GROQ API key in environment</task>
+      <task id="DEPLOY-005" status="pending">Configure Gemini API key in environment</task>
+      <task id="DEPLOY-006" status="pending">Set up Resend for transactional emails</task>
+      <task id="DEPLOY-007" status="pending">Configure OAuth (Google, GitHub) in Supabase</task>
+      <task id="DEPLOY-008" status="pending">Run database migrations in production</task>
+      <task id="DEPLOY-009" status="pending">Set up GitHub Actions for cron jobs</task>
+      <task id="DEPLOY-010" status="pending">Test full E2E flow in production</task>
+    </migration_checklist>
+    
+    <implementation>
+      <file>docker-compose.yml</file>
+      <file>Dockerfile.frontend</file>
+      <file>ml-service/Dockerfile</file>
+      <file>render.yaml</file>
+      <file>vercel.json</file>
+      <file>.github/workflows/cron.yml</file>
+    </implementation>
+  </phase>
+
+  <!-- ================================================================== -->
+  <!-- END-TO-END WORKFLOW EXAMPLE -->
+  <!-- ================================================================== -->
+  
+  <example_workflow name="Fitbit HR Analysis">
+    <step order="1" input="Fitbit HR CSV" module="Datasets">
+      <action>Validate &amp; normalize, anonymize PHI</action>
+      <output>Ready dataset</output>
+    </step>
+    <step order="2" input="Dataset type: HR" module="Experiments">
+      <action>Auto-create HR Trend Analysis experiment</action>
+      <output>Experiment created (status: RUNNING)</output>
+    </step>
+    <step order="3" input="Dataset linked" module="Models">
+      <action>AutoML selects model, trains, evaluates</action>
+      <output>Model metrics, predictions, signals</output>
+    </step>
+    <step order="4" input="Model results" module="Dashboards">
+      <action>PromptBI visualizes trends &amp; alerts</action>
+      <output>HR trend chart, anomaly flags</output>
+    </step>
+    <step order="5" input="Completed analysis" module="Reports">
+      <action>Auto-generate PDF/DOCX with WHO template</action>
+      <output>Report emailed to team</output>
+    </step>
+    <step order="6" input="Anomaly trigger" module="Collaboration">
+      <action>Notify team + create task</action>
+      <output>Email notifications, AI comments</output>
+    </step>
+  </example_workflow>
+
+  <!-- ================================================================== -->
+  <!-- USER EXPERIENCE NOTES -->
+  <!-- ================================================================== -->
+  
+  <ux_principles>
+    <principle>Users don't need to code — AI handles workflow orchestration</principle>
+    <principle>Users see ONE dashboard per project that updates automatically</principle>
+    <principle>Manual uploads, cloud syncs, device streams treated uniformly</principle>
+    <principle>AI Assistant guides experiment setup, model recommendations, insights, reports</principle>
+    <principle>Minimal manual intervention, but full visibility and control</principle>
+  </ux_principles>
+
+  <!-- ================================================================== -->
+  <!-- VALUE PROPOSITION -->
+  <!-- ================================================================== -->
+  
+  <value_proposition>
+    <one_liner>LabIQ Health turns raw health data into automated insights — without code, dashboards, or guesswork.</one_liner>
+    <hero_message>
+      <line1>Upload health data.</line1>
+      <line2>We handle the science.</line2>
+      <tagline>AI-powered automation for health research, wearables, and population studies.</tagline>
+    </hero_message>
+    <outcome>
+      Upload or sync health data → automated analysis → predictive models → dashboards → report → notifications → collaboration
+    </outcome>
+  </value_proposition>
+
+  <!-- ================================================================== -->
+  <!-- DIFFERENTIATION -->
+  <!-- ================================================================== -->
+  
+  <differentiation>
+    <comparison>
+      <versus platform="Excel">No automation, no models</versus>
+      <versus platform="Power BI">No experiments, no AI reasoning</versus>
+      <versus platform="Benchling">No AutoML, no closed loop</versus>
+      <versus platform="Health Dashboards">No experiments, no workflows</versus>
+      <versus platform="ML Platforms">No scientific intent</versus>
+    </comparison>
+    
+    <unique_value>
+      No system unifies:
+      - Scientific intent (experiments)
+      - Continuous learning (models)
+      - Cognitive reasoning (AI)
+      - Deterministic execution (workflows)
+      
+      LabIQ Health does exactly that.
+    </unique_value>
+    
+    <key_insight>
+      Automation is not "fewer clicks."
+      Automation is the system knowing what to do next without being told.
+    </key_insight>
+  </differentiation>
+
+  <!-- ================================================================== -->
+  <!-- AI ASSISTANT V1 - FINAL SPECIFICATION -->
+  <!-- ================================================================== -->
+  
+  <ai_assistant_v1 version="1.0">
+    <core_principle>
+      <statement>The AI Assistant is a controlled, explainable intelligence layer — not a chatbot, not a doctor, not a black box.</statement>
+      <capabilities>
+        <capability>Responds to user prompts</capability>
+        <capability>Responds to workflow events</capability>
+        <capability>Produces validated insights</capability>
+        <capability>Generates accurate graphs</capability>
+        <capability>Exposes structured reasoning, not raw thoughts</capability>
+      </capabilities>
+    </core_principle>
+
+    <!-- User Interaction Model -->
+    <user_interaction_model>
+      <description>What users can prompt the AI to do</description>
+      <example_prompts>
+        <prompt>"Summarize trends in this dataset"</prompt>
+        <prompt>"Show anomalies in heart rate over time"</prompt>
+        <prompt>"Explain this model's prediction"</prompt>
+        <prompt>"Teach me what HRV means"</prompt>
+        <prompt>"Create a dashboard for weekly monitoring"</prompt>
+      </example_prompts>
+      <system_decides>
+        <decision>Which data</decision>
+        <decision>Which models</decision>
+        <decision>Which mode</decision>
+        <decision>Which charts</decision>
+      </system_decides>
+      <key_principle>This is intent-based AI, not free-form guessing.</key_principle>
+    </user_interaction_model>
+
+    <!-- The Three Modes -->
+    <modes>
+      <!-- ANALYST MODE -->
+      <mode name="ANALYST" default="true" emoji="🧠">
+        <purpose>Answer: "What is happening in the data?"</purpose>
+        <capabilities>
+          <capability>Statistical summaries</capability>
+          <capability>Trend detection</capability>
+          <capability>Correlations</capability>
+          <capability>Anomaly flags</capability>
+          <capability>Graph creation</capability>
+        </capabilities>
+        <example_output>
+          <narrative>
+            "Average resting heart rate increased steadily over the last 14 days, 
+            coinciding with reduced sleep duration."
+          </narrative>
+          <graphs>
+            <graph type="line">HR vs Time</graph>
+            <graph type="bar">Sleep duration</graph>
+            <graph type="highlight">Anomaly regions</graph>
+          </graphs>
+          <explainability_panel>
+            <finding>Trend: HR ↑ 8%</finding>
+            <finding>Correlation: HR vs Sleep (r = -0.62)</finding>
+            <evidence>Dataset v1.2, Coverage: 97%</evidence>
+            <confidence>0.88</confidence>
+          </explainability_panel>
+        </example_output>
+      </mode>
+
+      <!-- ML MODE -->
+      <mode name="ML" emoji="🤖">
+        <purpose>Answer: "What did the model do, and why?"</purpose>
+        <capabilities>
+          <capability>Explain predictions</capability>
+          <capability>Feature importance</capability>
+          <capability>Model confidence</capability>
+          <capability>Error &amp; limitations</capability>
+          <capability>Model comparison</capability>
+        </capabilities>
+        <example_output>
+          <narrative>
+            "The anomaly detection model flagged 12 abnormal periods, 
+            primarily driven by HRV and activity drop."
+          </narrative>
+          <graphs>
+            <graph type="bar">Feature importance</graph>
+            <graph type="line">Prediction score timeline</graph>
+            <graph type="curve">ROC / evaluation plot</graph>
+          </graphs>
+          <explainability_panel>
+            <model type="Isolation Forest" training_dataset="v1.1" />
+            <top_drivers>
+              <driver feature="HRV" importance="42%" />
+              <driver feature="Activity Level" importance="31%" />
+            </top_drivers>
+            <confidence>0.91</confidence>
+            <limitations>Sparse weekend data</limitations>
+          </explainability_panel>
+        </example_output>
+      </mode>
+
+      <!-- LEARN MODE -->
+      <mode name="LEARN" emoji="📘">
+        <purpose>Answer: "What does this mean in real-world health terms?"</purpose>
+        <capabilities>
+          <capability>Educational explanations</capability>
+          <capability>Scientific context</capability>
+          <capability>Definitions</capability>
+          <capability>Safe interpretation</capability>
+          <capability>Non-diagnostic guidance</capability>
+        </capabilities>
+        <example_output>
+          <narrative>
+            "Heart Rate Variability (HRV) reflects autonomic nervous system balance. 
+            Lower HRV can be associated with stress or fatigue, but it is not a diagnostic indicator."
+          </narrative>
+          <learning_block>
+            <concept>Heart Rate Variability</concept>
+            <why_it_matters>Stress &amp; recovery insights</why_it_matters>
+            <typical_ranges>Population-based</typical_ranges>
+            <caution>Not for diagnosis</caution>
+          </learning_block>
+        </example_output>
+      </mode>
+    </modes>
+
+    <!-- Graph Generation System -->
+    <graph_generation critical="true">
+      <principle>Graphs are NOT hallucinated. Graphs are generated from verified data.</principle>
+      <data_sources>
+        <source>Verified datasets</source>
+        <source>Validated schemas</source>
+        <source>Explicit chart instructions</source>
+      </data_sources>
+      <chart_engine_flow>
+        <step order="1">AI determines chart intent</step>
+        <step order="2">System validates: X/Y axes, Units, Time alignment</step>
+        <step order="3">PromptBI renders chart</step>
+        <step order="4">AI explains chart (does NOT invent data)</step>
+      </chart_engine_flow>
+      <example_chart_instruction>
+        <![CDATA[
+{
+  "chart_type": "line",
+  "x": "timestamp",
+  "y": "heart_rate",
+  "group_by": "user_id",
+  "annotations": ["anomalies"]
+}
+        ]]>
+      </example_chart_instruction>
+    </graph_generation>
+
+    <!-- Safety Guardrails -->
+    <safety_guardrails health_critical="true">
+      <must_not>
+        <rule>Diagnose</rule>
+        <rule>Prescribe</rule>
+        <rule>Give treatment advice</rule>
+        <rule>Predict individual outcomes</rule>
+      </must_not>
+      <must_do>
+        <rule>State confidence</rule>
+        <rule>Cite data versions</rule>
+        <rule>Declare limitations</rule>
+        <rule>Use population-level language</rule>
+      </must_do>
+      <safety_filter>
+        <check>No clinical advice</check>
+        <check>No definitive claims</check>
+        <check>Proper disclaimers</check>
+      </safety_filter>
+    </safety_guardrails>
+
+    <!-- AI Model Orchestration: GROQ + GEMINI -->
+    <ai_orchestration>
+      <description>Use both GROQ and Gemini for different strengths</description>
+      
+      <model name="Gemini API" purpose="Reasoning &amp; Structure">
+        <use_for>
+          <task>Complex reasoning</task>
+          <task>Structured explanations</task>
+          <task>Educational clarity</task>
+          <task>Learn Mode</task>
+        </use_for>
+      </model>
+      
+      <model name="GROQ" purpose="Speed &amp; Iteration">
+        <use_for>
+          <task>Fast summaries</task>
+          <task>Graph descriptions</task>
+          <task>Realtime responses</task>
+          <task>Analyst Mode quick insights</task>
+        </use_for>
+      </model>
+      
+      <routing_logic>
+        <![CDATA[
+if task == "education" or "deep_reasoning":
+    use: Gemini
+if task == "summary" or "visual_explanation":
+    use: GROQ
+        ]]>
+      </routing_logic>
+    </ai_orchestration>
+
+    <!-- End-to-End Orchestration Flow -->
+    <orchestration_flow name="Full AI Assistant Pipeline">
+      <step order="1">User prompt OR data update</step>
+      <step order="2">Workflow engine interprets intent</step>
+      <step order="3">Relevant datasets fetched</step>
+      <step order="4">Models run (if needed)</step>
+      <step order="5">Signals emitted</step>
+      <step order="6">AI Assistant activated</step>
+      <step order="7">Mode selected (Analyst / ML / Learn)</step>
+      <step order="8">Charts generated</step>
+      <step order="9">Explainability attached</step>
+      <step order="10">Response delivered</step>
+      <step order="11">Audit trail saved</step>
+    </orchestration_flow>
+
+    <!-- Why This Is Unique -->
+    <uniqueness>
+      <statement>What makes this "never created before"</statement>
+      <reasons>
+        <reason>AI is subordinate to workflows</reason>
+        <reason>Insights are evidence-based</reason>
+        <reason>Graphs are data-validated</reason>
+        <reason>Reasoning is transparent but safe</reason>
+        <reason>Health-appropriate from Day 1</reason>
+        <reason>Automation-first, not chat-first</reason>
+      </reasons>
+      <contrast>
+        Most tools: Start with chat → Add data later → Break trust
+        LabIQ Health: Data first → Workflow orchestrates → AI explains
+      </contrast>
+    </uniqueness>
+
+    <implementation>
+      <file>src/lib/services/labAIService.ts</file>
+      <file>ml-service/agents/labai_agent.py</file>
+      <file>src/components/ai/AIAssistantPanel.tsx</file>
+      <file>src/components/ai/ExplainabilityPanel.tsx</file>
+      <file>src/components/ai/ChartRenderer.tsx</file>
+      <file>src/lib/services/aiOrchestrator.ts</file>
+    </implementation>
+  </ai_assistant_v1>
+
+  <!-- ================================================================== -->
+  <!-- MOBILE-FIRST RESPONSIVENESS -->
+  <!-- ================================================================== -->
+  
+  <mobile_first_design priority="HIGH">
+    <principle>All UI components must be mobile-first responsive</principle>
+    
+    <breakpoints>
+      <breakpoint name="mobile" min="0px" max="639px" />
+      <breakpoint name="tablet" min="640px" max="1023px" />
+      <breakpoint name="desktop" min="1024px" max="1279px" />
+      <breakpoint name="large" min="1280px" />
+    </breakpoints>
+    
+    <requirements>
+      <requirement name="touch_friendly">
+        <description>All interactive elements must be touch-friendly (min 44x44px tap targets)</description>
+      </requirement>
+      <requirement name="responsive_navigation">
+        <description>Collapsible sidebar with hamburger menu on mobile</description>
+      </requirement>
+      <requirement name="adaptive_layouts">
+        <description>Grid layouts that reflow from multi-column to single-column</description>
+      </requirement>
+      <requirement name="readable_text">
+        <description>Minimum 16px font size for body text on mobile</description>
+      </requirement>
+      <requirement name="responsive_charts">
+        <description>Charts resize and simplify for smaller screens</description>
+      </requirement>
+      <requirement name="offline_capable">
+        <description>Progressive Web App (PWA) support for offline viewing of cached data</description>
+      </requirement>
+    </requirements>
+    
+    <pages_to_optimize>
+      <page>Dashboard - Card grid collapses to stack</page>
+      <page>Datasets - Table becomes cards on mobile</page>
+      <page>Experiments - Timeline view adapts</page>
+      <page>Models - Training progress readable on small screens</page>
+      <page>Reports - PDF preview with mobile-friendly zoom</page>
+      <page>AI Assistant - Chat interface optimized for mobile</page>
+      <page>Settings - Form fields stack vertically</page>
+    </pages_to_optimize>
+    
+    <implementation>
+      <file>src/index.css - Responsive utility classes</file>
+      <file>src/components/layout/MobileNav.tsx</file>
+      <file>src/components/layout/ResponsiveGrid.tsx</file>
+      <file>src/hooks/useMediaQuery.ts</file>
+      <file>tailwind.config.ts - Custom breakpoints</file>
+    </implementation>
+  </mobile_first_design>
+
+  <!-- ================================================================== -->
+  <!-- PRICING (NOT ENFORCED IN V1) -->
+  <!-- ================================================================== -->
+  
+  <pricing enforcement="false" note="Pricing UI exists but not enforced for V1">
+    <tiers>
+      <tier name="Free" price="$0">
+        <features>
+          <feature>Up to 5 datasets</feature>
+          <feature>Basic AI insights</feature>
+          <feature>Manual uploads only</feature>
+          <feature>1 team member</feature>
+        </features>
+      </tier>
+      <tier name="Pro" price="$29/month">
+        <features>
+          <feature>Unlimited datasets</feature>
+          <feature>Full AI Assistant access</feature>
+          <feature>Cloud source integrations</feature>
+          <feature>Up to 5 team members</feature>
+          <feature>Priority support</feature>
+        </features>
+      </tier>
+      <tier name="Enterprise" price="Custom">
+        <features>
+          <feature>Everything in Pro</feature>
+          <feature>Unlimited team members</feature>
+          <feature>Custom integrations</feature>
+          <feature>On-premise deployment option</feature>
+          <feature>Dedicated support</feature>
+          <feature>SLA guarantees</feature>
+        </features>
+      </tier>
+    </tiers>
+    <v1_note>
+      All users get full access in V1 MVP. 
+      Pricing enforcement will be enabled in V2 after user validation.
+    </v1_note>
+  </pricing>
+
+  <!-- ================================================================== -->
+  <!-- 2-WEEK BUILDING PHASE - DETAILED SCHEDULE -->
+  <!-- ================================================================== -->
+  
+  <building_phase duration="2 weeks" start_date="2025-12-23">
+    <overview>
+      <goal>Build production-ready LabIQ Health V1 MVP</goal>
+      <working_hours>8-10 hours per day</working_hours>
+      <approach>Parallel development of core systems with daily integration</approach>
+    </overview>
+
+    <!-- ==================== WEEK 1 ==================== -->
+    <week number="1" focus="Core Infrastructure + AI Assistant">
+      
+      <!-- Day 1 -->
+      <day number="1" date="Monday" theme="Foundation &amp; Event System">
+        <morning hours="4">
+          <task priority="CRITICAL" duration="2h">
+            <name>Event Bus Implementation</name>
+            <files>
+              <file>src/lib/services/eventBus.ts</file>
+            </files>
+            <deliverables>
+              <item>EventBus class with emit/on/off methods</item>
+              <item>All event types defined (DATASET_UPLOADED, etc.)</item>
+              <item>Event payload interfaces</item>
+            </deliverables>
+          </task>
+          <task priority="CRITICAL" duration="2h">
+            <name>Rules Engine Core</name>
+            <files>
+              <file>src/lib/services/rulesEngine.ts</file>
+            </files>
+            <deliverables>
+              <item>Rule interface and structure</item>
+              <item>Condition evaluator</item>
+              <item>Action executor skeleton</item>
+              <item>5 canonical rules configured</item>
+            </deliverables>
+          </task>
+        </morning>
+        <afternoon hours="4">
+          <task priority="HIGH" duration="2h">
+            <name>Enhanced Dataset Service</name>
+            <files>
+              <file>src/lib/services/datasetService.ts</file>
+              <file>src/lib/services/ingestionService.ts</file>
+            </files>
+            <deliverables>
+              <item>Schema auto-detection</item>
+              <item>Event emission on dataset upload</item>
+              <item>Domain classification hook</item>
+            </deliverables>
+          </task>
+          <task priority="HIGH" duration="2h">
+            <name>Database Migrations</name>
+            <files>
+              <file>supabase/migrations/20251223_datasets_v2.sql</file>
+              <file>supabase/migrations/20251223_experiments_v2.sql</file>
+            </files>
+            <deliverables>
+              <item>Dataset versioning columns</item>
+              <item>Provenance JSONB field</item>
+              <item>Domain classification field</item>
+              <item>Experiment status enum</item>
+            </deliverables>
+          </task>
+        </afternoon>
+        <end_of_day_checklist>
+          <check>Event bus emits on dataset upload</check>
+          <check>Rules engine evaluates conditions</check>
+          <check>Database migrations applied</check>
+        </end_of_day_checklist>
+      </day>
+
+      <!-- Day 2 -->
+      <day number="2" date="Tuesday" theme="AI Assistant Foundation">
+        <morning hours="4">
+          <task priority="CRITICAL" duration="2.5h">
+            <name>LabAI Service - Frontend</name>
+            <files>
+              <file>src/lib/services/labAIService.ts</file>
+              <file>src/lib/services/aiOrchestrator.ts</file>
+            </files>
+            <deliverables>
+              <item>AI mode selection (Analyst/ML/Learn)</item>
+              <item>GROQ + Gemini routing logic</item>
+              <item>Intent classification</item>
+              <item>Response structuring</item>
+            </deliverables>
+          </task>
+          <task priority="CRITICAL" duration="1.5h">
+            <name>LabAI Agent - Backend</name>
+            <files>
+              <file>ml-service/agents/labai_agent.py</file>
+            </files>
+            <deliverables>
+              <item>LabAIAgent class</item>
+              <item>classify_domain method</item>
+              <item>propose_experiment method</item>
+              <item>interpret_results method</item>
+            </deliverables>
+          </task>
+        </morning>
+        <afternoon hours="4">
+          <task priority="HIGH" duration="2h">
+            <name>AI Assistant UI Components</name>
+            <files>
+              <file>src/components/ai/AIAssistantPanel.tsx</file>
+              <file>src/components/ai/ExplainabilityPanel.tsx</file>
+              <file>src/components/ai/ModeSelector.tsx</file>
+            </files>
+            <deliverables>
+              <item>Chat-style AI interface</item>
+              <item>Mode toggle (Analyst/ML/Learn)</item>
+              <item>Explainability panel with confidence</item>
+              <item>Mobile-responsive design</item>
+            </deliverables>
+          </task>
+          <task priority="HIGH" duration="2h">
+            <name>Safety Guardrails Implementation</name>
+            <files>
+              <file>src/lib/services/safetyFilter.ts</file>
+            </files>
+            <deliverables>
+              <item>Response sanitization</item>
+              <item>Clinical advice detection</item>
+              <item>Disclaimer injection</item>
+              <item>Confidence thresholds</item>
+            </deliverables>
+          </task>
+        </afternoon>
+        <end_of_day_checklist>
+          <check>AI Assistant responds to prompts</check>
+          <check>3 modes switching works</check>
+          <check>Safety filter blocks clinical advice</check>
+        </end_of_day_checklist>
+      </day>
+
+      <!-- Day 3 -->
+      <day number="3" date="Wednesday" theme="Workflow Engine + Experiments">
+        <morning hours="4">
+          <task priority="CRITICAL" duration="3h">
+            <name>Workflow Engine Enhancement</name>
+            <files>
+              <file>src/lib/services/workflowService.ts</file>
+            </files>
+            <deliverables>
+              <item>Event listener integration</item>
+              <item>Rule-based action execution</item>
+              <item>AI reasoning hook</item>
+              <item>Automatic experiment creation</item>
+            </deliverables>
+          </task>
+          <task priority="HIGH" duration="1h">
+            <name>Experiment Service Enhancement</name>
+            <files>
+              <file>src/lib/services/experimentService.ts</file>
+            </files>
+            <deliverables>
+              <item>createFromDataset method</item>
+              <item>State machine implementation</item>
+              <item>AI proposal integration</item>
+            </deliverables>
+          </task>
+        </morning>
+        <afternoon hours="4">
+          <task priority="HIGH" duration="2h">
+            <name>Experiments Page Update</name>
+            <files>
+              <file>src/pages/Experiments.tsx</file>
+            </files>
+            <deliverables>
+              <item>State machine visualization</item>
+              <item>AI-proposed experiments section</item>
+              <item>Dataset linkage display</item>
+              <item>Mobile-responsive cards</item>
+            </deliverables>
+          </task>
+          <task priority="MEDIUM" duration="2h">
+            <name>Workflow-to-Experiment Flow Testing</name>
+            <deliverables>
+              <item>Upload dataset → Experiment auto-created</item>
+              <item>Experiment status changes logged</item>
+              <item>AI proposal appears in UI</item>
+            </deliverables>
+          </task>
+        </afternoon>
+        <end_of_day_checklist>
+          <check>Upload CSV → Experiment auto-created</check>
+          <check>Experiment state machine working</check>
+          <check>AI proposals displayed</check>
+        </end_of_day_checklist>
+      </day>
+
+      <!-- Day 4 -->
+      <day number="4" date="Thursday" theme="ML Models + Signal Emission">
+        <morning hours="4">
+          <task priority="HIGH" duration="2h">
+            <name>ML Orchestrator Update</name>
+            <files>
+              <file>ml-service/agents/orchestrator.py</file>
+            </files>
+            <deliverables>
+              <item>LabAI integration for recommendations</item>
+              <item>Signal emission after training</item>
+              <item>Event notification to frontend</item>
+            </deliverables>
+          </task>
+          <task priority="HIGH" duration="2h">
+            <name>Signal Emitter Service</name>
+            <files>
+              <file>src/lib/services/signalEmitter.ts</file>
+            </files>
+            <deliverables>
+              <item>ModelSignal interface</item>
+              <item>Signal to EventBus routing</item>
+              <item>AI interpretation trigger</item>
+            </deliverables>
+          </task>
+        </morning>
+        <afternoon hours="4">
+          <task priority="HIGH" duration="2h">
+            <name>Models Page Enhancement</name>
+            <files>
+              <file>src/pages/Models.tsx</file>
+            </files>
+            <deliverables>
+              <item>LabAI recommendations display</item>
+              <item>Signal outputs visualization</item>
+              <item>Confidence intervals display</item>
+              <item>Mobile-responsive layout</item>
+            </deliverables>
+          </task>
+          <task priority="MEDIUM" duration="2h">
+            <name>Model-AI-Workflow Integration Test</name>
+            <deliverables>
+              <item>Model training → Signal emitted</item>
+              <item>Signal → AI interpretation</item>
+              <item>AI insight → Dashboard update</item>
+            </deliverables>
+          </task>
+        </afternoon>
+        <end_of_day_checklist>
+          <check>Model emits signals after training</check>
+          <check>AI interprets signals</check>
+          <check>Full loop working</check>
+        </end_of_day_checklist>
+      </day>
+
+      <!-- Day 5 -->
+      <day number="5" date="Friday" theme="Data Ingestion + Anonymization">
+        <morning hours="4">
+          <task priority="HIGH" duration="2h">
+            <name>Anonymization Service</name>
+            <files>
+              <file>src/lib/services/anonymizationService.ts</file>
+            </files>
+            <deliverables>
+              <item>PHI pattern detection (regex)</item>
+              <item>SHA-256 identifier hashing</item>
+              <item>DOB to age bracket conversion</item>
+              <item>Anonymization report generation</item>
+            </deliverables>
+          </task>
+          <task priority="HIGH" duration="2h">
+            <name>Enhanced Ingestion Pipeline</name>
+            <files>
+              <file>src/lib/services/ingestionService.ts</file>
+            </files>
+            <deliverables>
+              <item>Unit normalization (ISO standards)</item>
+              <item>Timestamp alignment (ISO 8601)</item>
+              <item>Anonymization integration</item>
+              <item>Domain auto-tagging via LabAI</item>
+            </deliverables>
+          </task>
+        </morning>
+        <afternoon hours="4">
+          <task priority="MEDIUM" duration="2h">
+            <name>Upload Page Enhancement</name>
+            <files>
+              <file>src/pages/Upload.tsx</file>
+            </files>
+            <deliverables>
+              <item>PHI detection warning</item>
+              <item>Anonymization toggle</item>
+              <item>Domain classification preview</item>
+              <item>Mobile drag-and-drop</item>
+            </deliverables>
+          </task>
+          <task priority="MEDIUM" duration="2h">
+            <name>Week 1 Integration Testing</name>
+            <deliverables>
+              <item>Full upload → experiment → model flow</item>
+              <item>AI Assistant responds correctly</item>
+              <item>Event system firing properly</item>
+            </deliverables>
+          </task>
+        </afternoon>
+        <end_of_day_checklist>
+          <check>PHI detected and masked</check>
+          <check>Domain auto-classified</check>
+          <check>Week 1 core flow complete</check>
+        </end_of_day_checklist>
+      </day>
+
+      <!-- Weekend Buffer -->
+      <day number="6-7" date="Weekend" theme="Buffer / Catch-up">
+        <optional_tasks>
+          <task>Fix any bugs from Week 1</task>
+          <task>Documentation updates</task>
+          <task>Code review and refactoring</task>
+          <task>Prepare for Week 2</task>
+        </optional_tasks>
+      </day>
+    </week>
+
+    <!-- ==================== WEEK 2 ==================== -->
+    <week number="2" focus="Dashboards, Reports, Mobile, Polish">
+      
+      <!-- Day 8 -->
+      <day number="8" date="Monday" theme="Dashboard &amp; Visualization">
+        <morning hours="4">
+          <task priority="HIGH" duration="2h">
+            <name>PromptBI Service Interface</name>
+            <files>
+              <file>src/lib/services/promptBIService.ts</file>
+            </files>
+            <deliverables>
+              <item>Dashboard config interface</item>
+              <item>Chart config types</item>
+              <item>Alert configuration</item>
+              <item>Mock implementation (API placeholder)</item>
+            </deliverables>
+          </task>
+          <task priority="HIGH" duration="2h">
+            <name>Chart Renderer Component</name>
+            <files>
+              <file>src/components/ai/ChartRenderer.tsx</file>
+              <file>src/components/charts/HealthChart.tsx</file>
+            </files>
+            <deliverables>
+              <item>Line, bar, pie, scatter charts</item>
+              <item>Responsive sizing</item>
+              <item>Anomaly highlighting</item>
+              <item>AI annotation integration</item>
+            </deliverables>
+          </task>
+        </morning>
+        <afternoon hours="4">
+          <task priority="HIGH" duration="2.5h">
+            <name>Dashboards Page Overhaul</name>
+            <files>
+              <file>src/pages/Dashboards.tsx</file>
+            </files>
+            <deliverables>
+              <item>Dynamic dashboard generation</item>
+              <item>AI insight highlights</item>
+              <item>Alert threshold UI</item>
+              <item>Mobile-first grid layout</item>
+            </deliverables>
+          </task>
+          <task priority="MEDIUM" duration="1.5h">
+            <name>Dashboard Auto-Update Integration</name>
+            <deliverables>
+              <item>Event listener for data updates</item>
+              <item>Batch refresh mechanism</item>
+              <item>Loading states</item>
+            </deliverables>
+          </task>
+        </afternoon>
+        <end_of_day_checklist>
+          <check>Charts render correctly</check>
+          <check>Dashboard updates on new data</check>
+          <check>Mobile layout works</check>
+        </end_of_day_checklist>
+      </day>
+
+      <!-- Day 9 -->
+      <day number="9" date="Tuesday" theme="Reports Generation">
+        <morning hours="4">
+          <task priority="HIGH" duration="2h">
+            <name>Report Template Service</name>
+            <files>
+              <file>src/lib/services/reportTemplateService.ts</file>
+            </files>
+            <deliverables>
+              <item>5 international templates (WHO, ICH-GCP, ISO/IEEE, etc.)</item>
+              <item>Template section definitions</item>
+              <item>Required field validation</item>
+              <item>Compliance checks</item>
+            </deliverables>
+          </task>
+          <task priority="HIGH" duration="2h">
+            <name>Python Report Generator</name>
+            <files>
+              <file>ml-service/report_generator.py</file>
+              <file>ml-service/templates/</file>
+            </files>
+            <deliverables>
+              <item>Jinja2 HTML templates</item>
+              <item>WeasyPrint PDF generation</item>
+              <item>python-docx DOCX generation</item>
+              <item>Chart embedding</item>
+            </deliverables>
+          </task>
+        </morning>
+        <afternoon hours="4">
+          <task priority="HIGH" duration="2.5h">
+            <name>Reports Page Enhancement</name>
+            <files>
+              <file>src/pages/Reports.tsx</file>
+            </files>
+            <deliverables>
+              <item>Template selector</item>
+              <item>AI insight sections</item>
+              <item>Export buttons (PDF, DOCX)</item>
+              <item>Schedule configuration</item>
+              <item>Mobile preview</item>
+            </deliverables>
+          </task>
+          <task priority="MEDIUM" duration="1.5h">
+            <name>Auto-Report on Experiment Complete</name>
+            <deliverables>
+              <item>Workflow trigger for reports</item>
+              <item>Template auto-selection based on domain</item>
+              <item>Team notification</item>
+            </deliverables>
+          </task>
+        </afternoon>
+        <end_of_day_checklist>
+          <check>PDF generates correctly</check>
+          <check>Templates render with data</check>
+          <check>Auto-report on experiment completion</check>
+        </end_of_day_checklist>
+      </day>
+
+      <!-- Day 10 -->
+      <day number="10" date="Wednesday" theme="Collaboration &amp; Notifications">
+        <morning hours="4">
+          <task priority="MEDIUM" duration="2h">
+            <name>Notification Service Enhancement</name>
+            <files>
+              <file>src/lib/services/notificationService.ts</file>
+            </files>
+            <deliverables>
+              <item>Multi-channel support (in-app, email)</item>
+              <item>Urgency levels</item>
+              <item>Workflow event integration</item>
+              <item>@LabAI mention handler</item>
+            </deliverables>
+          </task>
+          <task priority="MEDIUM" duration="2h">
+            <name>Collaboration Service Update</name>
+            <files>
+              <file>src/lib/services/collaborationService.ts</file>
+            </files>
+            <deliverables>
+              <item>AI task creation from escalations</item>
+              <item>Discussion thread linking</item>
+              <item>Activity feed updates</item>
+            </deliverables>
+          </task>
+        </morning>
+        <afternoon hours="4">
+          <task priority="MEDIUM" duration="2.5h">
+            <name>Collaboration Page Enhancement</name>
+            <files>
+              <file>src/pages/Collaboration.tsx</file>
+            </files>
+            <deliverables>
+              <item>@LabAI mention support</item>
+              <item>Automated task display</item>
+              <item>Experiment/dataset links in threads</item>
+              <item>Mobile-optimized chat</item>
+            </deliverables>
+          </task>
+          <task priority="LOW" duration="1.5h">
+            <name>Email Integration Testing</name>
+            <deliverables>
+              <item>Anomaly notifications sent</item>
+              <item>Report delivery working</item>
+            </deliverables>
+          </task>
+        </afternoon>
+        <end_of_day_checklist>
+          <check>Notifications fire on events</check>
+          <check>@LabAI responds in threads</check>
+          <check>Tasks auto-created on escalation</check>
+        </end_of_day_checklist>
+      </day>
+
+      <!-- Day 11 -->
+      <day number="11" date="Thursday" theme="Mobile Responsiveness Deep Dive">
+        <morning hours="4">
+          <task priority="HIGH" duration="2h">
+            <name>Mobile Navigation</name>
+            <files>
+              <file>src/components/layout/MobileNav.tsx</file>
+              <file>src/components/layout/Sidebar.tsx</file>
+            </files>
+            <deliverables>
+              <item>Hamburger menu</item>
+              <item>Slide-out drawer</item>
+              <item>Touch-friendly tap targets</item>
+              <item>Gesture support</item>
+            </deliverables>
+          </task>
+          <task priority="HIGH" duration="2h">
+            <name>Responsive Grid System</name>
+            <files>
+              <file>src/components/layout/ResponsiveGrid.tsx</file>
+              <file>src/index.css</file>
+            </files>
+            <deliverables>
+              <item>Breakpoint utilities</item>
+              <item>Auto-stacking grid</item>
+              <item>Card collapse patterns</item>
+            </deliverables>
+          </task>
+        </morning>
+        <afternoon hours="4">
+          <task priority="HIGH" duration="3h">
+            <name>All Pages Mobile Audit</name>
+            <files>
+              <file>src/pages/*.tsx</file>
+            </files>
+            <deliverables>
+              <item>Dashboard mobile layout</item>
+              <item>Datasets table → cards</item>
+              <item>Charts responsive sizing</item>
+              <item>Forms stack vertically</item>
+              <item>AI chat mobile-optimized</item>
+            </deliverables>
+          </task>
+          <task priority="MEDIUM" duration="1h">
+            <name>useMediaQuery Hook</name>
+            <files>
+              <file>src/hooks/useMediaQuery.ts</file>
+            </files>
+            <deliverables>
+              <item>Breakpoint detection</item>
+              <item>SSR-safe implementation</item>
+            </deliverables>
+          </task>
+        </afternoon>
+        <end_of_day_checklist>
+          <check>App usable on 375px width</check>
+          <check>No horizontal overflow</check>
+          <check>All features accessible on mobile</check>
+        </end_of_day_checklist>
+      </day>
+
+      <!-- Day 12 -->
+      <day number="12" date="Friday" theme="Integration, Testing, Polish">
+        <morning hours="4">
+          <task priority="HIGH" duration="2h">
+            <name>End-to-End Flow Testing</name>
+            <deliverables>
+              <item>Upload → Experiment → Model → Dashboard → Report</item>
+              <item>AI Assistant full conversation flow</item>
+              <item>Anomaly → Notification → Task</item>
+            </deliverables>
+          </task>
+          <task priority="HIGH" duration="2h">
+            <name>Compliance Service</name>
+            <files>
+              <file>src/lib/services/complianceService.ts</file>
+              <file>supabase/migrations/20251223_compliance.sql</file>
+            </files>
+            <deliverables>
+              <item>Audit trail logging</item>
+              <item>GDPR compliance hooks</item>
+              <item>Data processing records</item>
+            </deliverables>
+          </task>
+        </morning>
+        <afternoon hours="4">
+          <task priority="MEDIUM" duration="2h">
+            <name>Bug Fixes &amp; Polish</name>
+            <deliverables>
+              <item>UI consistency check</item>
+              <item>Error handling improvements</item>
+              <item>Loading state polish</item>
+              <item>Empty state designs</item>
+            </deliverables>
+          </task>
+          <task priority="MEDIUM" duration="2h">
+            <name>Documentation &amp; Handoff</name>
+            <deliverables>
+              <item>README updates</item>
+              <item>API documentation</item>
+              <item>Deployment guide</item>
+            </deliverables>
+          </task>
+        </afternoon>
+        <end_of_day_checklist>
+          <check>All flows working E2E</check>
+          <check>No critical bugs</check>
+          <check>Documentation complete</check>
+        </end_of_day_checklist>
+      </day>
+
+      <!-- Weekend Buffer -->
+      <day number="13-14" date="Weekend" theme="Final Polish &amp; Launch Prep">
+        <optional_tasks>
+          <task>Final bug fixes</task>
+          <task>Performance optimization</task>
+          <task>Deploy to staging</task>
+          <task>User acceptance testing</task>
+        </optional_tasks>
+      </day>
+    </week>
+
+    <!-- Milestones Summary -->
+    <milestones>
+      <milestone day="1" name="Event System + Rules Engine" />
+      <milestone day="2" name="AI Assistant Foundation" />
+      <milestone day="3" name="Workflow-Experiment Integration" />
+      <milestone day="4" name="Model Signal Loop Complete" />
+      <milestone day="5" name="Week 1 Core Flow Done" />
+      <milestone day="8" name="Dashboards Working" />
+      <milestone day="9" name="Reports Generating" />
+      <milestone day="10" name="Collaboration Enhanced" />
+      <milestone day="11" name="Mobile Responsiveness Complete" />
+      <milestone day="12" name="V1 MVP Ready" />
+    </milestones>
+
+    <!-- Key Deliverables -->
+    <deliverables_summary>
+      <deliverable>Event-driven workflow engine</deliverable>
+      <deliverable>3-mode AI Assistant (Analyst/ML/Learn)</deliverable>
+      <deliverable>Automatic experiment creation from datasets</deliverable>
+      <deliverable>Signal-based model outputs</deliverable>
+      <deliverable>PromptBI-ready dashboard system</deliverable>
+      <deliverable>International report templates (WHO, ICH-GCP, ISO)</deliverable>
+      <deliverable>Full mobile responsiveness</deliverable>
+      <deliverable>Anonymization &amp; compliance foundations</deliverable>
+    </deliverables_summary>
+  </building_phase>
+
+  <!-- ================================================================== -->
+  <!-- FINAL V1 MESSAGE -->
+  <!-- ================================================================== -->
+  
+  <final_message>
+    <razor_sharp>
+      LabIQ Health is an automated health intelligence platform that turns raw health data 
+      into explainable insights, models, and reports — without coding, without black-box AI, 
+      and without clinical risk.
+    </razor_sharp>
+  </final_message>
+
+  <!-- ================================================================== -->
+  <!-- AUTH & ONBOARDING V1 - LOGIN/SIGN-UP SYSTEM DESIGN -->
+  <!-- ================================================================== -->
+  
+  <auth_onboarding_v1 version="1.0">
+    
+    <!-- CORE PHILOSOPHY -->
+    <philosophy>
+      <statement>The login page is the FIRST trust checkpoint for a health platform.</statement>
+      <must_communicate>
+        <value emoji="🔒">Safety</value>
+        <value emoji="🧠">Intelligence</value>
+        <value emoji="🌍">Global accessibility</value>
+        <value emoji="⚡">Simplicity</value>
+      </must_communicate>
+      <optimization_target>Credibility + Clarity (NOT conversion hacks)</optimization_target>
+    </philosophy>
+
+    <!-- FREE AUTHENTICATION STACK -->
+    <auth_stack free="true">
+      <component purpose="Auth backend" tool="Supabase Auth" cost="$0" />
+      <component purpose="OAuth providers" tool="Google, GitHub" cost="$0" />
+      <component purpose="Email login" tool="Magic link (passwordless)" cost="$0" />
+      <component purpose="Session handling" tool="Supabase" cost="$0" />
+      <component purpose="User metadata" tool="Supabase profiles table" cost="$0" />
+      
+      <benefits>
+        <benefit>No passwords stored by you</benefit>
+        <benefit>OAuth handled securely</benefit>
+        <benefit>Health-safe architecture</benefit>
+      </benefits>
+    </auth_stack>
+
+    <!-- OAUTH PROVIDERS -->
+    <oauth_providers>
+      <provider name="Google" enabled="true" priority="1">
+        <reason>Universal, trusted, best for health &amp; academia</reason>
+        <supabase_config>
+          <setting>Enable Google provider in Supabase dashboard</setting>
+          <setting>Add OAuth credentials from Google Cloud Console</setting>
+        </supabase_config>
+      </provider>
+      <provider name="GitHub" enabled="true" priority="2">
+        <reason>Developers, researchers, open-source credibility</reason>
+        <supabase_config>
+          <setting>Enable GitHub provider in Supabase dashboard</setting>
+          <setting>Add OAuth App credentials from GitHub Settings</setting>
+        </supabase_config>
+      </provider>
+      <provider name="ORCID" enabled="false" version="V2">
+        <reason>Researchers - future enhancement</reason>
+      </provider>
+    </oauth_providers>
+
+    <!-- PAGE LAYOUT -->
+    <page_layout>
+      <structure>
+        <desktop>Split view (Left: Brand narrative, Right: Auth card)</desktop>
+        <mobile>Stacked (Brand on top, Auth card below)</mobile>
+      </structure>
+      
+      <!-- LEFT SIDE - BRAND COMMUNICATION -->
+      <left_side purpose="Brand Communication" critical="true">
+        <logo_name>LabIQ Health</logo_name>
+        
+        <hero_line>Experience liftoff with intelligent health data</hero_line>
+        
+        <supporting_line>
+          Securely analyze wearable, clinical, and research health data — 
+          with explainable AI, not black boxes.
+        </supporting_line>
+        
+        <dynamic_visual free_tools="true">
+          <description>Animated health data visualization</description>
+          <suggestions>
+            <suggestion>Animated waveform (CSS animation)</suggestion>
+            <suggestion>Health signal lines</suggestion>
+            <suggestion>Pulsing data nodes</suggestion>
+            <suggestion>Subtle gradient motion</suggestion>
+          </suggestions>
+          <tools>
+            <tool>CSS animations (pure, free)</tool>
+            <tool>Lottie (open animations)</tool>
+            <tool>SVG + GSAP</tool>
+            <tool>Framer Motion (React)</tool>
+          </tools>
+          <avoid>
+            <item reason="Too clinical, too risky">Human bodies</item>
+            <item reason="Too clinical, too risky">Organs</item>
+            <item reason="Too clinical, too risky">Medical imagery</item>
+          </avoid>
+        </dynamic_visual>
+      </left_side>
+      
+      <!-- RIGHT SIDE - AUTH CARD -->
+      <right_side purpose="Auth Card">
+        <title>Welcome to LabIQ Health</title>
+        <subtitle>Get started in seconds. No credit card.</subtitle>
+        
+        <primary_actions>
+          <button provider="Google" color="#DB4437" icon="🟥">
+            Continue with Google
+          </button>
+          <button provider="GitHub" color="#333333" icon="⬛">
+            Continue with GitHub
+          </button>
+        </primary_actions>
+        
+        <divider text="or" />
+        
+        <secondary_action>
+          <button type="magic_link" icon="📧">
+            Continue with email (magic link)
+          </button>
+          <benefits>
+            <benefit>Free</benefit>
+            <benefit>Secure</benefit>
+            <benefit>No password fatigue</benefit>
+            <benefit>Global friendly</benefit>
+          </benefits>
+        </secondary_action>
+        
+        <trust_signals subtle="true">
+          <signal icon="🔒">End-to-end encrypted</signal>
+          <signal icon="🌍">Global standards (ISO / WHO-aligned)</signal>
+          <signal icon="🧠">Explainable AI</signal>
+        </trust_signals>
+      </right_side>
+    </page_layout>
+
+    <!-- DYNAMIC BEHAVIOR (UX Polish) -->
+    <dynamic_behavior purpose="Feel premium, not cheap">
+      <on_hover>
+        <effect>Card elevation</effect>
+        <effect>Soft glow</effect>
+        <effect>Animated border</effect>
+      </on_hover>
+      <on_click>
+        <effect>Loading state</effect>
+        <effect>"Connecting securely..." message</effect>
+      </on_click>
+      <on_success>
+        <effect>Smooth transition</effect>
+        <effect>Welcome animation</effect>
+        <effect>Redirect to onboarding</effect>
+      </on_success>
+    </dynamic_behavior>
+
+    <!-- POST-LOGIN ONBOARDING -->
+    <onboarding smart="true">
+      <description>Smart First Step - Don't dump users into dashboard</description>
+      <question>What best describes your goal?</question>
+      <options>
+        <option icon="📊" value="analyze" label="Analyze wearable or health data">
+          <sets>
+            <setting>Default AI mode: Analyst</setting>
+            <setting>Dashboard: Personal health metrics</setting>
+            <setting>Suggested workflows: Trend analysis, anomaly detection</setting>
+          </sets>
+        </option>
+        <option icon="🧪" value="research" label="Research / population health">
+          <sets>
+            <setting>Default AI mode: ML</setting>
+            <setting>Dashboard: Research metrics, cohort analysis</setting>
+            <setting>Suggested workflows: Statistical analysis, report generation</setting>
+          </sets>
+        </option>
+        <option icon="📘" value="learn" label="Learn &amp; explore health insights">
+          <sets>
+            <setting>Default AI mode: Learn</setting>
+            <setting>Dashboard: Educational content, tutorials</setting>
+            <setting>Suggested workflows: Guided analysis, explanations</setting>
+          </sets>
+        </option>
+      </options>
+      <automation_starts_here>This selection triggers intelligent defaults</automation_starts_here>
+    </onboarding>
+
+    <!-- DATA COLLECTED AT SIGNUP (MINIMAL) -->
+    <signup_data minimal="true">
+      <collected>
+        <field>user_id</field>
+        <field>email</field>
+        <field>auth_provider</field>
+        <field>created_at</field>
+        <field>role (default: user)</field>
+      </collected>
+      <optional_later>
+        <field>Organization</field>
+        <field>Field of interest</field>
+      </optional_later>
+      <critical_rule>NO health data at signup</critical_rule>
+    </signup_data>
+
+    <!-- COMPLIANCE FOOTER -->
+    <compliance_footer>
+      <text>
+        LabIQ Health is a data intelligence platform.
+        It does not provide medical advice or diagnosis.
+      </text>
+      <purpose>Legal and ethical protection</purpose>
+    </compliance_footer>
+
+    <!-- IMPLEMENTATION FILES -->
+    <implementation>
+      <file action="MODIFY">src/pages/Auth.tsx</file>
+      <file action="NEW">src/components/auth/AuthPage.tsx</file>
+      <file action="NEW">src/components/auth/BrandPanel.tsx</file>
+      <file action="NEW">src/components/auth/AuthCard.tsx</file>
+      <file action="NEW">src/components/auth/OnboardingQuestion.tsx</file>
+      <file action="NEW">src/components/auth/HealthAnimation.tsx</file>
+      <file action="MODIFY">src/integrations/supabase/auth.ts</file>
+    </implementation>
+
+    <!-- BUILD CHECKLIST -->
+    <build_checklist>
+      <task id="AUTH-001" status="pending">Design split-view layout with responsive stacking</task>
+      <task id="AUTH-002" status="pending">Create BrandPanel with hero text and animation</task>
+      <task id="AUTH-003" status="pending">Build AuthCard with OAuth buttons</task>
+      <task id="AUTH-004" status="pending">Implement magic link flow via Supabase</task>
+      <task id="AUTH-005" status="pending">Configure Google OAuth in Supabase</task>
+      <task id="AUTH-006" status="pending">Configure GitHub OAuth in Supabase</task>
+      <task id="AUTH-007" status="pending">Create OnboardingQuestion component</task>
+      <task id="AUTH-008" status="pending">Add loading states and animations</task>
+      <task id="AUTH-009" status="pending">Add compliance footer</task>
+      <task id="AUTH-010" status="pending">Mobile responsive testing</task>
+    </build_checklist>
+  </auth_onboarding_v1>
+
+</labiq_health_v1>

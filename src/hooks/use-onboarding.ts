@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 const LOCAL_STORAGE_KEY = 'onboarding_completed';
+const TOUR_TRIGGER_KEY = 'onboarding_trigger';
 
 export const useOnboarding = () => {
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -9,16 +10,50 @@ export const useOnboarding = () => {
   const [loading, setLoading] = useState(true);
   const [tableExists, setTableExists] = useState(true);
 
+  // Check for tour trigger from other components
+  const checkTourTrigger = useCallback(() => {
+    const trigger = localStorage.getItem(TOUR_TRIGGER_KEY);
+    if (trigger === 'start') {
+      localStorage.removeItem(TOUR_TRIGGER_KEY);
+      setShowOnboarding(true);
+    }
+  }, []);
+
   useEffect(() => {
     checkOnboardingStatus();
-  }, []);
+    checkTourTrigger();
+
+    // Listen for storage events from other tabs/components
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === TOUR_TRIGGER_KEY && e.newValue === 'start') {
+        localStorage.removeItem(TOUR_TRIGGER_KEY);
+        setShowOnboarding(true);
+      }
+    };
+
+    // Also use a custom event for same-tab communication
+    const handleTourStart = () => {
+      setShowOnboarding(true);
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('labiq-start-tour', handleTourStart);
+
+    // Check periodically for trigger (fallback for same-tab)
+    const interval = setInterval(checkTourTrigger, 100);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('labiq-start-tour', handleTourStart);
+      clearInterval(interval);
+    };
+  }, [checkTourTrigger]);
 
   const checkOnboardingStatus = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
 
       if (!user) {
-        // Check localStorage for non-authenticated users
         const localOnboardingComplete = localStorage.getItem(LOCAL_STORAGE_KEY);
         if (!localOnboardingComplete) {
           setIsFirstVisit(true);
@@ -27,17 +62,14 @@ export const useOnboarding = () => {
         return;
       }
 
-      // Check if user has completed onboarding
       const { data: preferences, error } = await supabase
         .from('user_preferences')
         .select('onboarding_completed, onboarding_completed_at')
         .eq('user_id', user.id)
         .maybeSingle();
 
-      // Handle table not existing (PGRST205) or other schema errors (406)
       if (error?.code === 'PGRST205' || error?.code === '406' || error?.message?.includes('schema cache')) {
         setTableExists(false);
-        // Fall back to localStorage only
         const localOnboardingComplete = localStorage.getItem(LOCAL_STORAGE_KEY);
         if (!localOnboardingComplete) {
           setIsFirstVisit(true);
@@ -46,16 +78,13 @@ export const useOnboarding = () => {
         return;
       }
 
-      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows found
+      if (error && error.code !== 'PGRST116') {
         console.warn('Onboarding status check warning:', error.message);
       }
 
-      // Check localStorage as fallback
       const localOnboardingComplete = localStorage.getItem(LOCAL_STORAGE_KEY);
-
       const hasCompletedOnboarding = preferences?.onboarding_completed || localOnboardingComplete === 'true';
 
-      // Don't auto-show tour - let user start it manually
       if (!hasCompletedOnboarding) {
         setIsFirstVisit(true);
       }
@@ -80,7 +109,6 @@ export const useOnboarding = () => {
   };
 
   const completeOnboarding = async () => {
-    // Always save to localStorage first
     localStorage.setItem(LOCAL_STORAGE_KEY, 'true');
     setShowOnboarding(false);
     setIsFirstVisit(false);
@@ -91,7 +119,6 @@ export const useOnboarding = () => {
       const { data: { user } } = await supabase.auth.getUser();
 
       if (user) {
-        // Save to database
         const { error } = await supabase
           .from('user_preferences')
           .upsert({
@@ -112,9 +139,15 @@ export const useOnboarding = () => {
   };
 
   const resetOnboarding = async () => {
+    // Clear completion status
     localStorage.removeItem(LOCAL_STORAGE_KEY);
     setIsFirstVisit(true);
-    setShowOnboarding(true);
+
+    // Set trigger for App.tsx to pick up
+    localStorage.setItem(TOUR_TRIGGER_KEY, 'start');
+
+    // Also dispatch custom event for immediate same-tab response
+    window.dispatchEvent(new CustomEvent('labiq-start-tour'));
 
     if (!tableExists) return;
 
@@ -146,6 +179,7 @@ export const useOnboarding = () => {
     startOnboarding,
     closeOnboarding,
     completeOnboarding,
-    resetOnboarding
+    resetOnboarding,
+    isTourAvailable: !loading && tableExists
   };
 };

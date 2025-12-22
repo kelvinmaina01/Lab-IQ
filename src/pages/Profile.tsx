@@ -226,8 +226,8 @@ export default function ProfilePage() {
                         <div className="space-y-6">
                             <Card>
                                 <CardHeader>
-                                    <CardTitle className="text-lg">Lab Profile</CardTitle>
-                                    <CardDescription>Select your research environment</CardDescription>
+                                    <CardTitle className="text-lg">Health Profile</CardTitle>
+                                    <CardDescription>Select your research focus area</CardDescription>
                                 </CardHeader>
                                 <CardContent>
                                     <LabProfileSelector />
@@ -296,7 +296,7 @@ export default function ProfilePage() {
                                     </div>
 
                                     <div className="space-y-2">
-                                        <Label>Organization / Lab Name</Label>
+                                        <Label>Organization / Institution</Label>
                                         <Input
                                             value={profile?.organization || ""}
                                             onChange={(e) => setProfile(prev => prev ? { ...prev, organization: e.target.value } : null)}

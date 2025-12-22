@@ -3,7 +3,7 @@ import { SaaSResource } from "@/core/interfaces";
 
 export class ResourceService {
     /**
-     * Shares a native Lab-IQ resource (Dataset, Report, Experiment) into a collaboration channel.
+     * Shares a native LabIQ Health resource (Dataset, Report, Experiment) into a collaboration channel.
      */
     async shareResource(params: {
         labId: string;
@@ -61,7 +61,7 @@ export class ResourceService {
     }
 
     /**
-     * Fetches native Lab-IQ resources (not yet shared) to allow selection.
+     * Fetches native LabIQ Health resources (not yet shared) to allow selection.
      * This achieves the "Deep Integration" by querying core SaaS tables.
      */
     async getLabResources(labId: string, type: 'dataset' | 'report' | 'experiment'): Promise<{ data: any[] | null; error: any }> {

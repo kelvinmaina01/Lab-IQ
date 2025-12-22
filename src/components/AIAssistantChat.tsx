@@ -1,6 +1,6 @@
 /**
  * AI Assistant Chat Component
- * Lab-IQ's intelligent data analysis assistant
+ * LabIQ Health's intelligent data analysis assistant
  * Uses the unified LabIQAI service for all AI operations
  */
 
@@ -326,7 +326,7 @@ export const AIAssistantChat: React.FC<AIAssistantChatProps> = ({
             <ModeIcon className={`w-5 h-5 ${currentMode.color}`} />
           </div>
           <div>
-            <h2 className="text-lg font-semibold">Lab-IQ Assistant</h2>
+            <h2 className="text-lg font-semibold">LabIQ Health Assistant</h2>
             <p className="text-sm text-muted-foreground">{currentMode.description} Mode</p>
           </div>
         </div>
@@ -377,7 +377,7 @@ export const AIAssistantChat: React.FC<AIAssistantChatProps> = ({
                 <Brain className="w-8 h-8 text-primary" />
               </div>
               <h3 className="text-2xl font-semibold mb-3">
-                Lab-IQ Data Analysis
+                LabIQ Health Data Analysis
               </h3>
               <p className="text-muted-foreground mb-8 max-w-md mx-auto">
                 {selectedDataset

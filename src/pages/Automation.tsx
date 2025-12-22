@@ -71,7 +71,7 @@ const Automation = () => {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [workflowToEdit, setWorkflowToEdit] = useState<Workflow | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const { toast} = useToast();
+  const { toast } = useToast();
   const [initialDatasetId, setInitialDatasetId] = useState<string>();
   const [stats, setStats] = useState({
     active: 0,
@@ -146,9 +146,8 @@ const Automation = () => {
 
       toast({
         title: "Workflow Updated",
-        description: `Workflow ${
-          newStatus === "active" ? "activated" : "paused"
-        } successfully.`,
+        description: `Workflow ${newStatus === "active" ? "activated" : "paused"
+          } successfully.`,
       });
 
       loadWorkflows();
@@ -615,18 +614,16 @@ const Automation = () => {
                   <div className="flex items-start justify-between">
                     <div className="flex items-start gap-4 flex-1">
                       <div
-                        className={`p-3 rounded-lg ${
-                          workflow.status === "active"
+                        className={`p-3 rounded-lg ${workflow.status === "active"
                             ? "bg-primary/10"
                             : "bg-muted"
-                        }`}
+                          }`}
                       >
                         <Zap
-                          className={`w-6 h-6 ${
-                            workflow.status === "active"
+                          className={`w-6 h-6 ${workflow.status === "active"
                               ? "text-primary"
                               : "text-muted-foreground"
-                          }`}
+                            }`}
                         />
                       </div>
                       <div className="flex-1">
@@ -734,7 +731,7 @@ const Automation = () => {
                 <p className="text-sm text-muted-foreground">
                   Automation workflows help you save time by handling repetitive
                   tasks automatically. Set up triggers based on schedules, events,
-                  or thresholds, and let Lab-IQ handle the rest. Each successful
+                  or thresholds, and let LabIQ Health handle the rest. Each successful
                   workflow run saves approximately 5 minutes of manual work.
                 </p>
               </div>

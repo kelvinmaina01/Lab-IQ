@@ -1,5 +1,5 @@
 /**
- * Lab-IQ Assistant Component
+ * LabIQ Health Assistant Component
  * Professional design with ElevenLabs-style voice calling
  */
 
@@ -41,7 +41,7 @@ const SUGGESTED_QUESTIONS = [
   "Cancel anytime?"
 ];
 
-// Lab-IQ Logo Component
+// LabIQ Health Logo Component
 const LabIQLogo = ({ size = 'md', className = '' }: { size?: 'sm' | 'md' | 'lg'; className?: string }) => {
   const sizes = {
     sm: 'w-6 h-6',
@@ -178,7 +178,7 @@ export const AIAssistant = () => {
     }
 
     // Welcome message
-    const welcomeMessage = "Hi! I'm your Lab-IQ assistant. How can I help you today?";
+    const welcomeMessage = "Hi! I'm your LabIQ Health assistant. How can I help you today?";
     speak(welcomeMessage);
   };
 
@@ -311,7 +311,7 @@ export const AIAssistant = () => {
       const fallbackMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: "I'm here to help! For detailed questions, feel free to ask about pricing, features, or getting started with Lab-IQ.",
+        content: "I'm here to help! For detailed questions, feel free to ask about pricing, features, or getting started with LabIQ Health.",
         timestamp: new Date()
       };
       setMessages(prev => [...prev, fallbackMessage]);
@@ -335,7 +335,7 @@ export const AIAssistant = () => {
 
     const contents = [
       { role: 'user', parts: [{ text: `Context: ${systemPrompt}` }] },
-      { role: 'model', parts: [{ text: 'I understand. I\'m ready to help with Lab-IQ questions.' }] },
+      { role: 'model', parts: [{ text: 'I understand. I\'m ready to help with LabIQ Health questions.' }] },
       ...conversationHistory,
       { role: 'user', parts: [{ text: question }] }
     ];
@@ -366,7 +366,7 @@ export const AIAssistant = () => {
     const q = question.toLowerCase();
 
     if (q.includes('price') || q.includes('cost') || q.includes('plan')) {
-      return "Lab-IQ offers flexible plans: Free ($0), Pro ($39/mo annual), Team ($119/mo annual), and Enterprise (custom). All paid plans include a 14-day free trial.";
+      return "LabIQ Health offers flexible plans: Free ($0), Pro ($39/mo annual), Team ($119/mo annual), and Enterprise (custom). All paid plans include a 14-day free trial.";
     }
     if (q.includes('student') || q.includes('academic') || q.includes('university')) {
       return "Students get 90% off with a valid .edu email. Academic institutions and non-profits receive 50% discounts. Verify your status to unlock savings.";
@@ -378,7 +378,7 @@ export const AIAssistant = () => {
       return "Your data is protected with AES-256 encryption, TLS 1.3, and row-level security. We're HIPAA-ready and GDPR compliant.";
     }
 
-    return "I can help with pricing, features, security, or getting started. What would you like to know about Lab-IQ?";
+    return "I can help with pricing, features, security, or getting started. What would you like to know about LabIQ Health?";
   };
 
   const renderContent = (content: string) => {
@@ -432,7 +432,7 @@ export const AIAssistant = () => {
       </div>
 
       {/* Status text */}
-      <h3 className="text-lg font-semibold mb-1">Lab-IQ Assistant</h3>
+      <h3 className="text-lg font-semibold mb-1">LabIQ Health Assistant</h3>
       <p className="text-sm text-muted-foreground mb-2">
         {callStatus === 'connecting' && 'Connecting...'}
         {callStatus === 'connected' && (isSpeaking ? 'Speaking...' : isListening ? 'Listening...' : 'Connected')}
@@ -488,7 +488,7 @@ export const AIAssistant = () => {
       {/* Help text */}
       <p className="text-xs text-muted-foreground mt-6 text-center max-w-[240px]">
         {!isInCall
-          ? "Tap to start a voice conversation with Lab-IQ assistant"
+          ? "Tap to start a voice conversation with LabIQ Health assistant"
           : "Speak naturally. I'll respond when you pause."
         }
       </p>
@@ -525,7 +525,7 @@ export const AIAssistant = () => {
             <div className="flex items-center gap-3">
               <LabIQLogo size="md" />
               <div>
-                <h3 className="font-semibold text-sm">Lab-IQ Assistant</h3>
+                <h3 className="font-semibold text-sm">LabIQ Health Assistant</h3>
                 <p className="text-xs text-muted-foreground">AI-powered support</p>
               </div>
             </div>

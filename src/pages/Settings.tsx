@@ -61,9 +61,12 @@ export default function Settings() {
         await resetOnboarding();
         toast({
             title: "Tour Started",
-            description: "Welcome back! Let's explore Lab-IQ together.",
+            description: "Welcome back! Let's explore LabIQ Health together.",
         });
-        navigate("/dashboard");
+        // Small delay to let the tour trigger propagate
+        setTimeout(() => {
+            navigate("/dashboard");
+        }, 100);
     };
 
     const settingsGroups = [
@@ -133,7 +136,7 @@ export default function Settings() {
                 },
                 {
                     icon: Sparkles,
-                    label: "Take the Lab-IQ Tour",
+                    label: "Take the LabIQ Health Tour",
                     description: "Restart the interactive guided tour of all features",
                     action: handleStartTour
                 }

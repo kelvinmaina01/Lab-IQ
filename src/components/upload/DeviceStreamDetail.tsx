@@ -139,7 +139,7 @@ export function DeviceStreamDetail({ stream, onUpdate }: DeviceStreamDetailProps
     switch (stream.stream_type) {
       case 'mqtt':
         return {
-          broker: config.broker_url || `mqtt://broker.lab-iq.com:1883`,
+          broker: config.broker_url || `mqtt://broker.LabIQ Health.com:1883`,
           topic: config.topic || `lab/${stream.id}/data`,
           username: config.username || `device_${stream.id.slice(0, 8)}`,
           password: config.password || '••••••••',
@@ -147,14 +147,14 @@ export function DeviceStreamDetail({ stream, onUpdate }: DeviceStreamDetailProps
 
       case 'webhook':
         return {
-          endpoint: config.endpoint_url || `https://api.lab-iq.com/webhooks/${stream.id}`,
+          endpoint: config.endpoint_url || `https://api.LabIQ Health.com/webhooks/${stream.id}`,
           secret: config.secret_key || `sk_${stream.id.slice(0, 16)}`,
           method: 'POST',
         };
 
       case 'token_auth':
         return {
-          endpoint: `https://api.lab-iq.com/v1/data/ingest`,
+          endpoint: `https://api.LabIQ Health.com/v1/data/ingest`,
           token: config.api_token || `Bearer ${stream.id.replace(/-/g, '')}`,
           stream_id: stream.id,
         };
@@ -337,7 +337,7 @@ export function DeviceStreamDetail({ stream, onUpdate }: DeviceStreamDetailProps
                   </div>
                   <div className="p-3 bg-muted rounded-lg">
                     <p className="text-sm text-muted-foreground">
-                      Include the secret key in the <code className="text-xs bg-background px-1 py-0.5 rounded">X-Lab-IQ-Secret</code> header
+                      Include the secret key in the <code className="text-xs bg-background px-1 py-0.5 rounded">X-LabIQ Health-Secret</code> header
                     </p>
                   </div>
                 </>
@@ -516,7 +516,7 @@ print("Data sent!")`}
                     <pre className="text-xs bg-muted p-4 rounded-lg overflow-x-auto">
 {`curl -X POST ${credentials.endpoint} \\
   -H "Content-Type: application/json" \\
-  -H "X-Lab-IQ-Secret: ${credentials.secret}" \\
+  -H "X-LabIQ Health-Secret: ${credentials.secret}" \\
   -d '{
     "temperature": 25.5,
     "timestamp": "2025-12-08T10:30:00Z"

@@ -220,7 +220,7 @@ export function DeviceMLIntegration({ streamId, streamName }: DeviceMLIntegratio
             Quick Actions
           </CardTitle>
           <CardDescription>
-            Process device data across Lab-IQ platform
+            Process device data across LabIQ Health platform
           </CardDescription>
         </CardHeader>
         <CardContent className="grid grid-cols-3 gap-4">

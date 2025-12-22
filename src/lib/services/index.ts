@@ -1,7 +1,7 @@
 /**
  * Services Index
  *
- * Unified exports for all Lab-IQ services.
+ * Unified exports for all LabIQ Health services.
  * Import services from this module for clean, centralized access.
  *
  * @example
@@ -43,7 +43,7 @@ export async function initializeServices(): Promise<void> {
     return;
   }
 
-  console.log('[Lab-IQ] Initializing services...');
+  console.log('[LabIQ Health] Initializing services...');
   const startTime = Date.now();
 
   try {
@@ -55,9 +55,9 @@ export async function initializeServices(): Promise<void> {
     await modelRegistry.initialize();
 
     initialized = true;
-    console.log(`[Lab-IQ] Services initialized in ${Date.now() - startTime}ms`);
+    console.log(`[LabIQ Health] Services initialized in ${Date.now() - startTime}ms`);
   } catch (error) {
-    console.error('[Lab-IQ] Service initialization failed:', error);
+    console.error('[LabIQ Health] Service initialization failed:', error);
     throw error;
   }
 }

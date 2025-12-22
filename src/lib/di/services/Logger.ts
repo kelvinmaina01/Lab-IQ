@@ -36,7 +36,7 @@ export class Logger implements ILogger {
   constructor(config: Partial<LoggerConfig> = {}) {
     this.config = {
       level: config.level || 'info',
-      prefix: config.prefix || '[Lab-IQ]',
+      prefix: config.prefix || '[LabIQ Health]',
       enableTimestamp: config.enableTimestamp ?? true,
       enableColors: config.enableColors ?? typeof window === 'undefined',
     };

@@ -72,7 +72,7 @@ const App = () => {
               <Toaster />
               <BrowserRouter>
                 <ErrorBoundary FallbackComponent={GlobalErrorFallback} onReset={() => window.location.replace('/')}>
-                  <Suspense fallback={<LoadingSpinner fullScreen text="Loading Lab-IQ..." />}>
+                  <Suspense fallback={<LoadingSpinner fullScreen text="Loading LabIQ Health..." />}>
                     <Routes>
                       <Route path="/" element={<Index />} />
                       <Route path="/login" element={<Login />} />

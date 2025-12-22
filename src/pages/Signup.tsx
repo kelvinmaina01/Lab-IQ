@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import {
   Loader2,
-  FlaskConical,
+  HeartPulse,
   Brain,
   Database,
   LineChart,
@@ -82,7 +82,7 @@ const Signup = () => {
       if (error) throw error;
       toast({
         title: 'Account created!',
-        description: 'Welcome to Lab-IQ. Start exploring your laboratory intelligence platform.',
+        description: 'Welcome to LabIQ Health. Start exploring your health data intelligence platform.',
       });
       if (redirect) {
         navigate(`${redirect}${token ? `?token=${token}` : ''}`);
@@ -136,10 +136,10 @@ const Signup = () => {
         <div className="lg:hidden mb-8">
           <Link to="/" className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-lg">
-              <FlaskConical className="w-6 h-6 text-white" />
+              <HeartPulse className="w-6 h-6 text-white" />
             </div>
             <span className="text-2xl font-black bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              Lab-IQ
+              LabIQ Health
             </span>
           </Link>
         </div>
@@ -153,7 +153,7 @@ const Signup = () => {
             </div>
             <h2 className="text-3xl font-bold mb-2">Create your account</h2>
             <p className="text-muted-foreground">
-              Join researchers worldwide using Lab-IQ for intelligent data analysis
+              Join researchers worldwide using LabIQ Health for intelligent data analysis
             </p>
           </div>
 
@@ -329,10 +329,10 @@ const Signup = () => {
           {/* Logo */}
           <Link to="/" className="flex items-center gap-3 mb-12 group">
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-              <FlaskConical className="w-7 h-7 text-white" />
+              <HeartPulse className="w-7 h-7 text-white" />
             </div>
             <span className="text-3xl font-black bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              Lab-IQ
+              LabIQ Health
             </span>
           </Link>
 
@@ -344,7 +344,7 @@ const Signup = () => {
               <span className="text-muted-foreground">research today</span>
             </h1>
             <p className="text-lg text-muted-foreground max-w-md leading-relaxed">
-              Join the next generation of laboratory intelligence.
+              Join the next generation of health data intelligence.
               Analyze data 10x faster with AI-powered insights.
             </p>
           </div>
@@ -376,7 +376,7 @@ const Signup = () => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground italic mb-2">
-                  "Lab-IQ transformed how we analyze experimental data. What used to take days now takes minutes."
+                  "LabIQ Health transformed how we analyze health data. What used to take days now takes minutes."
                 </p>
                 <p className="text-xs font-medium">
                   Research Team Lead

@@ -1,15 +1,15 @@
 import { useEffect, useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FlaskConical, Microscope, Dna, Cpu, GraduationCap } from "lucide-react";
+import { Activity, Globe, GraduationCap, Building2, HeartPulse } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
-const LOCAL_STORAGE_KEY = 'lab_profile_type';
+const LOCAL_STORAGE_KEY = 'health_profile_type';
 
 export const LabProfileSelector = () => {
   const [selectedProfile, setSelectedProfile] = useState<string>(() => {
     // Initialize from localStorage
-    return localStorage.getItem(LOCAL_STORAGE_KEY) || "clinical";
+    return localStorage.getItem(LOCAL_STORAGE_KEY) || "public-health";
   });
   const [loading, setLoading] = useState(true);
   const [tableExists, setTableExists] = useState(true);
@@ -44,7 +44,7 @@ export const LabProfileSelector = () => {
       }
 
       if (error && error.code !== 'PGRST116') {
-        console.warn('Lab profile fetch warning:', error.message);
+        console.warn('Health profile fetch warning:', error.message);
       }
 
       if (data) {
@@ -67,7 +67,7 @@ export const LabProfileSelector = () => {
     if (!tableExists) {
       toast({
         title: "Profile updated",
-        description: "Your lab profile preference has been saved locally.",
+        description: "Your health profile preference has been saved locally.",
       });
       return;
     }
@@ -84,7 +84,7 @@ export const LabProfileSelector = () => {
         setTableExists(false);
         toast({
           title: "Profile updated",
-          description: "Your lab profile preference has been saved locally.",
+          description: "Your health profile preference has been saved locally.",
         });
         return;
       }
@@ -93,7 +93,7 @@ export const LabProfileSelector = () => {
 
       toast({
         title: "Profile updated",
-        description: "Your lab profile has been saved successfully.",
+        description: "Your health profile has been saved successfully.",
       });
     } catch (error: any) {
       console.warn('Error updating profile:', error?.message);
@@ -113,37 +113,37 @@ export const LabProfileSelector = () => {
   return (
     <Select value={selectedProfile} onValueChange={handleProfileChange}>
       <SelectTrigger className="w-[240px] bg-muted/50 border-muted">
-        <SelectValue placeholder="Select lab profile" />
+        <SelectValue placeholder="Select health profile" />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value="clinical">
+        <SelectItem value="public-health">
           <div className="flex items-center gap-2">
-            <FlaskConical className="w-4 h-4" />
-            <span>Clinical Lab</span>
+            <Globe className="w-4 h-4" />
+            <span>Public Health Research</span>
           </div>
         </SelectItem>
-        <SelectItem value="drug-discovery">
+        <SelectItem value="epidemiology">
           <div className="flex items-center gap-2">
-            <Microscope className="w-4 h-4" />
-            <span>AI Drug Discovery</span>
+            <Activity className="w-4 h-4" />
+            <span>Epidemiology & Surveillance</span>
           </div>
         </SelectItem>
-        <SelectItem value="synthetic-bio">
+        <SelectItem value="health-programs">
           <div className="flex items-center gap-2">
-            <Dna className="w-4 h-4" />
-            <span>Synthetic Bio</span>
+            <HeartPulse className="w-4 h-4" />
+            <span>Health Programs & NGOs</span>
           </div>
         </SelectItem>
-        <SelectItem value="computational-genomics">
+        <SelectItem value="institution">
           <div className="flex items-center gap-2">
-            <Cpu className="w-4 h-4" />
-            <span>Computational Genomics</span>
+            <Building2 className="w-4 h-4" />
+            <span>Research Institution</span>
           </div>
         </SelectItem>
         <SelectItem value="university">
           <div className="flex items-center gap-2">
             <GraduationCap className="w-4 h-4" />
-            <span>University Research</span>
+            <span>University & Academic</span>
           </div>
         </SelectItem>
       </SelectContent>
