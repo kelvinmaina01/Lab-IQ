@@ -392,6 +392,65 @@ async def generate_description(request: GenerateDescriptionRequest):
 
 
 
+
+@app.post("/api/ml/generate-report")
+async def generate_report_endpoint(request: Dict[str, Any]):
+    """
+    Generate a full PDF/HTML/Markdown report via ReportGenerator
+    """
+    try:
+        from report_generator import ReportGenerator, ReportTemplate, ReportFormat
+        
+        # Extract params
+        template_str = request.get("template", "GENERAL")
+        format_str = request.get("format", "markdown")
+        title = request.get("title", "Analysis Report")
+        data = request.get("data", {})
+        
+        # Map strings to Enums (safe fallback)
+        try:
+            template = ReportTemplate(template_str)
+        except ValueError:
+            template = ReportTemplate.GENERAL
+            
+        try:
+            fmt = ReportFormat(format_str)
+        except ValueError:
+            fmt = ReportFormat.MARKDOWN
+            
+        # Instantiate Generator
+        # Output to a public/reports dir or tmp
+        output_dir = os.path.join(os.getcwd(), "public", "reports")
+        os.makedirs(output_dir, exist_ok=True)
+        
+        generator = ReportGenerator(output_dir=output_dir)
+        
+        report = generator.generate(
+            template=template,
+            format=fmt,
+            title=title,
+            data=data,
+            dataset_id=request.get("dataset_id"),
+        )
+        
+        # Return relative path for frontend to download
+        # Assuming frontend serves 'public/' static files
+        relative_path = f"/reports/{os.path.basename(report.file_path)}"
+        
+        return {
+            "success": True,
+            "report_id": report.id,
+            "url": relative_path,
+            "file_path": report.file_path
+        }
+        
+    except Exception as e:
+        logger.error(f"Report generation endpoint failed: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 class ChatRequest(BaseModel):
     messages: List[Dict[str, Any]]
     datasetId: Optional[str] = None

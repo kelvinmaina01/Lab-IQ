@@ -20,7 +20,9 @@ import {
   AlertCircle,
   Download,
   RefreshCw,
+  Pin,
 } from "lucide-react";
+import { PinToDashboardButton } from "@/components/dashboard/PinToDashboardButton";
 import { useToast } from "@/hooks/use-toast";
 import {
   workflowService,
@@ -166,7 +168,7 @@ const WorkflowExecutionPage = () => {
 
       // Download report as JSON
       const dataStr = JSON.stringify(report.content, null, 2);
-      const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+      const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
       const exportFileDefaultName = `execution-report-${executionId}.json`;
 
       const linkElement = document.createElement('a');
@@ -354,6 +356,26 @@ const WorkflowExecutionPage = () => {
                 <Download className="w-4 h-4 mr-2" />
                 Export Report
               </Button>
+              {execution.status === 'success' && (
+                <PinToDashboardButton
+                  title={`${workflow.name} Results`}
+                  description={`Workflow execution completed on ${new Date(execution.completed_at || execution.started_at).toLocaleDateString()}`}
+                  type="metric"
+                  source="workflow"
+                  sourceId={workflow.id}
+                  sourceTable="workflows"
+                  category="workflows"
+                  data={{
+                    value: Math.round(execution.progress_percentage || 100),
+                    unit: '%',
+                    trend: 'up',
+                    summary: `${execution.current_step || execution.total_steps}/${execution.total_steps} steps completed in ${Math.round((execution.duration_ms || 0) / 1000)}s`
+                  }}
+                  variant="default"
+                  size="default"
+                  showLabel={true}
+                />
+              )}
             </div>
           </div>
 
@@ -450,11 +472,10 @@ const WorkflowExecutionPage = () => {
                     {execution.logs.map((log, index) => (
                       <div
                         key={index}
-                        className={`flex items-start gap-3 p-3 rounded-lg border ${
-                          log.level === 'error' ? 'bg-red-500/5 border-red-500/20' :
-                          log.level === 'warning' ? 'bg-yellow-500/5 border-yellow-500/20' :
-                          'bg-muted/50'
-                        }`}
+                        className={`flex items-start gap-3 p-3 rounded-lg border ${log.level === 'error' ? 'bg-red-500/5 border-red-500/20' :
+                            log.level === 'warning' ? 'bg-yellow-500/5 border-yellow-500/20' :
+                              'bg-muted/50'
+                          }`}
                       >
                         <div className="flex-shrink-0 mt-1">
                           {log.level === 'error' && <XCircle className="w-4 h-4 text-red-500" />}
@@ -497,9 +518,8 @@ const WorkflowExecutionPage = () => {
                     {insights.map((insight) => (
                       <Card
                         key={insight.id}
-                        className={`p-4 ${
-                          insight.is_significant ? 'border-primary/50 bg-primary/5' : ''
-                        }`}
+                        className={`p-4 ${insight.is_significant ? 'border-primary/50 bg-primary/5' : ''
+                          }`}
                       >
                         <div className="flex items-start gap-3">
                           <div className={`mt-1 ${getSeverityColor(insight.severity)}`}>

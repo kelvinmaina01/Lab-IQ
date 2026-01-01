@@ -9,7 +9,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, FlaskConical, Calendar, User, MoreVertical, Play, Pause, CheckCircle, AlertCircle, Brain, Sparkles, Loader2, MessageSquare } from "lucide-react";
+import { Plus, Search, FlaskConical, Calendar, User, MoreVertical, Play, Pause, CheckCircle, AlertCircle, Brain, Sparkles, Loader2, MessageSquare, Pin } from "lucide-react";
+import { PinToDashboardButton } from "@/components/dashboard/PinToDashboardButton";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { CommentsSystem } from "@/components/collaboration/CommentsSystem";
 import { MainLayout } from "@/components/layout/MainLayout";
@@ -21,6 +22,7 @@ import { useSubscription } from "@/hooks/use-subscription";
 import { useActivityTracker } from "@/hooks/useActivityTracker";
 import { UpgradeDialog } from "@/components/UpgradeDialog";
 import { ExperimentTemplates } from "@/components/experiments/ExperimentTemplates";
+import { ExperimentStateFlow, ExperimentStatusBadge, ExperimentStatus } from "@/components/experiments/ExperimentStateFlow";
 
 const Experiments = () => {
   const location = useLocation();
@@ -446,9 +448,29 @@ const Experiments = () => {
                         </div>
                       </div>
                     </div>
-                    <Button variant="ghost" size="icon">
-                      <MoreVertical className="w-4 h-4" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      {exp.status === 'completed' && (
+                        <PinToDashboardButton
+                          title={exp.title}
+                          description={exp.description}
+                          type="insight"
+                          source="experiment"
+                          sourceId={exp.id}
+                          sourceTable="experiments"
+                          category="experiments"
+                          data={{
+                            summary: exp.description,
+                            keyPoints: exp.protocol?.steps || []
+                          }}
+                          variant="ghost"
+                          size="sm"
+                          showLabel={false}
+                        />
+                      )}
+                      <Button variant="ghost" size="icon">
+                        <MoreVertical className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
                   {exp.status === "running" && (
                     <div className="mt-4">
@@ -559,6 +581,17 @@ const Experiments = () => {
                           )) || <li>No protocol defined</li>}
                         </ul>
                       </div>
+                    </div>
+
+                    {/* State Machine Visualization */}
+                    <div className="mt-6 p-4 bg-muted/30 rounded-lg">
+                      <h4 className="text-sm font-medium mb-3">Experiment Progress</h4>
+                      <ExperimentStateFlow
+                        currentStatus={(selectedExperiment.status === 'pending' ? 'planned' : selectedExperiment.status) as ExperimentStatus}
+                        startedAt={selectedExperiment.started_at}
+                        completedAt={selectedExperiment.completed_at}
+                        size="md"
+                      />
                     </div>
                   </div>
 

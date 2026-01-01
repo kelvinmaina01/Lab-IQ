@@ -20,6 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { TemplateSuggestions } from "@/components/upload/TemplateSuggestions";
 import { suggestTemplates } from "@/lib/utils/templateSuggestions";
 import { EnhancedFileUpload } from "@/components/upload/EnhancedFileUpload";
+import { MultiFileUpload } from "@/components/upload/MultiFileUpload";
 import { UploadJobMonitor } from "@/components/upload/UploadJobMonitor";
 import { UploadStatistics } from "@/components/upload/UploadStatistics";
 
@@ -334,7 +335,7 @@ export default function Upload() {
 
           <Tabs defaultValue="upload" className="w-full">
             <TabsList className="grid w-full grid-cols-5">
-              <TabsTrigger value="upload">Enhanced Upload</TabsTrigger>
+              <TabsTrigger value="upload">Health Data Upload</TabsTrigger>
               <TabsTrigger value="legacy">Legacy Upload</TabsTrigger>
               <TabsTrigger value="devices">Live Devices</TabsTrigger>
               <TabsTrigger value="connect">Cloud Sources</TabsTrigger>
@@ -345,7 +346,10 @@ export default function Upload() {
               {/* Upload Statistics */}
               <UploadStatistics />
 
-              {/* Enhanced File Upload with Real-time Progress */}
+              {/* Multi-File Upload with Health Data Detection */}
+              <MultiFileUpload />
+
+              {/* Single File Upload (Alternative) */}
               <EnhancedFileUpload />
 
               {/* Upload Job Monitor */}

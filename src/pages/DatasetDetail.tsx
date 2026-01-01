@@ -16,11 +16,13 @@ import {
     Table as TableIcon,
     Brain,
     Dna,
-    FlaskConical
+    FlaskConical,
+    Sparkles
 } from "lucide-react";
 import { toast } from "sonner";
 import { DataExplorer } from "@/components/data/DataExplorer";
 import { QuickActionsPanel } from "@/components/upload/QuickActionsPanel";
+import { AutoMLPipelineDashboard } from "@/components/ml/AutoMLPipelineDashboard";
 
 const DatasetDetail = () => {
     const { id } = useParams();
@@ -263,6 +265,10 @@ const DatasetDetail = () => {
                             <BarChart3 className="h-4 w-4" />
                             Analysis
                         </TabsTrigger>
+                        <TabsTrigger value="automl" className="gap-2">
+                            <Sparkles className="h-4 w-4" />
+                            AutoML
+                        </TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="data" className="mt-6">
@@ -307,39 +313,39 @@ const DatasetDetail = () => {
                                             </CardTitle>
                                         </CardHeader>
                                         <CardContent className="text-sm space-y-2">
-                                        <div className="flex justify-between py-1 border-b">
-                                            <span className="text-muted-foreground">Unique Values</span>
-                                            <span>{col.unique_values_count}</span>
-                                        </div>
-                                        <div className="flex justify-between py-1 border-b">
-                                            <span className="text-muted-foreground">Nullable</span>
-                                            <span>{col.nullable ? 'Yes' : 'No'}</span>
-                                        </div>
-                                        {col.stats && (
-                                            <>
-                                                {col.stats.min !== undefined && (
-                                                    <div className="flex justify-between py-1 border-b">
-                                                        <span className="text-muted-foreground">Min</span>
-                                                        <span>{Number(col.stats.min).toFixed(2)}</span>
-                                                    </div>
-                                                )}
-                                                {col.stats.max !== undefined && (
-                                                    <div className="flex justify-between py-1 border-b">
-                                                        <span className="text-muted-foreground">Max</span>
-                                                        <span>{Number(col.stats.max).toFixed(2)}</span>
-                                                    </div>
-                                                )}
-                                                {col.stats.mean !== undefined && (
-                                                    <div className="flex justify-between py-1 border-b">
-                                                        <span className="text-muted-foreground">Mean</span>
-                                                        <span>{Number(col.stats.mean).toFixed(2)}</span>
-                                                    </div>
-                                                )}
-                                            </>
-                                        )}
-                                    </CardContent>
-                                </Card>
-                            ))}
+                                            <div className="flex justify-between py-1 border-b">
+                                                <span className="text-muted-foreground">Unique Values</span>
+                                                <span>{col.unique_values_count}</span>
+                                            </div>
+                                            <div className="flex justify-between py-1 border-b">
+                                                <span className="text-muted-foreground">Nullable</span>
+                                                <span>{col.nullable ? 'Yes' : 'No'}</span>
+                                            </div>
+                                            {col.stats && (
+                                                <>
+                                                    {col.stats.min !== undefined && (
+                                                        <div className="flex justify-between py-1 border-b">
+                                                            <span className="text-muted-foreground">Min</span>
+                                                            <span>{Number(col.stats.min).toFixed(2)}</span>
+                                                        </div>
+                                                    )}
+                                                    {col.stats.max !== undefined && (
+                                                        <div className="flex justify-between py-1 border-b">
+                                                            <span className="text-muted-foreground">Max</span>
+                                                            <span>{Number(col.stats.max).toFixed(2)}</span>
+                                                        </div>
+                                                    )}
+                                                    {col.stats.mean !== undefined && (
+                                                        <div className="flex justify-between py-1 border-b">
+                                                            <span className="text-muted-foreground">Mean</span>
+                                                            <span>{Number(col.stats.mean).toFixed(2)}</span>
+                                                        </div>
+                                                    )}
+                                                </>
+                                            )}
+                                        </CardContent>
+                                    </Card>
+                                ))}
                             </div>
                         )}
                     </TabsContent>
@@ -560,6 +566,19 @@ const DatasetDetail = () => {
                                 </Button>
                             </div>
                         )}
+                    </TabsContent>
+
+                    <TabsContent value="automl" className="mt-6">
+                        <AutoMLPipelineDashboard
+                            datasetId={id!}
+                            data={rows}
+                            onComplete={(result) => {
+                                toast.success(`AutoML Complete: Best model is ${result.summary.model_training_summary.best_model} with ${(result.summary.model_training_summary.best_score * 100).toFixed(1)}% score`);
+                            }}
+                            onError={(error) => {
+                                toast.error(`AutoML Error: ${error}`);
+                            }}
+                        />
                     </TabsContent>
                 </Tabs>
             </div>

@@ -14,7 +14,19 @@
       "Bash(npx eslint:*)",
       "Bash(grep:*)",
       "Bash(npm install:*)",
-      "Bash(npx -y supabase@latest functions deploy:*)"
+      "Bash(npx -y supabase@latest functions deploy:*)",
+      "WebFetch(domain:www.scispot.com)",
+      "WebFetch(domain:bionl.ai)",
+      "WebFetch(domain:www.labvantage.com)",
+      "WebFetch(domain:iqvia.com)",
+      "WebFetch(domain:manifold.bio)",
+      "WebFetch(domain:www.deepintelligentpharma.com)",
+      "WebFetch(domain:julius.ai)",
+      "WebFetch(domain:sortium.com)",
+      "WebFetch(domain:vibscientific.com)",
+      "WebFetch(domain:science.io)",
+      "Bash(wc:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

@@ -46,4 +46,4 @@ short_description: AI-powered Multi-Agent AutoML for Biotech/Health
 
 ## License
 
-MIT License - Built for Lab-IQ Platform
+MIT License - Built for Lab-IQ Health Platform

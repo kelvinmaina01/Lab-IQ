@@ -57,21 +57,53 @@ export interface DashboardData {
 
 export interface PinnedDashboard {
   id: string;
-  user_id: string;
   title: string;
-  description?: string;
   type: DashboardType;
   source: DashboardSource;
-  config: DashboardConfig;
-  data: DashboardData;
-  source_id?: string;
-  source_table?: string;
-  category: string;
+  config: any;
+  // Rich data payload for deep analysis
+  data: {
+    // Primary display data
+    value?: any;
+    labels?: string[];
+    datasets?: any[];
+    rows?: any[];
+    columns?: any[];
+    trend?: 'up' | 'down' | 'stable';
+    summary?: string;
+    keyPoints?: string[];
+    recommendations?: string[];
+
+    // Context for Drill-Down & AI Memory
+    context?: {
+      messageId: string;       // Link back to original chat message
+      datasetId: string;       // The dataset being analyzed
+      datasetName: string;
+      analysisType?: string;   // e.g., 'correlation', 'distribution', 'outlier'
+      query?: string;          // The user's question that triggered this
+    };
+
+    // Detailed Data Findings (PromptBI style)
+    findings?: {
+      statistical_significance?: string; // e.g., "p < 0.05"
+      correlation_coefficient?: number;  // e.g., 0.85
+      sample_size?: number;
+      outliers_detected?: number;
+    };
+
+    // Generic metadata support
+    metadata?: Record<string, any>;
+  };
+  layout: {
+    w: number;
+    h: number;
+    x: number;
+    y: number;
+  };
+  createdAt: string;
+  userId: string;
   tags: string[];
-  is_favorite: boolean;
-  display_order: number;
-  is_shared: boolean;
-  shared_with: string[];
+  isFavorite?: boolean;
   created_at: string;
   updated_at: string;
   last_viewed_at?: string;
@@ -101,7 +133,7 @@ class DashboardService {
   private realtimeChannel: any = null;
   private listeners: Set<(dashboards: PinnedDashboard[]) => void> = new Set();
 
-  private constructor() {}
+  private constructor() { }
 
   public static getInstance(): DashboardService {
     if (!DashboardService.instance) {
@@ -126,7 +158,12 @@ class DashboardService {
   }): Promise<PinnedDashboard[]> {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return this.getDemoDashboards();
+
+      // If not logged in, return empty array (no demo data)
+      if (!user) {
+        console.log('User not authenticated, returning empty dashboards');
+        return [];
+      }
 
       let query = supabase
         .from('pinned_dashboards')
@@ -156,15 +193,14 @@ class DashboardService {
 
       if (error) {
         console.error('Error fetching dashboards:', error);
-        return this.getDemoDashboards();
+        return [];
       }
 
-      // Merge with demo dashboards for presentation
-      const demoDashboards = this.getDemoDashboards();
-      return [...(data || []), ...demoDashboards];
+      // Return only real data from database - no demo/mocked data
+      return data || [];
     } catch (error) {
       console.error('Dashboard fetch error:', error);
-      return this.getDemoDashboards();
+      return [];
     }
   }
 
@@ -172,10 +208,6 @@ class DashboardService {
    * Get a single dashboard by ID
    */
   async getDashboard(id: string): Promise<PinnedDashboard | null> {
-    // Check if it's a demo dashboard
-    const demo = this.getDemoDashboards().find(d => d.id === id);
-    if (demo) return demo;
-
     const { data, error } = await supabase
       .from('pinned_dashboards')
       .select('*')
@@ -219,6 +251,7 @@ class DashboardService {
       display_order: 0,
       is_shared: false,
       shared_with: [],
+      metadata: {},
       is_archived: false
     };
 
@@ -326,88 +359,132 @@ class DashboardService {
   // ---------------------------------------------------------------------------
 
   /**
-   * Auto-pin an insight from AI Assistant
+   * Auto-pin an insight from AI Assistant (Enhanced with rich metadata)
    */
   async autoPinFromAI(
-    title: string,
-    content: string,
-    aiResponse: {
-      sections?: Array<{
-        type: string;
-        title?: string;
-        content?: string;
-        items?: string[];
-        chartType?: string;
-        data?: { labels?: string[]; values?: number[] };
-        value?: string | number;
-        trend?: string;
-      }>;
-    },
-    datasetId?: string
+    aiResponse: any,
+    datasetId?: string,
+    messageId?: string,
+    userQuery?: string
   ): Promise<PinnedDashboard | null> {
-    // Determine the best dashboard type based on AI response
-    let type: DashboardType = 'insight';
-    let config: DashboardConfig = {};
-    let data: DashboardData = {};
+    // 1. Fetch Dataset Context (Real-time Name Resolution)
+    let datasetName = 'Health Data';
+    if (datasetId) {
+      try {
+        const { data } = await supabase
+          .from('files')
+          .select('filename')
+          .eq('id', datasetId)
+          .single();
+        if (data) datasetName = data.filename;
+      } catch (e) {
+        console.warn("Could not fetch dataset name", e);
+      }
+    }
 
+    // 2. Determine Dashboard Type & Data from AI Response
+    // We expect aiResponse to have sections (chart, metric, list, etc.)
     const sections = aiResponse.sections || [];
+    let type: DashboardType = 'insight';
+    let config: any = {};
+    let displayData: any = {};
+    let title = aiResponse.title || `Analysis of ${datasetName}`;
+    let description = aiResponse.text || aiResponse.summary || '';
 
-    // Find chart sections
-    const chartSection = sections.find(s => s.type === 'chart');
-    const metricSection = sections.find(s => s.type === 'metric');
-    const listSection = sections.find(s => s.type === 'list');
-
+    // Prioritize charts
+    const chartSection = sections.find((s: any) => s.type === 'chart');
     if (chartSection && chartSection.data) {
       type = 'chart';
+      title = chartSection.title || title;
       config = {
-        chartType: (chartSection.chartType as ChartType) || 'bar',
-        colors: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444'],
-        showLegend: true,
-        animated: true
+        chartType: chartSection.chartType || 'bar',
+        colors: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444'], // Standard palette
+        showLegend: true
       };
-      data = {
+      displayData = {
         labels: chartSection.data.labels || [],
         datasets: [{
           label: chartSection.title || 'Data',
           data: chartSection.data.values || []
         }]
       };
-    } else if (metricSection) {
+      description = chartSection.description || description;
+    }
+    // Then metrics
+    else if (sections.find((s: any) => s.type === 'metric')) {
+      const metric = sections.find((s: any) => s.type === 'metric');
       type = 'metric';
-      data = {
-        value: metricSection.value,
-        trend: metricSection.trend as 'up' | 'down' | 'stable',
-        summary: metricSection.content
-      };
-    } else {
-      // Default to insight
-      type = 'insight';
-      const keyPoints = sections
-        .filter(s => s.type === 'list')
-        .flatMap(s => s.items || []);
-      const recommendations = sections
-        .filter(s => s.type === 'recommendation')
-        .map(s => s.content || '');
-
-      data = {
-        summary: content,
-        keyPoints: keyPoints.slice(0, 5),
-        recommendations: recommendations.slice(0, 3)
+      title = metric.title || title;
+      displayData = {
+        value: metric.value,
+        trend: metric.trend,
+        summary: metric.content
       };
     }
+    // Then lists/insights
+    else {
+      // Default to insight
+      const listSection = sections.find((s: any) => s.type === 'list');
+      if (listSection) {
+        type = 'insight';
+        title = listSection.title || title;
+        displayData = {
+          keyPoints: listSection.items
+        };
+      } else {
+        // Fallback or text summary
+        type = 'insight';
+        displayData = {
+          summary: description
+        };
+      }
+    }
 
-    return this.createDashboard({
+    // 3. Construct Rich Data Payload with Context & Findings
+    const dashboardData = {
+      ...displayData, // The visual data
+      summary: description,
+      keyPoints: aiResponse.keyPoints || displayData.keyPoints || [],
+      recommendations: aiResponse.recommendations || [],
+
+      // CONTEXT for Drill-Down & Memory
+      context: {
+        messageId: messageId || 'system',
+        datasetId: datasetId || '',
+        datasetName: datasetName,
+        query: userQuery || '',
+        analysisType: aiResponse.type || 'general_analysis'
+      },
+
+      // PROMPTBI-STYLE FINDINGS
+      findings: {
+        statistical_significance: aiResponse.significance,
+        correlation_coefficient: aiResponse.correlation,
+        sample_size: aiResponse.sampleSize,
+        outliers_detected: aiResponse.outliers
+      },
+
+      // Backwards compatibility
+      metadata: {
+        dataset_name: datasetName,
+        dataset_id: datasetId
+      }
+    };
+
+    const dashboard: PinnedDashboard = {
+      id: crypto.randomUUID(),
       title,
-      description: `AI-generated insight from ${new Date().toLocaleDateString()}`,
       type,
       source: 'ai_assistant',
       config,
-      data,
-      source_id: datasetId,
-      source_table: datasetId ? 'datasets' : undefined,
-      category: 'ai_insights',
-      tags: ['ai-generated', 'auto-pinned']
-    });
+      data: dashboardData,
+      layout: { w: 1, h: 1, x: 0, y: 0 },
+      createdAt: new Date().toISOString(),
+      userId: 'user-id', // Replaced in createDashboard
+      tags: ['ai-generated', 'data-insight', datasetName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')]
+    };
+
+    return this.createDashboard(dashboard);
   }
 
   /**
@@ -439,6 +516,216 @@ class DashboardService {
       source_id: experimentId,
       source_table: 'experiments',
       category: 'experiments'
+    });
+  }
+
+  /**
+   * Pin workflow execution results as dashboard
+   */
+  async pinFromWorkflow(
+    workflowId: string,
+    workflowName: string,
+    executionData: {
+      status?: string;
+      duration?: number;
+      stepsCompleted?: number;
+      totalSteps?: number;
+      outputs?: Record<string, any>;
+    }
+  ): Promise<PinnedDashboard | null> {
+    // Create a metric for workflow execution
+    const completionRate = executionData.stepsCompleted && executionData.totalSteps
+      ? Math.round((executionData.stepsCompleted / executionData.totalSteps) * 100)
+      : 100;
+
+    return this.createDashboard({
+      title: `${workflowName} Execution`,
+      description: `Workflow completed with ${completionRate}% success`,
+      type: 'metric',
+      source: 'workflow',
+      config: {
+        layout: { width: 1, height: 1 }
+      },
+      data: {
+        value: completionRate,
+        unit: '%',
+        trend: completionRate >= 80 ? 'up' : completionRate >= 50 ? 'stable' : 'down',
+        summary: `Workflow ${workflowName} executed in ${executionData.duration || 0}s`
+      },
+      source_id: workflowId,
+      source_table: 'workflows',
+      category: 'workflows',
+      tags: ['workflow-execution', executionData.status || 'completed']
+    });
+  }
+
+  /**
+   * Pin workflow output chart/table
+   */
+  async pinWorkflowOutput(
+    workflowId: string,
+    workflowName: string,
+    output: {
+      type: 'chart' | 'table' | 'metric';
+      title: string;
+      data: DashboardData;
+      config?: DashboardConfig;
+    }
+  ): Promise<PinnedDashboard | null> {
+    return this.createDashboard({
+      title: `${workflowName}: ${output.title}`,
+      description: 'Output from workflow execution',
+      type: output.type,
+      source: 'workflow',
+      config: output.config || {},
+      data: output.data,
+      source_id: workflowId,
+      source_table: 'workflows',
+      category: 'workflows',
+      tags: ['workflow-output']
+    });
+  }
+
+  /**
+   * Pin AutoML model performance metrics
+   */
+  async pinFromModel(
+    modelId: string,
+    modelName: string,
+    performance: {
+      accuracy?: number;
+      precision?: number;
+      recall?: number;
+      f1Score?: number;
+      mse?: number;
+      r2?: number;
+      modelType?: string;
+    }
+  ): Promise<PinnedDashboard | null> {
+    // Create performance chart
+    const metrics = Object.entries(performance)
+      .filter(([key, val]) => typeof val === 'number' && key !== 'modelType')
+      .reduce((acc, [key, val]) => {
+        // Format metric names nicely
+        const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
+        acc[label] = val as number;
+        return acc;
+      }, {} as Record<string, number>);
+
+    const labels = Object.keys(metrics);
+    const values = Object.values(metrics);
+
+    return this.createDashboard({
+      title: `${modelName} Performance`,
+      description: `${performance.modelType || 'Model'} performance metrics`,
+      type: 'chart',
+      source: 'experiment',
+      config: {
+        chartType: 'bar',
+        colors: ['#8b5cf6'],
+        showLegend: false,
+        animated: true
+      },
+      data: {
+        labels,
+        datasets: [{ label: 'Performance', data: values }]
+      },
+      source_id: modelId,
+      source_table: 'ml_models',
+      category: 'models',
+      tags: ['automl', 'model-performance', performance.modelType || 'ml']
+    });
+  }
+
+  /**
+   * Pin from AI Assistant with rich context
+   */
+  async autoPinFromAI(
+    title: string,
+    content: string,
+    aiResponse: any,
+    datasetId?: string
+  ): Promise<PinnedDashboard | null> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    // Extract potential chart data from sections
+    let chartData: any = null;
+    let chartConfig: any = null;
+    let type: DashboardType = 'insight';
+    let dataSummary = content;
+
+    if (aiResponse?.sections) {
+      // Look for chart sections like in PromptBI example
+      const chartSection = aiResponse.sections.find((s: any) =>
+        s.type === 'chart' || s.content.includes('```json') || s.type === 'data_visualization'
+      );
+
+      if (chartSection) {
+        // Simple heuristic to detect if we have chartable data
+        // In a real implementation this would parser the JSON from the section
+        type = 'chart';
+        chartConfig = { chartType: 'bar', colors: ['#3b82f6'] };
+        // We would extract real data here, for now using a placeholder if parsing fails
+        // but trying to use the section content as the data source
+      }
+    }
+
+    return this.createDashboard({
+      title: title.replace(/^"|"$/g, ''), // Remove quotes if present
+      description: content.substring(0, 150) + (content.length > 150 ? '...' : ''),
+      type: type,
+      source: 'ai_assistant',
+      config: chartConfig || {},
+      data: {
+        summary: dataSummary,
+        // Store the full context for drill-down
+        context: {
+          datasetId: datasetId,
+          fullContent: content,
+          aiSections: aiResponse?.sections
+        },
+        // If we had real chart data extraction, it would go here
+        labels: [],
+        datasets: []
+      },
+      category: 'ai_insights',
+      tags: ['ai-generated', datasetId ? 'dataset-analysis' : 'general'],
+      source_id: datasetId,
+      is_favorite: true
+    });
+  }
+
+  /**
+   * Pin dataset quick stats
+   */
+  async pinFromDataset(
+    datasetId: string,
+    datasetName: string,
+    stats: {
+      rowCount?: number;
+      columnCount?: number;
+      missingValues?: number;
+      dataTypes?: Record<string, number>;
+    }
+  ): Promise<PinnedDashboard | null> {
+    return this.createDashboard({
+      title: `${datasetName} Overview`,
+      description: 'Dataset statistics',
+      type: 'metric',
+      source: 'manual',
+      config: {
+        layout: { width: 1, height: 1 }
+      },
+      data: {
+        value: stats.rowCount || 0,
+        unit: 'rows',
+        summary: `${stats.columnCount || 0} columns, ${stats.missingValues || 0} missing values`
+      },
+      source_id: datasetId,
+      source_table: 'datasets',
+      category: 'general',
+      tags: ['dataset-stats']
     });
   }
 

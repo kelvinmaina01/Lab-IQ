@@ -6,6 +6,7 @@
  */
 
 import { supabase } from "@/integrations/supabase/client";
+import { eventBus, EventTypes, DatasetUploadedPayload } from '@/lib/events';
 
 export interface DeviceDataPoint {
   id: string;
@@ -308,6 +309,24 @@ export async function createDatasetFromStream(
       completeness_score: 100.0,
       consistency_score: 98.0
     });
+
+  // Emit DATASET_UPLOADED event for automation
+  eventBus.emit<DatasetUploadedPayload>(
+    EventTypes.DATASET_UPLOADED,
+    {
+      datasetId: dataset.id,
+      name: datasetName || stream.name,
+      rowCount: streamData.length,
+      columnCount: Object.keys(columns_info).length,
+      fileType: 'csv',
+      domain: 'device_stream',
+    },
+    {
+      source: 'deviceDataService',
+      userId: stream.user_id,
+      metadata: { streamId, sourceType: 'device_stream' },
+    }
+  );
 
   return dataset.id;
 }

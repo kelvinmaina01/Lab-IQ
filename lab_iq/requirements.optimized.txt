@@ -86,7 +86,8 @@ markdown==3.7  # Markdown to HTML conversion
 # ❌ keras - Included in tensorflow (not needed)
 # ❌ catboost - 200MB+ (lightgbm is lighter and faster)
 # ❌ opencv - Not needed for tabular data focus
-# ❌ dask - Not needed for current scale
+# ❌ dask - Not needed for current scal
+e
 #
 # Total Savings: ~2GB+ of dependencies
 # =============================================================================

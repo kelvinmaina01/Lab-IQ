@@ -63,6 +63,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { PinToDashboardButton } from "@/components/dashboard/PinToDashboardButton";
 
 // =============================================================================
 // TYPES
@@ -1052,34 +1053,56 @@ const ModelCard: React.FC<ModelCardProps> = ({ model, onTrain, onDeploy, onDelet
             <p className="text-sm text-muted-foreground">{model.algorithm.replace(/_/g, ' ')}</p>
           </div>
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity">
-              <MoreVertical className="w-4 h-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={onViewDetails}>
-              <Eye className="w-4 h-4 mr-2" />
-              View Details
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={onTrain} disabled={model.status === 'training'}>
-              <Play className="w-4 h-4 mr-2" />
-              {model.status === 'completed' ? 'Retrain' : 'Train'}
-            </DropdownMenuItem>
-            {model.status === 'completed' && (
-              <DropdownMenuItem onClick={onDeploy}>
-                <Rocket className="w-4 h-4 mr-2" />
-                Deploy
+        <div className="flex items-center gap-1">
+          {(model.status === 'completed' || model.status === 'deployed') && (
+            <PinToDashboardButton
+              title={`${model.name} Performance`}
+              description={`${model.type} model - ${model.algorithm}`}
+              type="metric"
+              source="experiment"
+              sourceId={model.id}
+              sourceTable="ml_models"
+              category="models"
+              data={{
+                value: primaryMetric ? Math.round(primaryMetric * 100) / 100 : 0,
+                unit: model.type === 'classification' ? '' : '',
+                summary: model.description || 'ML Model Performance',
+                trend: 'stable'
+              }}
+              variant="ghost"
+              size="sm"
+              showLabel={false}
+            />
+          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity">
+                <MoreVertical className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={onViewDetails}>
+                <Eye className="w-4 h-4 mr-2" />
+                View Details
               </DropdownMenuItem>
-            )}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={onDelete} className="text-destructive">
-              <Trash2 className="w-4 h-4 mr-2" />
-              Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+              <DropdownMenuItem onClick={onTrain} disabled={model.status === 'training'}>
+                <Play className="w-4 h-4 mr-2" />
+                {model.status === 'completed' ? 'Retrain' : 'Train'}
+              </DropdownMenuItem>
+              {model.status === 'completed' && (
+                <DropdownMenuItem onClick={onDeploy}>
+                  <Rocket className="w-4 h-4 mr-2" />
+                  Deploy
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={onDelete} className="text-destructive">
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       {model.description && (

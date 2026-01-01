@@ -348,19 +348,128 @@ const Index = () => {
           </div>
 
           {/* CTA in Data Sources Section */}
-          <div className="text-center animate-fade-in-up" style={{ animationDelay: '0.6s' }}>
-            <Link to="/upload">
-              <Button size="lg" className="gap-2 text-base h-12 px-8 rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-105">
-                <Upload className="w-5 h-5" />
-                Start Uploading Data
-              </Button>
-            </Link>
+          <div className="text-center space-y-6 animate-fade-in-up" style={{ animationDelay: '0.6s' }}>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link to="/upload">
+                <Button size="lg" className="gap-2 text-base h-12 px-8 rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-105">
+                  <Upload className="w-5 h-5" />
+                  Upload Files
+                </Button>
+              </Link>
+              <Link to="/upload?mode=connect">
+                <Button size="lg" variant="outline" className="gap-2 text-base h-12 px-8 rounded-full hover:scale-105 transition-all border-primary/50 hover:border-primary">
+                  <Cloud className="w-5 h-5" />
+                  Connect Cloud Sources
+                </Button>
+              </Link>
+              <Link to="/upload?mode=database">
+                <Button size="lg" variant="outline" className="gap-2 text-base h-12 px-8 rounded-full hover:scale-105 transition-all">
+                  <Server className="w-5 h-5" />
+                  Link Database
+                </Button>
+              </Link>
+            </div>
           </div>
 
           {/* Disclaimer */}
           <p className="text-center text-xs text-muted-foreground mt-6">
             For research and analysis purposes only. Not for real-time clinical decision-making.
           </p>
+        </div>
+      </section>
+
+      {/* NEW: Automation Intelligence Banner */}
+      <section className="py-16 px-4 bg-gradient-to-r from-primary/5 via-background to-secondary/5 border-y border-border/40">
+        <div className="container mx-auto max-w-6xl">
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            <div className="space-y-6 animate-fade-in-up">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20">
+                <Zap className="w-4 h-4 text-primary animate-pulse" />
+                <span className="text-sm font-medium text-primary">Automation-First Intelligence</span>
+              </div>
+              <h2 className="text-3xl md:text-4xl font-bold leading-tight">
+                Your data doesn't just sit there.<br />
+                <span className="text-muted-foreground">It drives the entire system.</span>
+              </h2>
+              <p className="text-lg text-muted-foreground leading-relaxed">
+                When you connect a cloud source or upload a dataset, LabIQ Health doesn't wait for you to click buttons.
+                The system <strong>automatically:</strong>
+              </p>
+              <ul className="space-y-3">
+                {[
+                  { icon: Database, text: "Validates & profiles your data" },
+                  { icon: Brain, text: "Classifies the health domain" },
+                  { icon: Workflow, text: "Triggers relevant analysis workflows" },
+                  { icon: HeartPulse, text: "Detects anomalies & quality issues" },
+                  { icon: TrendingUp, text: "Generates AI insights you didn't ask for" },
+                ].map((item, idx) => {
+                  const Icon = item.icon;
+                  return (
+                    <li key={idx} className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <Icon className="w-4 h-4 text-primary" />
+                      </div>
+                      <span className="text-foreground">{item.text}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+
+            <Card className="p-8 bg-card border-primary/20 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+              <div className="space-y-6">
+                <div className="text-center space-y-2">
+                  <h3 className="text-xl font-bold">Connect Your First Data Source</h3>
+                  <p className="text-sm text-muted-foreground">Watch the automation unfold</p>
+                </div>
+
+                <div className="space-y-3">
+                  <Link to="/upload?mode=connect" className="block">
+                    <Button size="lg" className="w-full gap-3 h-14 text-base justify-start px-6 rounded-xl hover:scale-[1.02] transition-all">
+                      <div className="w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center">
+                        <Cloud className="w-5 h-5" />
+                      </div>
+                      <div className="text-left">
+                        <div className="font-semibold">Cloud Platforms</div>
+                        <div className="text-xs opacity-80">Google Drive, Dropbox, S3, Azure</div>
+                      </div>
+                    </Button>
+                  </Link>
+
+                  <Link to="/upload?mode=database" className="block">
+                    <Button size="lg" variant="outline" className="w-full gap-3 h-14 text-base justify-start px-6 rounded-xl hover:scale-[1.02] transition-all">
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <Server className="w-5 h-5 text-primary" />
+                      </div>
+                      <div className="text-left">
+                        <div className="font-semibold">Databases & Warehouses</div>
+                        <div className="text-xs text-muted-foreground">PostgreSQL, Snowflake, BigQuery</div>
+                      </div>
+                    </Button>
+                  </Link>
+
+                  <Link to="/device-streams" className="block">
+                    <Button size="lg" variant="outline" className="w-full gap-3 h-14 text-base justify-start px-6 rounded-xl hover:scale-[1.02] transition-all">
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <Activity className="w-5 h-5 text-primary" />
+                      </div>
+                      <div className="text-left">
+                        <div className="font-semibold">Live Device Streams</div>
+                        <div className="text-xs text-muted-foreground">Wearables, IoT, real-time APIs</div>
+                      </div>
+                    </Button>
+                  </Link>
+                </div>
+
+                <div className="pt-4 border-t border-border/40">
+                  <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                    <Lock className="w-3 h-3" />
+                    <span>End-to-end encrypted. Your data never leaves your control.</span>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </div>
         </div>
       </section>
 

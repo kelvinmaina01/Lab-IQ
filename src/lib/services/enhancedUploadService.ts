@@ -10,6 +10,7 @@
  */
 
 import { supabase } from "@/integrations/supabase/client";
+import { eventBus, EventTypes, DatasetUploadedPayload } from '@/lib/events';
 
 export interface IngestionJob {
   id: string;
@@ -242,6 +243,22 @@ export async function uploadFileWithProgress(
       percentage: 100,
       currentStep: 'Upload complete!'
     });
+
+    // Emit DATASET_UPLOADED event for automation
+    eventBus.emit<DatasetUploadedPayload>(
+      EventTypes.DATASET_UPLOADED,
+      {
+        datasetId: dataset.id,
+        name: file.name.replace(/\.[^/.]+$/, ''),
+        rowCount: fileContent.rows.length,
+        columnCount: fileContent.columns.length,
+        fileType: file.name.split('.').pop() || 'unknown',
+      },
+      {
+        source: 'enhancedUploadService',
+        userId,
+      }
+    );
 
     return {
       jobId,

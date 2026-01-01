@@ -101,18 +101,20 @@ export interface AIResponse {
   metadata?: Record<string, any>;
   cached?: boolean;
   computedData?: ComputedData;
+  suggestions?: string[];
 }
 
 export interface AISection {
-  type: 'heading' | 'paragraph' | 'list' | 'chart' | 'insight' | 'metric' | 'recommendation';
+  type: 'heading' | 'paragraph' | 'list' | 'chart' | 'insight' | 'metric' | 'kpi_grid' | 'recommendation' | 'thought_process';
   content?: string;
   title?: string;
   items?: string[];
-  chartType?: 'bar' | 'line' | 'pie' | 'scatter' | 'area';
+  chartType?: 'bar' | 'line' | 'pie' | 'scatter' | 'area' | 'heatmap';
   data?: ChartData;
   value?: string | number;
   trend?: 'up' | 'down' | 'stable';
   priority?: 'low' | 'medium' | 'high' | 'critical';
+  kpis?: { title: string; value: string | number; trend?: 'up' | 'down' | 'stable'; change?: string }[];
 }
 
 export interface ChartData {
@@ -545,14 +547,64 @@ abstract class BaseAIAgent {
   protected parseJSON<T>(text: string): T | null {
     try {
       let cleaned = text.trim();
-      // Remove markdown code blocks
-      if (cleaned.startsWith('```json')) {
-        cleaned = cleaned.replace(/```json\n?/, '').replace(/```\n?$/, '');
-      } else if (cleaned.startsWith('```')) {
-        cleaned = cleaned.replace(/```\n?/, '').replace(/```\n?$/, '');
+
+      // Strategy 1: Regex for markdown block (Most reliable if formatted correctly)
+      const markdownMatch = cleaned.match(/```(?:json)?\n?([\s\S]*?)\n?```/i);
+      if (markdownMatch) {
+        try { return JSON.parse(markdownMatch[1]); } catch { }
       }
+
+      // Strategy 2: Stack-based brace matching (String aware)
+      const firstOpen = cleaned.indexOf('{');
+      if (firstOpen !== -1) {
+        let balance = 0;
+        let inString = false;
+        let escape = false;
+        let foundStart = false;
+
+        for (let i = firstOpen; i < cleaned.length; i++) {
+          const char = cleaned[i];
+
+          if (inString) {
+            if (escape) {
+              escape = false;
+            } else if (char === '\\') {
+              escape = true;
+            } else if (char === '"') {
+              inString = false;
+            }
+          } else {
+            if (char === '"') {
+              inString = true;
+            } else if (char === '{') {
+              balance++;
+              foundStart = true;
+            } else if (char === '}') {
+              balance--;
+              if (foundStart && balance === 0) {
+                const potentialJson = cleaned.substring(firstOpen, i + 1);
+                try {
+                  return JSON.parse(potentialJson);
+                } catch (e) {
+                  try { return JSON.parse(potentialJson.replace(/\n/g, '\\n')); } catch { }
+                }
+                break;
+              }
+            }
+          }
+        }
+      }
+
+      // Strategy 3: Heuristic find (fallback)
+      const lastClose = cleaned.lastIndexOf('}');
+      if (firstOpen !== -1 && lastClose > firstOpen) {
+        try { return JSON.parse(cleaned.substring(firstOpen, lastClose + 1)); } catch { }
+      }
+
+      // Strategy 4: Direct
       return JSON.parse(cleaned);
     } catch {
+      console.warn('Failed to parse AI JSON response');
       return null;
     }
   }
@@ -573,7 +625,8 @@ class DataAnalysisAgent extends BaseAIAgent {
     datasetId: string,
     query: string,
     mode: 'analysis' | 'automl' | 'educator' = 'analysis',
-    conversationHistory: { role: string; content: string }[] = []
+    conversationHistory: { role: string; content: string }[] = [],
+    isPlanningMode: boolean = false
   ): Promise<AIResponse> {
     // Step 1: Fetch and compute real data statistics
     const computedData = await this.computeDataStatistics(datasetId);
@@ -582,44 +635,227 @@ class DataAnalysisAgent extends BaseAIAgent {
     const dataContext = this.buildDataContext(computedData);
 
     // Step 3: Get AI explanation of the computed data
-    const systemPrompt = this.getSystemPrompt(mode, dataContext);
+
+    const systemPrompt = this.getSystemPrompt(mode, dataContext, isPlanningMode);
     const historyContext = conversationHistory.length > 0
       ? `\nConversation history:\n${conversationHistory.map(m => `${m.role}: ${m.content}`).join('\n')}\n`
       : '';
+
+    const planningInstructions = isPlanningMode
+      ? `
+PLANNING MODE ENABLED - PRO EXPERT ANALYST:
+You are LabIQ's Senior Data Architect. Your goal is to provide a comprehensive, rigorous, and code-first analysis.
+
+ANALYSIS WORKFLOW:
+1.  **OBJECTIVE**: Define clear goals based on the user query.
+2.  **DATA PREPARATION**: Inspect the dataset for missing values, duplicates, outliers, and type issues.
+3.  **DATA TRANSFORMATION**: Explain feature engineering, binning, or aggregations needed.
+4.  **ANALYSIS**: Perform deep descriptive and comparable analysis.
+5.  **VISUALIZATION**: Select the *perfect* charts to prove your points.
+
+OUTPUT REQUIREMENTS (STRICT JSON):
+sections: [
+  // 1. KPI GRID (Mandatory First Section)
+  {
+    "type": "kpi_grid",
+    "kpis": [
+       { "title": "Total Datasets", "value": "1.2K" },
+       { "title": "Avg Usability", "value": "8.5" }
+       ...
+    ]
+  },
+  // 2. CODE BLOCK (Mandatory - Show HOW you analyzed)
+  {
+    "type": "code",
+    "title": "Data Analysis Logic",
+    "language": "python",
+    "code": "import pandas as pd...", 
+    "codeExplanation": "I loaded the dataset, cleaned 'Rank' column, and calculated correlations...",
+    "codeSteps": ["Loaded data", "Cleaned Rank", "Computed KPIs"]
+  },
+  // 3. THOUGHT PROCESS (Detailed text)
+  {
+    "type": "paragraph",
+    "title": "Analysis Methodology",
+    "content": "**Objective:** Analyze dataset trends...\\n**Data Transformation:** Converted file sizes to MB..."
+  },
+  // 4. VISUALS (Clustered Bars, Scatter, Pies)
+  {
+    "type": "chart", 
+    "chartType": "bar", 
+    "title": "Production by Region",
+    "xLabel": "Region",
+    "yLabel": "Volume",
+    "data": {
+      "labels": ["Gulf", "Pacific", "Alaska"],
+      "values": [450, 120, 300]
+    }
+  },
+  // 5. TABLE (Detailed Data View)
+  {
+      "type": "table",
+      "title": "Dataset Details",
+      "tableData": {
+          "columns": ["Title", "Author", "Upvotes"],
+          "rows": [
+              {"Title": "Global Height", "Author": "Willian", "Upvotes": 5},
+              {"Title": "Mental Health", "Author": "John", "Upvotes": 12}
+          ]
+      }
+  }
+]
+
+RULES:
+-   **Show Code**: Every analysis must be backed by a "code" section showing the Python logic.
+-   **Exact Columns**: Use actual column names in charts.
+-   **No Hallucinations**: Only use the computed data provided in context.
+-   **Professional Tone**: Speak like a Lead Analyst.
+`
+      : `
+FAST MODE - COMPREHENSIVE PROFESSIONAL ANALYSIS:
+You are a Senior Data Scientist at a Fortune 500 company. Your responses must be THOROUGH and PROFESSIONAL.
+
+MANDATORY OUTPUT STRUCTURE (MINIMUM 10-15 sections):
+
+1. thoughtProcess (REQUIRED - 8-12 detailed steps):
+   Format each step as "PHASE: Detailed description of what was done"
+   Example steps:
+   - "OBJECTIVE: The user wants to compare usability ratings of the most upvoted dataset against the overall average to assess relative quality."
+   - "DATA VALIDATION: Checked for missing values in Upvotes (0 missing) and Usability_Rating (2 missing, excluded from calculations)."
+   - "DUPLICATE CHECK: Identified 0 duplicate rows based on Title column."
+   - "TYPE CONVERSION: Ensured Upvotes is integer type and Usability_Rating is float for accurate calculations."
+   - "OUTLIER DETECTION: Found 3 outliers in Usability_Rating (values > 10), capped at 10."
+   - "DATA TRANSFORMATION: Filtered dataset to rows with valid ratings, sorted by Upvotes descending."
+   - "AGGREGATION: Calculated mean Usability_Rating across all valid entries (8.42)."
+   - "COMPARISON: Extracted rating for max-upvotes dataset and compared against average."
+   - "VISUALIZATION: Selected bar chart to clearly show comparison between top dataset and average."
+   - "INSIGHT GENERATION: Identified that top dataset exceeds average by 12%, indicating correlation between popularity and usability."
+
+2. sections array MUST include ALL of these (in order):
+   a) kpi_grid - 4-6 key metrics with trends
+   b) code - COMPLETE Python/Pandas analysis code (20+ lines, properly formatted)
+   c) paragraph - Analysis methodology explanation
+   d) chart - Primary visualization (bar/line/pie with real data)
+   e) table - Data sample or comparison table (5-10 rows)
+   f) chart - Secondary visualization (different chart type)
+   g) insight - Key finding 1 (Primary Discovery) with priority
+   h) insight - Key finding 2 (Secondary Pattern) with priority
+   i) insight - Key finding 3 (Unexpected/Interesting) with priority
+   j) paragraph - Synthesis of findings and implications
+   k) insight - Strategic Recommendations (at least 2 actionable steps)
+   l) list - Next steps or additional analysis suggestions
+
+3. CODE SECTION REQUIREMENTS:
+   - Must be 20-40 lines of actual Python/Pandas code
+   - Include imports, data loading, cleaning, analysis, and output
+   - Show actual column names from the dataset
+   - Include comments explaining each step
+   - codeSteps should have 5-8 detailed steps
+
+4. CHART REQUIREMENTS:
+   - Include at least 2 different chart types
+   - Use real data values (not placeholders)
+   - Include proper labels and values arrays
+   - Chart title should be descriptive
+
+5. INSIGHT REQUIREMENTS (CRITICAL):
+   - You MUST generate at least 3 distinct 'insight' sections
+   - Each insight must be deep, data-driven, and specific
+   - Include numbers, percentages, and statistical significance where possible
+   - Do not combine all findings into one block; split them for impact
+
+DO NOT BE LAZY. This is a production system. Generate COMPREHENSIVE, MULTI-FACETED output.
+`;
 
     const fullPrompt = `${systemPrompt}${historyContext}
 
 User question: ${query}
 
-IMPORTANT: Base your response ONLY on the computed data provided above. Do not invent or hallucinate any numbers.
+${planningInstructions}
 
-Respond with JSON:
+ABSOLUTELY CRITICAL - READ CAREFULLY:
+You MUST respond with ONLY a valid JSON object. 
+NO markdown. NO explanatory text. NO ** formatting. NO text before or after the JSON.
+Start your response with { and end with }
+
+The JSON structure MUST be exactly:
 {
+  "thoughtProcess": [
+    "OBJECTIVE: ...",
+    "DATA VALIDATION: ...",
+    "DATA TRANSFORMATION: ...",
+    "ANALYSIS: ...",
+    "VISUALIZATION: ..."
+  ],
   "sections": [
-    {"type": "heading", "content": "Title"},
-    {"type": "paragraph", "content": "Explanation based on the computed data..."},
-    {"type": "metric", "title": "Key Metric", "value": "actual computed value", "trend": "up|down|stable"},
-    {"type": "list", "title": "Key Points", "items": ["Point 1", "Point 2"]},
-    {"type": "chart", "chartType": "bar|line|pie", "title": "Chart Title", "data": {"labels": [...], "values": [...]}},
-    {"type": "insight", "title": "Insight", "content": "...", "priority": "low|medium|high"},
-    {"type": "recommendation", "title": "Recommendation", "content": "..."}
-  ]
-}`;
+    {"type": "kpi_grid", "kpis": [{"title": "...", "value": "...", "trend": "up"}]},
+    {"type": "code", "title": "Analysis Code", "language": "python", "code": "import pandas as pd\\n...", "codeExplanation": "...", "codeSteps": ["Step 1", "Step 2"]},
+    {"type": "paragraph", "content": "Detailed analysis text here..."},
+    {"type": "chart", "chartType": "bar", "title": "Chart Title", "data": {"labels": ["A", "B"], "values": [10, 20]}},
+    {"type": "table", "title": "Data Table", "tableData": {"columns": ["Col1", "Col2"], "rows": [{"Col1": "val1", "Col2": "val2"}]}},
+    {"type": "insight", "title": "Key Finding", "content": "Insight text...", "priority": "high"}
+  ],
+  "suggestions": ["Follow-up question 1", "Follow-up question 2"]
+}
+
+RESPOND WITH ONLY THE JSON OBJECT. NO OTHER TEXT.`;
+
 
     try {
       const aiResponse = await this.callAI(fullPrompt);
-      const parsed = this.parseJSON<{ sections: AISection[] }>(aiResponse);
+      console.log('[LabIQAI] Raw AI Response length:', aiResponse.length);
+
+      const parsed = this.parseJSON<{ sections: AISection[], suggestions?: string[], thoughtProcess?: string[] }>(aiResponse);
+
+      // Build sections - use parsed if available, otherwise create clean fallback
+      let sections: AISection[] = [];
+
+      if (parsed?.sections && parsed.sections.length > 0) {
+        sections = parsed.sections;
+        console.log('[LabIQAI] Parsed sections:', sections.length);
+      } else {
+        // Create a clean paragraph fallback - DO NOT show raw JSON
+        console.warn('[LabIQAI] JSON parsing failed, creating clean fallback');
+
+        // Try to extract meaningful text from response
+        let cleanText = aiResponse;
+
+        // Remove JSON-like content
+        cleanText = cleanText.replace(/```[\s\S]*?```/g, '');
+        cleanText = cleanText.replace(/\{[\s\S]*?\}/g, '');
+        cleanText = cleanText.replace(/\[[\s\S]*?\]/g, '');
+        cleanText = cleanText.replace(/"[^"]+"\s*:/g, '');
+        cleanText = cleanText.trim();
+
+        if (cleanText.length < 50) {
+          cleanText = 'Analysis complete. The AI processed your query but the response format was unexpected. Please try rephrasing your question.';
+        }
+
+        sections = [{
+          type: 'paragraph',
+          content: cleanText
+        }];
+      }
+
+      // Inject thought process into sections if available at root
+      if (parsed?.thoughtProcess && parsed.thoughtProcess.length > 0) {
+        sections.unshift({
+          type: 'thought_process',
+          items: parsed.thoughtProcess
+        });
+      }
 
       return {
         success: true,
         content: 'Analysis complete',
-        sections: parsed?.sections || [{ type: 'paragraph', content: aiResponse }],
+        sections: sections,
+        suggestions: parsed?.suggestions || [],
         computedData,
       };
     } catch (error) {
       return {
         success: false,
-        content: `Analysis failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        content: `Analysis failed: ${error instanceof Error ? error.message : 'Unknown error'} `,
       };
     }
   }
@@ -716,13 +952,13 @@ Respond with JSON:
     if (!data.statistics) return 'No data available.';
 
     const stats = data.statistics;
-    let context = `COMPUTED DATA (Real values - do not hallucinate):
-- Total Rows: ${stats.rowCount}
-- Total Columns: ${stats.columnCount}
-- Missing Values: ${stats.missingValues}
+    let context = `COMPUTED DATA(Real values - do not hallucinate):
+    - Total Rows: ${stats.rowCount}
+    - Total Columns: ${stats.columnCount}
+    - Missing Values: ${stats.missingValues}
 
-Columns:
-${stats.columns.map(c => `  - ${c.name} (${c.type}): ${c.count} values, ${c.unique} unique${c.mean !== undefined ? `, mean=${c.mean.toFixed(2)}` : ''}`).join('\n')}`;
+    Columns:
+${stats.columns.map(c => `  - ${c.name} (${c.type}): ${c.count} values, ${c.unique} unique${c.mean !== undefined ? `, mean=${c.mean.toFixed(2)}` : ''}`).join('\n')} `;
 
     if (data.correlations) {
       context += `\n\nCorrelations computed between numeric columns.`;
@@ -735,71 +971,71 @@ ${stats.columns.map(c => `  - ${c.name} (${c.type}): ${c.count} values, ${c.uniq
     return context;
   }
 
-  private getSystemPrompt(mode: string, dataContext: string): string {
+  private getSystemPrompt(mode: string, dataContext: string, isPlanningMode: boolean = false): string {
     // Domain-specific prompts for biotech, clinical, biopharma
     const domainPrompts: Record<string, string> = {
       biotech: `You are LabIQ Health's Biotech Data Analysis Expert specializing in:
-- Genomics: DNA/RNA sequences, gene expression, SNP analysis, variant calling
-- Proteomics: Protein structure, mass spectrometry, post-translational modifications
-- Cell Biology: Cell culture, viability assays, flow cytometry analysis
-- Bioprocessing: Fermentation, bioreactor optimization, yield analysis
+      - Genomics: DNA / RNA sequences, gene expression, SNP analysis, variant calling
+        - Proteomics: Protein structure, mass spectrometry, post - translational modifications
+          - Cell Biology: Cell culture, viability assays, flow cytometry analysis
+            - Bioprocessing: Fermentation, bioreactor optimization, yield analysis
 
-Key biotech metrics: Fold change, log2 ratios, Phred quality scores, FDR-corrected p-values.
+Key biotech metrics: Fold change, log2 ratios, Phred quality scores, FDR - corrected p - values.
 Normalization methods: TPM, FPKM, CPM for expression data.`,
 
       clinical: `You are LabIQ Health's Clinical Data Analysis Expert specializing in:
-- Patient Outcomes: Survival analysis, readmission prediction, mortality risk
-- Laboratory Values: Reference ranges, critical values, trends
-- Vital Signs: Blood pressure, heart rate, temperature, SpO2
-- Treatment Response: Efficacy endpoints, adverse events, drug interactions
+      - Patient Outcomes: Survival analysis, readmission prediction, mortality risk
+        - Laboratory Values: Reference ranges, critical values, trends
+          - Vital Signs: Blood pressure, heart rate, temperature, SpO2
+            - Treatment Response: Efficacy endpoints, adverse events, drug interactions
 
 Clinical Reference Ranges:
-- Glucose (fasting): 70-100 mg/dL
-- Blood Pressure: <120/80 mmHg (normal), >140/90 mmHg (hypertension)
-- HbA1c: <5.7% (normal), 5.7-6.4% (prediabetic), ≥6.5% (diabetic)
-- eGFR: >90 mL/min/1.73m² (normal kidney function)
-- BMI: 18.5-24.9 (normal)
+    - Glucose(fasting): 70 - 100 mg / dL
+      - Blood Pressure: <120/80 mmHg (normal), >140/90 mmHg(hypertension)
+        - HbA1c: <5.7% (normal), 5.7 - 6.4 % (prediabetic), ≥6.5 % (diabetic)
+          - eGFR: > 90 mL / min / 1.73m² (normal kidney function)
+    - BMI: 18.5 - 24.9(normal)
 
 Always flag values outside normal ranges and note clinical significance.`,
 
       biopharma: `You are LabIQ Health's Biopharma & Drug Development Expert specializing in:
-- Drug Discovery: Hit identification, lead optimization, SAR analysis
-- ADME/Tox: Absorption, distribution, metabolism, excretion, toxicity
-- Pharmacokinetics: Cmax, Tmax, AUC, half-life, clearance, bioavailability
-- Clinical Trials: Endpoint analysis, safety monitoring, efficacy assessment
+      - Drug Discovery: Hit identification, lead optimization, SAR analysis
+        - ADME / Tox: Absorption, distribution, metabolism, excretion, toxicity
+          - Pharmacokinetics: Cmax, Tmax, AUC, half - life, clearance, bioavailability
+            - Clinical Trials: Endpoint analysis, safety monitoring, efficacy assessment
 
-Drug-Likeness (Lipinski's Rule): MW≤500, LogP≤5, HBD≤5, HBA≤10
-Potency: IC50 < 100 nM (highly potent)
-Safety: hERG IC50 > 30 μM (low cardiac risk)`,
+    Drug - Likeness(Lipinski's Rule): MW≤500, LogP≤5, HBD≤5, HBA≤10
+Potency: IC50 < 100 nM(highly potent)
+Safety: hERG IC50 > 30 μM(low cardiac risk)`,
 
       chemistry: `You are LabIQ Health's Laboratory Chemistry Expert specializing in:
-- Analytical Chemistry: Chromatography (HPLC, GC), spectroscopy (NMR, MS, IR)
-- Synthesis: Reaction optimization, yield improvement, purity assessment
-- Quality Control: Method validation, stability studies, batch analysis
-- Process Chemistry: Scale-up considerations, process parameters`,
+    - Analytical Chemistry: Chromatography(HPLC, GC), spectroscopy(NMR, MS, IR)
+    - Synthesis: Reaction optimization, yield improvement, purity assessment
+    - Quality Control: Method validation, stability studies, batch analysis
+    - Process Chemistry: Scale - up considerations, process parameters`,
     };
 
     const modeInstructions: Record<string, string> = {
       analysis: `You are LabIQ Health's data analysis assistant for biotech, clinical, and health sector data.
 Provide statistical insights, identify patterns specific to the domain, and explain data characteristics.
-Focus on accuracy, clinical/biological relevance, and actionable insights.
-${domainPrompts.clinical}
+Focus on accuracy, clinical / biological relevance, and actionable insights.
+      ${domainPrompts.clinical}
 ${domainPrompts.biotech}`,
       automl: `You are LabIQ Health's machine learning assistant specialized for biotech and healthcare data.
-Recommend domain-appropriate algorithms, explain model selection for clinical/biological data,
-suggest feature engineering relevant to health sciences, and interpret results in medical/scientific context.
-For clinical data: Prefer interpretable models (Logistic Regression, Decision Trees) for patient outcomes.
-For biotech data: Consider specialized tools (DESeq2, edgeR) for expression analysis.
-For biopharma: Include QSAR models and structure-activity analysis.`,
+Recommend domain - appropriate algorithms, explain model selection for clinical / biological data,
+      suggest feature engineering relevant to health sciences, and interpret results in medical / scientific context.
+For clinical data: Prefer interpretable models(Logistic Regression, Decision Trees) for patient outcomes.
+For biotech data: Consider specialized tools(DESeq2, edgeR) for expression analysis.
+For biopharma: Include QSAR models and structure - activity analysis.`,
       educator: `You are LabIQ Health's data science educator for healthcare and life sciences.
-Explain concepts clearly with medical/biological examples, use clinical analogies,
-and help users understand data analysis principles in the context of health research.
+Explain concepts clearly with medical / biological examples, use clinical analogies,
+      and help users understand data analysis principles in the context of health research.
 Ensure explanations are accessible to researchers who may not have ML backgrounds.`,
     };
 
     return `${modeInstructions[mode] || modeInstructions.analysis}
 
-${dataContext}`;
+${dataContext} `;
   }
 }
 
@@ -820,33 +1056,38 @@ class ExperimentAgent extends BaseAIAgent {
     // Fetch dataset info for context
     const { data: dataset } = await supabase
       .from('datasets')
-      .select('name, description, columns, row_count')
+      .select('name, description, row_count')
       .eq('id', datasetId)
       .single();
+
+    const { data: columnsData } = await supabase
+      .from('dataset_columns')
+      .select('column_name')
+      .eq('dataset_id', datasetId);
 
     const prompt = `You are LabIQ Health's experiment configuration assistant.
 
 Dataset: ${dataset?.name || 'Unknown'}
 Description: ${dataset?.description || 'No description'}
-Columns: ${JSON.stringify(dataset?.columns || [])}
+Columns: ${JSON.stringify(columnsData?.map((c: any) => c.column_name) || [])}
 Row Count: ${dataset?.row_count || 0}
 ${experimentType ? `Experiment Type: ${experimentType}` : ''}
 ${existingConfig ? `Current Config: ${JSON.stringify(existingConfig)}` : ''}
 
-Generate intelligent experiment suggestions. Return JSON:
-{
-  "name": "Suggested experiment name",
-  "description": "Detailed description of what this experiment will analyze and why",
-  "hypothesis": "What we expect to find or test",
-  "methodology": "Step-by-step approach",
-  "targetColumn": "recommended target variable if applicable",
-  "features": ["recommended feature columns"],
-  "parameters": {
-    "key": "value"
-  },
-  "expectedOutcomes": ["What results to expect"],
-  "risks": ["Potential issues to watch for"]
-}`;
+Generate intelligent experiment suggestions.Return JSON:
+    {
+      "name": "Suggested experiment name",
+        "description": "Detailed description of what this experiment will analyze and why",
+          "hypothesis": "What we expect to find or test",
+            "methodology": "Step-by-step approach",
+              "targetColumn": "recommended target variable if applicable",
+                "features": ["recommended feature columns"],
+                  "parameters": {
+        "key": "value"
+      },
+      "expectedOutcomes": ["What results to expect"],
+        "risks": ["Potential issues to watch for"]
+    } `;
 
     try {
       const response = await this.callAI(prompt);
@@ -860,14 +1101,14 @@ Generate intelligent experiment suggestions. Return JSON:
     } catch (error) {
       return {
         success: false,
-        content: `Failed to generate suggestions: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        content: `Failed to generate suggestions: ${error instanceof Error ? error.message : 'Unknown error'} `,
       };
     }
   }
 
   async suggestDescription(name: string, datasetInfo?: string): Promise<string> {
-    const prompt = `Generate a professional, concise experiment description (2-3 sentences) for:
-Name: ${name}
+    const prompt = `Generate a professional, concise experiment description(2 - 3 sentences) for:
+      Name: ${name}
 ${datasetInfo ? `Dataset context: ${datasetInfo}` : ''}
 
 Return only the description text, no JSON.`;
@@ -902,31 +1143,31 @@ class BottleneckAgent extends BaseAIAgent {
   ): Promise<AIResponse> {
     const prompt = `You are LabIQ Health's performance analysis agent. Analyze these metrics for bottlenecks:
 
-Metrics:
-- Processing Time: ${metrics.processingTime ?? 'N/A'} ms
-- Memory Usage: ${metrics.memoryUsage ?? 'N/A'}%
-- CPU Usage: ${metrics.cpuUsage ?? 'N/A'}%
-- Query Count: ${metrics.queryCount ?? 'N/A'}
-- Error Rate: ${metrics.errorRate ?? 'N/A'}%
-- Data Size: ${metrics.dataSize ?? 'N/A'} MB
+    Metrics:
+    - Processing Time: ${metrics.processingTime ?? 'N/A'} ms
+      - Memory Usage: ${metrics.memoryUsage ?? 'N/A'}%
+        - CPU Usage: ${metrics.cpuUsage ?? 'N/A'}%
+          - Query Count: ${metrics.queryCount ?? 'N/A'}
+    - Error Rate: ${metrics.errorRate ?? 'N/A'}%
+      - Data Size: ${metrics.dataSize ?? 'N/A'} MB
 
 ${context ? `Context: ${context}` : ''}
 
-Identify bottlenecks and provide actionable recommendations. Return JSON:
-{
-  "bottlenecks": [
+Identify bottlenecks and provide actionable recommendations.Return JSON:
     {
-      "type": "memory|cpu|io|query|network",
-      "severity": "low|medium|high|critical",
-      "description": "What's causing the issue",
-      "impact": "How it affects performance",
-      "recommendation": "How to fix it"
-    }
-  ],
-  "overallHealth": "good|warning|critical",
-  "prioritizedActions": ["Action 1", "Action 2"],
-  "estimatedImprovement": "Expected improvement after fixes"
-}`;
+      "bottlenecks": [
+        {
+          "type": "memory|cpu|io|query|network",
+          "severity": "low|medium|high|critical",
+          "description": "What's causing the issue",
+          "impact": "How it affects performance",
+          "recommendation": "How to fix it"
+        }
+      ],
+        "overallHealth": "good|warning|critical",
+          "prioritizedActions": ["Action 1", "Action 2"],
+            "estimatedImprovement": "Expected improvement after fixes"
+    } `;
 
     try {
       const response = await this.callAI(prompt);
@@ -976,7 +1217,7 @@ Identify bottlenecks and provide actionable recommendations. Return JSON:
     } catch (error) {
       return {
         success: false,
-        content: `Analysis failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        content: `Analysis failed: ${error instanceof Error ? error.message : 'Unknown error'} `,
       };
     }
   }
@@ -1002,23 +1243,23 @@ class PredictiveInsightAgent extends BaseAIAgent {
 
     const prompt = `You are LabIQ Health's predictive analytics agent.
 
-Metric: ${metricName}
+    Metric: ${metricName}
 Historical Data Points: ${historicalData.length}
 Computed Trend: ${trend.direction} (${trend.changePercent.toFixed(1)}% change)
-Timeframe: ${timeframe}
+    Timeframe: ${timeframe}
 
-Based on the computed trend, provide insights. Return JSON:
-{
-  "prediction": {
-    "value": ${prediction.value.toFixed(2)},
-    "confidence": ${prediction.confidence.toFixed(2)},
-    "range": {"low": ${prediction.low.toFixed(2)}, "high": ${prediction.high.toFixed(2)}}
-  },
-  "insight": "Explanation of what this means",
-  "factors": ["Factor 1", "Factor 2"],
-  "recommendations": ["Action 1", "Action 2"],
-  "risks": ["Risk 1"]
-}`;
+Based on the computed trend, provide insights.Return JSON:
+    {
+      "prediction": {
+        "value": ${prediction.value.toFixed(2)},
+        "confidence": ${prediction.confidence.toFixed(2)},
+        "range": { "low": ${prediction.low.toFixed(2)}, "high": ${prediction.high.toFixed(2)} }
+      },
+      "insight": "Explanation of what this means",
+        "factors": ["Factor 1", "Factor 2"],
+          "recommendations": ["Action 1", "Action 2"],
+            "risks": ["Risk 1"]
+    } `;
 
     try {
       const response = await this.callAI(prompt);
@@ -1027,7 +1268,7 @@ Based on the computed trend, provide insights. Return JSON:
       const sections: AISection[] = [
         {
           type: 'metric',
-          title: `Predicted ${metricName}`,
+          title: `Predicted ${metricName} `,
           value: parsed?.prediction?.value ?? prediction.value.toFixed(2),
           trend: trend.direction === 'increasing' ? 'up' : trend.direction === 'decreasing' ? 'down' : 'stable',
         },
@@ -1064,7 +1305,7 @@ Based on the computed trend, provide insights. Return JSON:
     } catch (error) {
       return {
         success: false,
-        content: `Prediction failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        content: `Prediction failed: ${error instanceof Error ? error.message : 'Unknown error'} `,
       };
     }
   }
@@ -1159,10 +1400,10 @@ class QuickInsightAgent extends BaseAIAgent {
     type: 'eta' | 'summary' | 'recommendation' | 'anomaly'
   ): Promise<AIResponse> {
     const prompts: Record<string, string> = {
-      eta: `Based on this context, provide a brief ETA prediction (1-2 sentences): ${context}`,
-      summary: `Summarize this data in 2-3 bullet points: ${context}`,
-      recommendation: `Provide 1-2 actionable recommendations based on: ${context}`,
-      anomaly: `Identify any anomalies or unusual patterns in: ${context}`,
+      eta: `Based on this context, provide a brief ETA prediction(1 - 2 sentences): ${context} `,
+      summary: `Summarize this data in 2 - 3 bullet points: ${context} `,
+      recommendation: `Provide 1 - 2 actionable recommendations based on: ${context} `,
+      anomaly: `Identify any anomalies or unusual patterns in: ${context} `,
     };
 
     try {
@@ -1356,9 +1597,9 @@ export class LabIQAI {
       // Use getOrFetch for deduplication
       const result = await this.cache.getOrFetch(cacheKey, async () => {
         const prompts: Record<string, string> = {
-          experiment: `Generate a professional 2-3 sentence description for an experiment named "${name}". ${context || ''}`,
-          dataset: `Generate a professional 1-2 sentence description for a dataset named "${name}". ${context || ''}`,
-          workflow: `Generate a professional 2-3 sentence description for an automation workflow named "${name}". ${context || ''}`,
+          experiment: `Generate a professional 2 - 3 sentence description for an experiment named "${name}".${context || ''} `,
+          dataset: `Generate a professional 1 - 2 sentence description for a dataset named "${name}".${context || ''} `,
+          workflow: `Generate a professional 2 - 3 sentence description for an automation workflow named "${name}".${context || ''} `,
         };
 
         const response = await this.quickInsight['callAI'](prompts[type] || prompts.experiment);

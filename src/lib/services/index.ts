@@ -23,6 +23,22 @@ export type { ModelConfig, ModelType, ModelStatus, ModelMetrics, RegisteredModel
 // Core Container
 export { container, getService, SERVICE_NAMES } from '../core';
 
+// Event System
+export { eventBus, EventTypes, emit, on, once } from '../events';
+export type { HealthEvent, EventType, EventHandler, EventFilter } from '../events';
+
+// Rules Engine / Automation
+export { rulesEngine, startRulesEngine, stopRulesEngine, addRule } from '../automation';
+export type { Rule, RuleExecutionResult, EngineStats } from '../automation';
+
+// Lab AI Service with Event Integration
+export { labAIService } from './labAIService';
+export type { AIMode, AIRequest, AIResult, ExplainabilityData, DomainClassification, ExperimentProposal, ModelInterpretation } from './labAIService';
+
+// Safety Filter Service
+export { safetyFilter, SafetyFilterService } from './safetyFilter';
+export type { SafetyCheckResult, SafetyViolation, SafetyConfig, SafetyViolationType } from './safetyFilter';
+
 // =============================================================================
 // SERVICE INITIALIZATION
 // =============================================================================
@@ -30,6 +46,8 @@ export { container, getService, SERVICE_NAMES } from '../core';
 import { container, SERVICE_NAMES } from '../core';
 import { labIQAI } from '../ai/LabIQAI';
 import { modelRegistry } from './ModelRegistry';
+import { eventBus } from '../events';
+import { rulesEngine } from '../automation';
 
 let initialized = false;
 
@@ -50,12 +68,18 @@ export async function initializeServices(): Promise<void> {
     // Register singleton services
     container.registerInstance(SERVICE_NAMES.AI, labIQAI);
     container.registerInstance(SERVICE_NAMES.MODEL_REGISTRY, modelRegistry);
+    container.registerInstance('eventBus', eventBus);
+    container.registerInstance('rulesEngine', rulesEngine);
 
     // Initialize services that require async setup
     await modelRegistry.initialize();
 
+    // Start the Rules Engine (subscribes to EventBus events)
+    rulesEngine.start();
+
     initialized = true;
     console.log(`[LabIQ Health] Services initialized in ${Date.now() - startTime}ms`);
+    console.log('[LabIQ Health] RulesEngine started, listening for automation events');
   } catch (error) {
     console.error('[LabIQ Health] Service initialization failed:', error);
     throw error;

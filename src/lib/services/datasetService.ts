@@ -1,6 +1,8 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { ParsedData, ColumnInfo, QualityMetrics } from '@/lib/parsers/types';
 import { qualityAnalyzer } from '@/lib/analysis/qualityAnalyzer';
+import { eventBus, EventTypes, DatasetUploadedPayload } from '@/lib/events';
+
 
 export class DatasetService {
     /**
@@ -90,6 +92,22 @@ export class DatasetService {
 
             // 7. Update usage stats
             await this.updateUsageStats(userId, 1, parsedData.fileSize);
+
+            // 8. Emit DATASET_UPLOADED event for automation
+            eventBus.emit<DatasetUploadedPayload>(
+                EventTypes.DATASET_UPLOADED,
+                {
+                    datasetId,
+                    name: parsedData.fileName.split('.')[0],
+                    rowCount: parsedData.rowCount,
+                    columnCount: parsedData.columnCount,
+                    fileType: parsedData.fileType,
+                },
+                {
+                    source: 'datasetService',
+                    userId,
+                }
+            );
 
             onProgress?.(100, 'Upload complete!');
             return datasetId;

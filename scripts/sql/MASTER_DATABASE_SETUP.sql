@@ -76,6 +76,7 @@ ALTER TABLE shared_files ENABLE ROW LEVEL SECURITY;
 ALTER TABLE file_access_log ENABLE ROW LEVEL SECURITY;
 ALTER TABLE collaboration_activity ENABLE ROW LEVEL SECURITY;
 
+
 -- Enable RLS on channel_members if it exists
 DO $$
 BEGIN

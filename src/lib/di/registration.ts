@@ -72,8 +72,21 @@ function registerAIProvider(): void {
 }
 
 function registerDomainServices(): void {
-  // Domain-specific services can be registered here as needed
-  // Example: CollaborationService, WorkflowService, etc.
+  // Start the automation rules engine
+  // This enables the closed-loop: Event → Rules → Condition Check → Action
+  import('@/lib/automation').then(({ rulesEngine }) => {
+    const logger = container.resolve<ILogger>(SERVICE_IDENTIFIERS.Logger);
+
+    // Start the rules engine to listen for events
+    rulesEngine.start();
+    logger.info('Rules Engine started - automation loop active');
+
+    // Log available rules
+    const rules = rulesEngine.getAllRules();
+    logger.debug(`Loaded ${rules.length} automation rules`);
+  }).catch((error) => {
+    console.error('Failed to start Rules Engine:', error);
+  });
 }
 
 /**

@@ -11,6 +11,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { eventBus, EventTypes, AIInsightPayload } from '@/lib/events';
 
 // ============================================================================
 // TYPES AND INTERFACES
@@ -144,6 +145,29 @@ export class InsightsAI {
       await this.saveInsights(insightsWithViz, user.id);
 
       const generationTime = performance.now() - startTime;
+
+      // Emit AI_INSIGHT_GENERATED event for each insight
+      insightsWithViz.forEach(insight => {
+        eventBus.emit<AIInsightPayload>(
+          EventTypes.AI_INSIGHT_GENERATED,
+          {
+            insightId: insight.id,
+            title: insight.title,
+            insightType: insight.category,
+            confidence: insight.confidence_score,
+            datasetId: request.dataset?.id,
+            summary: insight.summary,
+          },
+          {
+            source: 'insightsAI',
+            userId: user.id,
+            metadata: {
+              generationTime: Math.round(generationTime),
+              depth: request.depth,
+            },
+          }
+        );
+      });
 
       return {
         insights: insightsWithViz,

@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { eventBus, EventTypes, WorkflowPayload } from '@/lib/events';
 
 export interface WorkflowStep {
   type: 'quality_check' | 'transform' | 'train_model' | 'analyze' | 'notify' | 'export';
@@ -157,6 +158,23 @@ class WorkflowService {
         .single();
 
       if (error) throw error;
+
+      // Emit WORKFLOW_CREATED event
+      eventBus.emit<WorkflowPayload>(
+        EventTypes.WORKFLOW_TRIGGERED,
+        {
+          workflowId: data.id,
+          name: workflow.name,
+          trigger: 'creation',
+          stepCount: workflow.steps.length,
+        },
+        {
+          source: 'workflowService',
+          userId: user.id,
+          metadata: { action: 'created' },
+        }
+      );
+
       return data as Workflow;
     } catch (error) {
       console.error('Error creating workflow:', error);
@@ -283,6 +301,22 @@ class WorkflowService {
       // Execute workflow steps
       await this.runWorkflowSteps(workflow as Workflow, executionData.id, datasetId);
 
+      // Emit WORKFLOW_TRIGGERED event
+      eventBus.emit<WorkflowPayload>(
+        EventTypes.WORKFLOW_TRIGGERED,
+        {
+          workflowId,
+          executionId: executionData.id,
+          name: (workflow as Workflow).name,
+          trigger: 'manual',
+          datasetId,
+        },
+        {
+          source: 'workflowService',
+          userId: user.id,
+        }
+      );
+
       return executionData as WorkflowExecution;
     } catch (error) {
       console.error('Error executing workflow:', error);
@@ -343,6 +377,23 @@ class WorkflowService {
         })
         .eq('id', workflow.id);
 
+      // Emit WORKFLOW_COMPLETED event
+      eventBus.emit<WorkflowPayload>(
+        EventTypes.WORKFLOW_COMPLETED,
+        {
+          workflowId: workflow.id,
+          executionId,
+          name: workflow.name,
+          status: 'completed',
+          duration,
+          stepsCompleted: workflow.steps.length,
+        },
+        {
+          source: 'workflowService',
+          metadata: { datasetId },
+        }
+      );
+
     } catch (error) {
       const duration = Date.now() - startTime;
       logs.push({
@@ -374,6 +425,23 @@ class WorkflowService {
           failed_runs: (workflow.failed_runs || 0) + 1
         })
         .eq('id', workflow.id);
+
+      // Emit WORKFLOW_FAILED event
+      eventBus.emit<WorkflowPayload>(
+        EventTypes.WORKFLOW_FAILED,
+        {
+          workflowId: workflow.id,
+          executionId,
+          name: workflow.name,
+          status: 'failed',
+          duration,
+          error: String(error),
+        },
+        {
+          source: 'workflowService',
+          metadata: { datasetId },
+        }
+      );
 
       throw error;
     }
