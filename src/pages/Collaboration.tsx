@@ -10,7 +10,9 @@ import { WorkspaceSearch } from "@/components/collaboration/WorkspaceSearch";
 import { FileSharing } from "@/components/collaboration/FileSharing";
 import { useServices } from "@/core/ServiceProvider";
 import { useLab } from "@/contexts/LabContext";
-import { ChatChannel, TeamMember, ChatMessage } from "@/core/interfaces";
+import { ChatChannel, ChatMessage } from "@/core/interfaces";
+import { teamService, TeamMember } from "@/lib/services/teamService";
+import { auditService } from "@/lib/services/auditService";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Settings, Zap, Users, Shield, Activity, Atom } from "lucide-react";
@@ -60,10 +62,13 @@ const Collaboration = () => {
 
       const [chRes, tmRes, canvRes, listRes] = await Promise.all([
         collaboration.getChannels(labId!),
-        collaboration.getTeamMembers(labId!),
+        teamService.getMembers(), // Use new Service
         collaboration.getCanvases(labId!),
         collaboration.getLists(labId!)
       ]);
+
+      // Log access for compliance
+      await auditService.logAction('view_collaboration', 'workspace', labId!);
 
       console.log('[Collaboration] API Responses:', {
         channels: { data: chRes.data, isArray: Array.isArray(chRes.data), type: typeof chRes.data },
@@ -74,7 +79,8 @@ const Collaboration = () => {
 
       // Ensure all data is properly formatted as arrays
       const channelsArray = Array.isArray(chRes.data) ? chRes.data : [];
-      const teamMembersArray = Array.isArray(tmRes.data) ? tmRes.data : [];
+      // teamService returns array directly
+      const teamMembersArray = Array.isArray(tmRes) ? tmRes : (Array.isArray(tmRes.data) ? tmRes.data : []); // Handle both if type confusion
       const canvasesArray = Array.isArray(canvRes.data) ? canvRes.data : [];
       const listsArray = Array.isArray(listRes.data) ? listRes.data : [];
 

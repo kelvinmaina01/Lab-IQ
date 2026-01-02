@@ -57,7 +57,7 @@ interface AnalysisData {
 }
 
 export interface Section {
-  type: 'heading' | 'paragraph' | 'list' | 'chart' | 'insight' | 'table' | 'code' | 'metric' | 'kpi_grid' | 'thought_process';
+  type: 'heading' | 'paragraph' | 'list' | 'chart' | 'insight' | 'table' | 'code' | 'metric' | 'kpi_grid' | 'thought_process' | 'recommendation';
   content?: string;
   title?: string;
   items?: string[];
@@ -300,6 +300,38 @@ export const AIResponseRenderer = ({ sections, meta }: AIResponseRendererProps) 
             {/* Thought Process Section (inline) */}
             {section.type === 'thought_process' && section.items && (
               <ThoughtProcess steps={section.items} />
+            )}
+
+            {/* Recommendation - High Impact Style */}
+            {section.type === 'recommendation' && (
+              <motion.div
+                className="my-4 p-5 rounded-xl border border-blue-200 bg-blue-50/30 dark:border-blue-900/50 dark:bg-blue-950/20"
+                whileHover={{ scale: 1.01 }}
+              >
+                <div className="flex items-start gap-4">
+                  <div className="p-2 rounded-lg bg-blue-500 text-white shadow-md">
+                    <Lightbulb className="h-5 w-5" />
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-bold text-blue-900 dark:text-blue-100">
+                      {section.title || 'Actionable Recommendation'}
+                    </h3>
+                    <p className="text-base text-blue-800/80 dark:text-blue-200/80 leading-relaxed">
+                      {section.content}
+                    </p>
+                    {section.items && section.items.length > 0 && (
+                      <ul className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+                        {section.items.map((item, idx) => (
+                          <li key={idx} className="flex gap-2 text-sm items-center bg-white/50 dark:bg-black/20 p-2 rounded-lg border border-blue-100 dark:border-blue-800/50">
+                            <TrendingUp className="h-4 w-4 text-blue-500 shrink-0" />
+                            <span className="text-blue-900/90 dark:text-blue-100/90 font-medium">{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
             )}
           </motion.div>
         );

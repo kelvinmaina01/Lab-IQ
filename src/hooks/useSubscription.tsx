@@ -150,13 +150,23 @@ export const useSubscription = () => {
 
       // Get actual counts from database
       const [datasetsResult, experimentsResult, workflowsResult] = await Promise.all([
-        supabase.from('datasets').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+        supabase.from('datasets').select('id, file_size', { count: 'exact' }).eq('user_id', user.id),
         supabase.from('experiments').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
         supabase.from('workflows').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
       ]);
 
+      // Calculate total storage from file_size (in bytes) and convert to MB
+      let totalStorageMB = 0;
+      if (datasetsResult.data && datasetsResult.data.length > 0) {
+        const totalBytes = datasetsResult.data.reduce((sum, dataset) => {
+          const fileSize = dataset.file_size || 0;
+          return sum + fileSize;
+        }, 0);
+        totalStorageMB = Math.round((totalBytes / (1024 * 1024)) * 100) / 100; // Convert to MB with 2 decimals
+      }
+
       setUsage({
-        storage_used_mb: 0, // Would need to calculate from actual file sizes
+        storage_used_mb: totalStorageMB,
         ai_requests_used: 0, // Would need a tracking table
         datasets_count: datasetsResult.count || 0,
         experiments_count: experimentsResult.count || 0,
@@ -208,7 +218,7 @@ export const useSubscription = () => {
   };
 
   const isPro = subscription?.tier === 'pro' || subscription?.tier === 'team' ||
-                subscription?.tier === 'enterprise' || subscription?.tier === 'student';
+    subscription?.tier === 'enterprise' || subscription?.tier === 'student';
   const isTeam = subscription?.tier === 'team' || subscription?.tier === 'enterprise';
   const isEnterprise = subscription?.tier === 'enterprise';
 

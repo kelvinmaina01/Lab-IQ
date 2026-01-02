@@ -2,6 +2,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { ParsedData, ColumnInfo, QualityMetrics } from '@/lib/parsers/types';
 import { qualityAnalyzer } from '@/lib/analysis/qualityAnalyzer';
 import { eventBus, EventTypes, DatasetUploadedPayload } from '@/lib/events';
+import { analyzeHealthData, HealthMetadata } from '@/lib/parsers/healthDataTypes';
 
 
 export class DatasetService {
@@ -11,10 +12,23 @@ export class DatasetService {
     async saveDataset(
         userId: string,
         parsedData: ParsedData,
-        onProgress?: (progress: number, message: string) => void
+        rawFile?: File,
+        onProgress?: (progress: number, message: string) => void,
+        extraMetadata: any = {}
     ): Promise<string> {
         try {
-            // 1. Create dataset record
+            // 1. Upload to storage if raw file provided
+            let filePath = null;
+            if (rawFile) {
+                onProgress?.(5, 'Uploading raw file...');
+                filePath = `${userId}/${Date.now()}_${rawFile.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+                const { error: uploadError } = await supabase.storage
+                    .from('datasets')
+                    .upload(filePath, rawFile);
+                if (uploadError) console.warn('File upload failed, but continuing with metadata:', uploadError.message);
+            }
+
+            // 2. Create dataset record
             onProgress?.(10, 'Creating dataset record...');
             const { data: dataset, error: datasetError } = await supabase
                 .from('datasets')
@@ -24,6 +38,7 @@ export class DatasetService {
                     file_name: parsedData.fileName,
                     file_size: parsedData.fileSize,
                     file_type: parsedData.fileType,
+                    file_path: filePath,
                     row_count: parsedData.rowCount,
                     column_count: parsedData.columnCount,
                     status: 'processing'
@@ -38,9 +53,14 @@ export class DatasetService {
             onProgress?.(20, 'Saving schema information...');
             await this.saveColumns(datasetId, parsedData.columns, parsedData.rows);
 
-            // 3. Analyze Quality
-            onProgress?.(25, 'Analyzing data quality...');
+            // 3. Analyze Quality & Health Patterns
+            onProgress?.(25, 'Analyzing patterns and quality...');
             const qualityMetrics = qualityAnalyzer.analyze(parsedData.rows, parsedData.columns);
+            const healthMetadata = analyzeHealthData(
+                parsedData.columns.map(c => c.name),
+                parsedData.rows.slice(0, 100)
+            );
+
             await this.saveQualityMetrics(datasetId, qualityMetrics);
 
             // 4. Save rows (Data)
@@ -76,13 +96,55 @@ export class DatasetService {
                 .update({
                     status: 'ready',
                     preview_data: previewRows,
-                    schema: schemaObject
+                    schema: schemaObject,
+                    domain: healthMetadata.category === 'general' ? 'general' : healthMetadata.category,
+                    quality_score: qualityMetrics.overallScore,
+                    is_anonymized: healthMetadata.phiFields.length === 0,
+                    phi_fields_masked: [], // Initial state, masking happens later
+                    metadata: {
+                        ...extraMetadata,
+                        healthMetadata,
+                        lastProcessedAt: new Date().toISOString()
+                    }
                 })
                 .eq('id', datasetId);
 
             if (updateError) throw new Error(`Failed to update status: ${updateError.message}`);
 
-            // 6. Log activity
+            // 6. Populate V2 Tables (Versions, Quality Checks, Domain Classifications)
+            onProgress?.(98, 'Recording provenance and metadata...');
+
+            // Create initial version
+            await (supabase.from('dataset_versions' as any) as any).insert({
+                dataset_id: datasetId,
+                version: 1,
+                snapshot_row_count: parsedData.rowCount,
+                snapshot_size_bytes: parsedData.fileSize,
+                change_type: 'initial_upload',
+                change_summary: 'Initial dataset ingestion',
+                created_by: userId
+            });
+
+            // Create initial quality check record
+            await (supabase.from('quality_checks' as any) as any).insert({
+                dataset_id: datasetId,
+                check_type: 'ingestion_scan',
+                overall_score: qualityMetrics.overallScore,
+                metrics: qualityMetrics,
+                status: 'passed',
+                checked_by: userId
+            });
+
+            // Create domain classification record
+            await (supabase.from('domain_classifications' as any) as any).insert({
+                dataset_id: datasetId,
+                domain: healthMetadata.category,
+                confidence: 0.9, // Default confidence for rule-based detection
+                detected_patterns: healthMetadata.phiFields,
+                classified_by: userId
+            });
+
+            // 7. Log activity
             await supabase.from('activities').insert({
                 user_id: userId,
                 action: 'Dataset uploaded',
@@ -90,10 +152,10 @@ export class DatasetService {
                 icon: 'Database'
             });
 
-            // 7. Update usage stats
+            // 8. Update usage stats
             await this.updateUsageStats(userId, 1, parsedData.fileSize);
 
-            // 8. Emit DATASET_UPLOADED event for automation
+            // 9. Emit DATASET_UPLOADED event for automation
             eventBus.emit<DatasetUploadedPayload>(
                 EventTypes.DATASET_UPLOADED,
                 {
@@ -258,6 +320,72 @@ export class DatasetService {
                     storage_used_mb: deltaMB > 0 ? deltaMB : 0
                 });
         }
+    }
+
+    async getVersions(datasetId: string) {
+        const { data, error } = await (supabase
+            .from('dataset_versions' as any) as any)
+            .select('*')
+            .eq('dataset_id', datasetId)
+            .order('version', { ascending: false });
+
+        if (error) throw error;
+        return data;
+    }
+
+    async getLineage(datasetId: string) {
+        const { data, error } = await (supabase
+            .from('data_lineage' as any) as any)
+            .select('*')
+            .or(`source_id.eq.${datasetId},target_id.eq.${datasetId}`)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        return data;
+    }
+
+    async getQualityChecks(datasetId: string) {
+        const { data, error } = await (supabase
+            .from('quality_checks' as any) as any)
+            .select('*')
+            .eq('dataset_id', datasetId)
+            .order('checked_at', { ascending: false });
+
+        if (error) throw error;
+        return data;
+    }
+
+    async getAnonymizationLogs(datasetId: string) {
+        const { data, error } = await (supabase
+            .from('anonymization_logs' as any) as any)
+            .select('*')
+            .eq('dataset_id', datasetId)
+            .order('completed_at', { ascending: false });
+
+        if (error) throw error;
+        return data;
+    }
+
+    /**
+     * Get usage metrics for the current user
+     */
+    async getUsageStats(userId: string) {
+        const currentMonth = new Date().toISOString().slice(0, 7) + '-01';
+        const { data, error } = await supabase
+            .from('usage_stats')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('month', currentMonth)
+            .single();
+
+        if (error && error.code !== 'PGRST116') throw error; // PGRST116 is 'no rows returned'
+
+        return data || {
+            datasets_count: 0,
+            storage_used_mb: 0,
+            user_id: userId,
+            month: currentMonth
+        };
     }
 }
 

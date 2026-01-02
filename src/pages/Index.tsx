@@ -190,7 +190,7 @@ const Index = () => {
 
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center pt-6 animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
-              <Link to="/dashboard">
+              <Link to="/signup">
                 <Button size="lg" className="gap-2 text-base h-12 px-8 rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-105">
                   <Play className="w-5 h-5" />
                   Get Started Free

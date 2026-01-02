@@ -132,7 +132,7 @@ export interface DatasetUploadedPayload {
     rowCount: number;
     columnCount: number;
     fileType: string;
-    domain?: 'health' | 'clinical' | 'biopharma' | 'environmental' | 'population';
+    domain?: 'health' | 'clinical' | 'biopharma' | 'environmental' | 'population' | 'general';
     domainConfidence?: number;
     isAnonymized?: boolean;
 }

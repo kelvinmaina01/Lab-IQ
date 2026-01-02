@@ -209,6 +209,33 @@ export class NotificationService {
         });
     }
 
+    /**
+     * Notify about collaboration activity
+     */
+    async notifyCollaborationUpdate(params: {
+        actorId: string;
+        action: 'comment' | 'mention' | 'invite';
+        targetTitle: string;
+        message?: string;
+    }): Promise<Notification> {
+        const actionText = {
+            comment: 'commented on',
+            mention: 'mentioned you in',
+            invite: 'invited you to'
+        };
+
+        return this.send({
+            type: `collaboration_${params.action}`,
+            title: 'New Activity',
+            message: `${params.actorId} ${actionText[params.action]} ${params.targetTitle}`,
+            urgency: params.action === 'mention' ? 'high' : 'medium',
+            userId: this.userId || undefined, // In real app, this should be the recipient's ID
+            metadata: {
+                ...params
+            }
+        });
+    }
+
     // =========================================================================
     // NOTIFICATION MANAGEMENT
     // =========================================================================
@@ -303,8 +330,15 @@ export class NotificationService {
 
         this.preferences = {
             userId: data.user_id,
-            channels: data.channels || { email: true, inApp: true, webhook: false },
-            filters: data.filters || { urgencyThreshold: 'low', mutedTypes: [] },
+            channels: {
+                email: !!data.email_on_experiment_complete || !!data.email_on_action_assignment, // Heuristic mapping
+                inApp: true,
+                webhook: false
+            },
+            filters: {
+                urgencyThreshold: 'low',
+                mutedTypes: []
+            },
         };
 
         return this.preferences;

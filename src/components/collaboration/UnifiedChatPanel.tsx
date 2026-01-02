@@ -14,6 +14,8 @@ import { format } from "date-fns";
 import { useServices } from "@/core/ServiceProvider";
 import { useUnifiedChat } from "@/hooks/useUnifiedChat";
 import { useTypingIndicator } from "@/hooks/useTypingIndicator";
+import { labAIService } from "@/lib/services/labAIService";
+import { notificationService } from "@/lib/services/notificationService";
 import { toast } from "sonner";
 import { debounce } from "@/utils/debounce";
 import { cn } from "@/lib/utils";
@@ -52,7 +54,8 @@ export const UnifiedChatPanel = ({ id, labId, type, title, onThreadOpen }: Unifi
 
         try {
             setIsSending(true);
-            await sendMessage(newMessage.trim());
+            const sentContent = newMessage.trim();
+            await sendMessage(sentContent);
             setNewMessage("");
             if (type === 'channel') stopTyping();
 
@@ -62,13 +65,45 @@ export const UnifiedChatPanel = ({ id, labId, type, title, onThreadOpen }: Unifi
                     behavior: 'smooth'
                 });
             }, 100);
+
+            // Handle @LabAI mention
+            if (sentContent.toLowerCase().includes('@labai')) {
+                toast.promise(
+                    (async () => {
+                        // Simulate AI thinking delay
+                        await new Promise(r => setTimeout(r, 1500));
+
+                        // Determine response context
+                        const response = "I'm analyzing that for you. Based on the current dataset context, here are some insights...";
+
+                        // Post AI reply
+                        // Note: In real app, backend would handle this via queue. 
+                        // Here we simulate client-side for V1 demo flow.
+                        await sendMessage(response, { is_bot: true });
+
+                        // Notify user
+                        await notificationService.notifyCollaborationUpdate({
+                            actorId: 'LabAI',
+                            action: 'mention',
+                            targetTitle: title || 'Channel',
+                            message: 'LabAI responded to your query'
+                        });
+                    })(),
+                    {
+                        loading: 'LabAI is thinking...',
+                        success: 'LabAI responded',
+                        error: 'LabAI failed to respond'
+                    }
+                );
+            }
+
         } catch (error) {
             console.error('Error sending message:', error);
             toast.error('Failed to send message');
         } finally {
             setIsSending(false);
         }
-    }, [newMessage, isSending, id, type, sendMessage, stopTyping, messages.length]);
+    }, [newMessage, isSending, id, type, sendMessage, stopTyping, messages.length, title]);
 
     const handleKeyPress = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' && !e.shiftKey) {

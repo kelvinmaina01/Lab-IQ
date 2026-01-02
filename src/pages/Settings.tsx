@@ -8,13 +8,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
 import { useEffect, useState } from "react";
-import { useOnboarding } from "@/hooks/use-onboarding";
 
 export default function Settings() {
     const navigate = useNavigate();
     const { toast } = useToast();
     const [darkMode, setDarkMode] = useState(false);
-    const { startOnboarding, resetOnboarding } = useOnboarding();
 
     useEffect(() => {
         // Sync with document class and local storage
@@ -57,17 +55,7 @@ export default function Settings() {
         });
     };
 
-    const handleStartTour = async () => {
-        await resetOnboarding();
-        toast({
-            title: "Tour Started",
-            description: "Welcome back! Let's explore LabIQ Health together.",
-        });
-        // Small delay to let the tour trigger propagate
-        setTimeout(() => {
-            navigate("/dashboard");
-        }, 100);
-    };
+
 
     const settingsGroups = [
         {
@@ -81,9 +69,9 @@ export default function Settings() {
                 },
                 {
                     icon: Shield,
-                    label: "Security & Authentication",
-                    description: "Manage password and active sessions",
-                    action: handleComingSoon
+                    label: "Data Privacy & Compliance",
+                    description: "Manage anonymization and audit logs",
+                    path: "/data-anonymization"
                 }
             ]
         },
@@ -133,12 +121,6 @@ export default function Settings() {
                     label: "Help & Documentation",
                     description: "Guides, tutorials, and support",
                     action: handleComingSoon
-                },
-                {
-                    icon: Sparkles,
-                    label: "Take the LabIQ Health Tour",
-                    description: "Restart the interactive guided tour of all features",
-                    action: handleStartTour
                 }
             ]
         }

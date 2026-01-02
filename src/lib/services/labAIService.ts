@@ -12,8 +12,10 @@
  */
 
 import { labIQAI, AIResponse, AISection } from '@/lib/ai/LabIQAI';
-import { eventBus, EventTypes, AIInsightPayload } from '@/lib/events';
+import { eventBus, EventType, EventPayload } from './eventBus';
 import { supabase } from '@/integrations/supabase/client';
+import { safetyFilter } from './safetyFilter';
+import { aiOrchestrator } from './aiOrchestrator';
 
 // =============================================================================
 // TYPES
@@ -143,13 +145,37 @@ class LabAIService {
             // Add mode-specific context to the query
             const modeContext = MODE_PROMPTS[mode];
 
+            // Orchestrate the request (Determine best provider/strategy)
+            // Note: Currently just logging the decision, acting as a "brain" check
+            const route = aiOrchestrator.route(mode, 'reasoning', query.length);
+            console.log(`[LabAIService] Orchestrator routed to: ${route.provider} (${route.reason})`);
+
             // Call the underlying LabIQAI
-            const response = await labIQAI.dataAnalysis.process(
+            let response = await labIQAI.dataAnalysis.process(
                 datasetId,
                 query,
                 mode === 'analyst' ? 'analysis' : mode === 'ml' ? 'automl' : 'educator',
                 conversationHistory
             );
+
+            // Apply Safety Filter
+            const safetyResult = safetyFilter.check(response.content, response.metadata?.confidence as number || 0.75);
+
+            if (!safetyResult.safe) {
+                console.warn('[LabAIService] Safety violation detected:', safetyResult.violations);
+                // If critical, redact content
+                response.content = safetyResult.filteredContent;
+                // Add safety note if not present
+                if (!response.content.includes('Safety Filter')) {
+                    response.content += "\n\n*[Note: Some content was modified by the LabIQ Safety Guardrails]*";
+                }
+            }
+
+            // Add Safety Disclaimers
+            if (safetyFilter.getConfig().autoAddDisclaimers) {
+                // Simple append for now, could be more sophisticated
+                // check if they handled it internally or we just append
+            }
 
             // Generate insight ID for tracking
             const insightId = crypto.randomUUID();
@@ -196,20 +222,20 @@ class LabAIService {
             const domain = this.extractDomain(response.content);
 
             // Emit event for domain classification
-            eventBus.emit<AIInsightPayload>(
-                EventTypes.AI_INSIGHT_GENERATED,
+            eventBus.emit(
+                'AI_INSIGHT_GENERATED',
                 {
-                    insightId: crypto.randomUUID(),
-                    title: 'Domain Classification',
-                    insightType: 'recommendation',
-                    confidence: domain.confidence,
-                    datasetId,
-                    summary: `Dataset classified as ${domain.domain} with ${(domain.confidence * 100).toFixed(0)}% confidence`,
-                },
-                {
+                    timestamp: new Date().toISOString(),
                     source: 'labAIService',
                     userId: this.userId || undefined,
-                    metadata: { action: 'classifyDataset' },
+                    data: {
+                        insightId: crypto.randomUUID(),
+                        title: 'Domain Classification',
+                        insightType: 'recommendation',
+                        confidence: domain.confidence,
+                        datasetId,
+                        summary: `Dataset classified as ${domain.domain} with ${(domain.confidence * 100).toFixed(0)}% confidence`,
+                    }
                 }
             );
 
@@ -243,20 +269,20 @@ class LabAIService {
             const proposal = this.extractExperimentProposal(response.content);
 
             // Emit event
-            eventBus.emit<AIInsightPayload>(
-                EventTypes.AI_INSIGHT_GENERATED,
+            eventBus.emit(
+                'AI_INSIGHT_GENERATED',
                 {
-                    insightId: crypto.randomUUID(),
-                    title: proposal.title,
-                    insightType: 'recommendation',
-                    confidence: proposal.confidence,
-                    datasetId,
-                    summary: proposal.description,
-                },
-                {
+                    timestamp: new Date().toISOString(),
                     source: 'labAIService',
                     userId: this.userId || undefined,
-                    metadata: { action: 'proposeExperiment', proposal },
+                    data: {
+                        insightId: crypto.randomUUID(),
+                        title: proposal.title,
+                        insightType: 'recommendation',
+                        confidence: proposal.confidence,
+                        datasetId,
+                        summary: proposal.description,
+                    }
                 }
             );
 
@@ -323,20 +349,21 @@ Provide:
             };
 
             // Emit event
-            eventBus.emit<AIInsightPayload>(
-                EventTypes.AI_INSIGHT_GENERATED,
+            // Emit event
+            eventBus.emit(
+                'AI_INSIGHT_GENERATED',
                 {
-                    insightId: crypto.randomUUID(),
-                    title: 'Model Interpretation',
-                    insightType: 'pattern',
-                    confidence: interpretation.confidence,
-                    modelId,
-                    summary: interpretation.summary,
-                },
-                {
+                    timestamp: new Date().toISOString(),
                     source: 'labAIService',
                     userId: this.userId || undefined,
-                    metadata: { action: 'interpretResults', modelId },
+                    data: {
+                        insightId: crypto.randomUUID(),
+                        title: 'Model Interpretation',
+                        insightType: 'pattern',
+                        confidence: interpretation.confidence,
+                        modelId,
+                        summary: interpretation.summary,
+                    }
                 }
             );
 
@@ -376,20 +403,20 @@ Remember to use population-level language, not individual advice.`;
         const response = await labIQAI.directQuery(prompt);
 
         // Emit event
-        eventBus.emit<AIInsightPayload>(
-            EventTypes.AI_INSIGHT_GENERATED,
+        eventBus.emit(
+            'AI_INSIGHT_GENERATED',
             {
-                insightId: crypto.randomUUID(),
-                title: 'Anomaly Explanation',
-                insightType: 'anomaly',
-                confidence: 0.85,
-                datasetId,
-                summary: response.content.slice(0, 200),
-            },
-            {
+                timestamp: new Date().toISOString(),
                 source: 'labAIService',
                 userId: this.userId || undefined,
-                metadata: { action: 'explainAnomaly' },
+                data: {
+                    insightId: crypto.randomUUID(),
+                    title: 'Anomaly Explanation',
+                    insightType: 'anomaly',
+                    confidence: 0.85,
+                    datasetId,
+                    summary: response.content.slice(0, 200),
+                }
             }
         );
 
@@ -466,20 +493,22 @@ Remember to use population-level language, not individual advice.`;
         datasetId?: string
     ): Promise<boolean> {
         try {
-            eventBus.emit<AIInsightPayload>(
-                EventTypes.AI_INSIGHT_GENERATED,
+            await eventBus.emit(
+                'AI_INSIGHT_GENERATED',
                 {
-                    insightId,
-                    title: query.slice(0, 100),
-                    insightType: mode === 'analyst' ? 'pattern' : mode === 'ml' ? 'recommendation' : 'pattern',
-                    confidence: response.metadata?.confidence as number || 0.75,
-                    datasetId,
-                    summary: response.content?.slice(0, 200) || 'AI analysis complete',
-                },
-                {
+                    timestamp: new Date().toISOString(),
                     source: 'labAIService',
                     userId: this.userId || undefined,
-                    metadata: { mode, hasVisualization: !!response.sections?.some(s => s.type === 'chart') },
+                    data: {
+                        insightId,
+                        title: query.slice(0, 100),
+                        insightType: mode === 'analyst' ? 'pattern' : mode === 'ml' ? 'recommendation' : 'pattern',
+                        confidence: response.metadata?.confidence as number || 0.75,
+                        datasetId,
+                        summary: response.content?.slice(0, 200) || 'AI analysis complete',
+                        mode,
+                        hasVisualization: !!response.sections?.some(s => s.type === 'chart')
+                    }
                 }
             );
             return true;

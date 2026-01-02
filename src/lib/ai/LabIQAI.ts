@@ -105,7 +105,7 @@ export interface AIResponse {
 }
 
 export interface AISection {
-  type: 'heading' | 'paragraph' | 'list' | 'chart' | 'insight' | 'metric' | 'kpi_grid' | 'recommendation' | 'thought_process';
+  type: 'heading' | 'paragraph' | 'list' | 'chart' | 'insight' | 'table' | 'code' | 'metric' | 'kpi_grid' | 'recommendation' | 'thought_process';
   content?: string;
   title?: string;
   items?: string[];

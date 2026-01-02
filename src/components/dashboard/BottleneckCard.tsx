@@ -1,20 +1,10 @@
-/**
- * Bottleneck Detection Card
- * AI-powered workflow bottleneck identification and recommendations
- * Uses the LabIQAI service for intelligent analysis
- */
-
 import { useState, useEffect, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, TrendingDown, RefreshCw, CheckCircle2, Clock, Loader2 } from "lucide-react";
+import { AlertCircle, TrendingDown, RefreshCw, CheckCircle2, Clock, Loader2, Workflow, Brain } from "lucide-react";
 import { labIQAI } from "@/lib/ai/LabIQAI";
 import { supabase } from "@/integrations/supabase/client";
-
-// =============================================================================
-// TYPES
-// =============================================================================
 
 interface BottleneckData {
   type: string;
@@ -27,140 +17,147 @@ interface BottleneckData {
   timeBlocked: string;
 }
 
-// =============================================================================
-// DEFAULT BOTTLENECKS (fallback when AI unavailable)
-// =============================================================================
-
-const DEFAULT_BOTTLENECKS: BottleneckData[] = [
-  {
-    type: 'queue',
-    title: "Data preprocessing queue",
-    description: "Pending experiments waiting for quality control validation, blocking downstream work.",
-    impact: "Delayed experiment completion",
-    impactScore: 18,
-    recommendation: "Assign additional reviewer or enable auto-QC for standard protocols",
-    severity: 'medium',
-    timeBlocked: "2.3 days"
-  },
-  {
-    type: 'resource',
-    title: "ML model training backlog",
-    description: "AutoML jobs queued due to limited resources, causing delays in results delivery.",
-    impact: "Slower model iteration",
-    impactScore: 15,
-    recommendation: "Scale compute instances or optimize model training schedule",
-    severity: 'medium',
-    timeBlocked: "1.5 days"
-  },
-  {
-    type: 'io',
-    title: "Data ingestion rate limit",
-    description: "Device streams hitting API rate limits, causing data loss during peak hours.",
-    impact: "Data integrity issues",
-    impactScore: 22,
-    recommendation: "Implement data buffering or upgrade plan for higher limits",
-    severity: 'high',
-    timeBlocked: "ongoing"
-  }
-];
-
-// =============================================================================
-// COMPONENT
-// =============================================================================
-
 export const BottleneckCard = () => {
-  const [bottlenecks, setBottlenecks] = useState<BottleneckData[]>(DEFAULT_BOTTLENECKS);
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [bottleneck, setBottleneck] = useState<BottleneckData | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [lastAnalyzed, setLastAnalyzed] = useState<Date | null>(null);
 
-  const bottleneck = bottlenecks[currentIndex];
-
-  // Fetch real metrics and analyze with AI
   const runAIAnalysis = useCallback(async () => {
     setAnalyzing(true);
-
     try {
-      // Gather real metrics from the system
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
+      if (!user) return;
 
-      // Fetch various counts for metrics
       const [datasetsResult, experimentsResult, workflowsResult] = await Promise.allSettled([
-        supabase.from('datasets').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
-        supabase.from('experiments').select('id, status', { count: 'exact' }).eq('user_id', user.id),
-        supabase.from('workflows').select('id, status', { count: 'exact' }).eq('user_id', user.id),
+        supabase.from('datasets').select('id, row_count, file_size', { count: 'exact', head: false }).eq('user_id', user.id),
+        supabase.from('experiments').select('id, status').eq('user_id', user.id),
+        supabase.from('workflows').select('id, status').eq('user_id', user.id),
       ]);
 
-      const datasetsCount = datasetsResult.status === 'fulfilled' ? datasetsResult.value.count || 0 : 0;
+      const datasetsData = datasetsResult.status === 'fulfilled' ? datasetsResult.value.data || [] : [];
       const experiments = experimentsResult.status === 'fulfilled' ? experimentsResult.value.data || [] : [];
       const workflows = workflowsResult.status === 'fulfilled' ? workflowsResult.value.data || [] : [];
 
+      const datasetsCount = datasetsData.length;
+      const totalRows = datasetsData.reduce((sum, d) => sum + (d.row_count || 0), 0);
       const pendingExperiments = experiments.filter((e: any) => e.status === 'pending').length;
       const runningExperiments = experiments.filter((e: any) => e.status === 'running').length;
       const failedWorkflows = workflows.filter((w: any) => w.status === 'failed').length;
 
-      // Calculate synthetic metrics
-      const metrics = {
-        processingTime: pendingExperiments * 50 + runningExperiments * 100,
-        memoryUsage: Math.min(95, 40 + datasetsCount * 5),
-        cpuUsage: Math.min(90, 30 + runningExperiments * 15),
-        queryCount: datasetsCount * 10 + experiments.length * 5,
-        errorRate: failedWorkflows > 0 ? (failedWorkflows / Math.max(1, workflows.length)) * 100 : 0,
-        dataSize: datasetsCount * 50,
-      };
+      // 1. Heuristic Detection (Fast, Deterministic)
+      let foundBottleneck: BottleneckData | null = null;
+      let bottleneckContext = "System Normal";
 
-      // Check if AI is available
-      if (!labIQAI.isAvailable()) {
-        // Rotate through default bottlenecks
-        setCurrentIndex((prev) => (prev + 1) % DEFAULT_BOTTLENECKS.length);
-        setLastAnalyzed(new Date());
-        return;
+      if (failedWorkflows > 0) {
+        bottleneckContext = "CRITICAL: Workflows are failing.";
+        foundBottleneck = {
+          type: 'workflow_failure',
+          title: "Critical Workflow Failure",
+          description: `${failedWorkflows} workflows have failed execution, halting the pipeline.`,
+          impact: "Data processing stopped",
+          impactScore: 85,
+          recommendation: "Check workflow logs and retry failed steps.",
+          severity: 'critical',
+          timeBlocked: 'Ongoing'
+        };
+      } else if (pendingExperiments > 5) {
+        bottleneckContext = "HIGH LOAD: Experiment queue congested.";
+        foundBottleneck = {
+          type: 'experiment_queue',
+          title: "Experiment Congestion",
+          description: `${pendingExperiments} experiments are queued but not running.`,
+          impact: "Delayed insights",
+          impactScore: 45,
+          recommendation: "Scale up compute resources or run sequentially.",
+          severity: 'medium',
+          timeBlocked: '~2 hours'
+        };
+      } else if (datasetsCount === 0) {
+        bottleneckContext = "IDLE: No data.";
+        foundBottleneck = {
+          type: 'no_data',
+          title: "Starved Pipeline",
+          description: "No datasets available for analysis.",
+          impact: "Zero utilization",
+          impactScore: 100,
+          recommendation: "Upload a dataset to begin.",
+          severity: 'high',
+          timeBlocked: 'Until upload'
+        };
       }
 
-      // Call AI for bottleneck analysis
-      const context = `
-System has ${datasetsCount} datasets, ${experiments.length} experiments (${pendingExperiments} pending, ${runningExperiments} running),
-and ${workflows.length} workflows (${failedWorkflows} failed).`;
+      // 2. AI Enhancement (The "Pattern Recognition" Layer)
+      if (labIQAI.isAvailable()) {
+        try {
+          // Construct rich context for the AI
+          const metrics = {
+            processingTime: runningExperiments * 100, // Simulated metric
+            queryCount: totalRows,
+            errorRate: failedWorkflows > 0 ? (failedWorkflows / workflows.length) * 100 : 0
+          };
 
-      const response = await labIQAI.bottleneck.process(metrics, context);
+          const context = `
+              Current State: ${bottleneckContext}
+              Active Experiments: ${runningExperiments}
+              Pending Experiments: ${pendingExperiments}
+              Failed Workflows: ${failedWorkflows}
+              Total Rows: ${totalRows}
+              `;
 
-      if (response.success && response.metadata?.bottlenecks) {
-        const aiBottlenecks: BottleneckData[] = response.metadata.bottlenecks.map((b: any) => ({
-          type: b.type || 'system',
-          title: b.description?.split('.')[0] || 'System bottleneck detected',
-          description: b.description || b.impact || 'Performance issue identified',
-          impact: b.impact || 'Reduced efficiency',
-          impactScore: Math.round(Math.random() * 15 + 10),
-          recommendation: b.recommendation || 'Review system configuration',
-          severity: b.severity || 'medium',
-          timeBlocked: b.severity === 'critical' ? 'ongoing' : `${(Math.random() * 2 + 0.5).toFixed(1)} days`
-        }));
+          // Let AI refine or discover subtle bottlenecks
+          const aiResponse = await labIQAI.bottleneck.process(metrics, context);
 
-        if (aiBottlenecks.length > 0) {
-          setBottlenecks(aiBottlenecks);
-          setCurrentIndex(0);
+          if (aiResponse.success && aiResponse.metadata?.bottlenecks?.[0]) {
+            const aiB = aiResponse.metadata.bottlenecks[0];
+            // If AI found something meaningful (and we didn't find a CRITICAL one already), use AI
+            // Or if AI analysis helps detail the 'System Healthy' state
+            if (!foundBottleneck || foundBottleneck.severity !== 'critical') {
+              foundBottleneck = {
+                type: aiB.type || 'ai_detected',
+                title: aiB.type === 'cpu' ? 'Compute Constraint' : 'Optimization Opportunity',
+                description: aiB.description || "AI detected potential optimization.",
+                impact: aiB.impact || "Efficiency Loss",
+                impactScore: Math.round(Math.random() * 20) + 10, // AI usually needs real timeseries for this, approximating
+                recommendation: aiB.recommendation || "Review pipeline settings.",
+                severity: (aiB.severity as any) || 'low',
+                timeBlocked: 'N/A'
+              };
+            }
+          }
+        } catch (e) {
+          console.warn("AI Bottleneck analysis failed", e);
         }
       }
 
+      // Fallback if both heuristic and AI find nothing
+      if (!foundBottleneck) {
+        setBottleneck({
+          type: 'healthy',
+          title: "System Healthy",
+          description: "No operational bottlenecks detected.",
+          impact: "Optimal Flow",
+          impactScore: 0,
+          recommendation: "Maintain current velocity.",
+          severity: 'low',
+          timeBlocked: '0m'
+        });
+      } else {
+        setBottleneck(foundBottleneck);
+      }
+
       setLastAnalyzed(new Date());
+
     } catch (error) {
       console.error('Bottleneck analysis error:', error);
-      // Rotate through defaults on error
-      setCurrentIndex((prev) => (prev + 1) % bottlenecks.length);
     } finally {
       setAnalyzing(false);
     }
-  }, [bottlenecks.length]);
+  }, []);
 
-  // Initial analysis on mount
   useEffect(() => {
-    // Run initial analysis after a short delay
-    const timer = setTimeout(() => {
-      runAIAnalysis();
-    }, 2000);
-
-    return () => clearTimeout(timer);
+    // Delay initial check slightly
+    const t = setTimeout(runAIAnalysis, 1000);
+    return () => clearTimeout(t);
   }, []);
 
   const getSeverityColor = (severity: string) => {
@@ -168,113 +165,72 @@ and ${workflows.length} workflows (${failedWorkflows} failed).`;
       case 'critical': return 'text-red-500 border-red-500/50';
       case 'high': return 'text-orange-500 border-orange-500/50';
       case 'medium': return 'text-yellow-500 border-yellow-500/50';
-      default: return 'text-blue-500 border-blue-500/50';
+      default: return 'text-emerald-500 border-emerald-500/50';
     }
   };
 
+  if (!bottleneck) return (
+    <Card className="p-6 h-[280px] flex items-center justify-center border-dashed">
+      <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+    </Card>
+  );
+
   return (
-    <Card className="p-6 relative overflow-hidden border-orange-500/20 hover:shadow-lg transition-all">
-      {/* Header */}
+    <Card className={`p-6 relative overflow-hidden transition-all hover:shadow-lg border-${bottleneck.severity === 'low' ? 'emerald' : 'orange'}-500/20`}>
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-full bg-orange-500/20 flex items-center justify-center">
-            <AlertCircle className="w-6 h-6 text-orange-500 animate-pulse" />
+          <div className={`w-12 h-12 rounded-full flex items-center justify-center ${bottleneck.severity === 'low' ? 'bg-emerald-500/10' : 'bg-orange-500/10'}`}>
+            {bottleneck.severity === 'low' ? <CheckCircle2 className="w-6 h-6 text-emerald-500" /> : <AlertCircle className="w-6 h-6 text-orange-500 animate-pulse" />}
           </div>
           <div>
-            <h3 className="font-semibold text-lg">Active Bottleneck</h3>
-            <p className="text-xs text-muted-foreground">AI-identified workflow limiter</p>
+            <h3 className="font-semibold text-lg flex items-center gap-2">
+              {bottleneck.title}
+              {labIQAI.isAvailable() && <Brain className="w-3 h-3 text-muted-foreground" />}
+            </h3>
+            <p className="text-xs text-muted-foreground">{bottleneck.type === 'healthy' ? 'Operational Status' : 'Detected Limiter'}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant="outline" className={`gap-1 ${getSeverityColor(bottleneck.severity)}`}>
-            <TrendingDown className="w-3 h-3" />
-            -{bottleneck.impactScore}% flow
-          </Badge>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={runAIAnalysis}
-            disabled={analyzing}
-            className="gap-2"
-          >
-            {analyzing ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <RefreshCw className="w-4 h-4" />
-            )}
-            {analyzing ? 'Analyzing...' : 'Re-analyze'}
+          {bottleneck.severity !== 'low' && (
+            <Badge variant="outline" className={`gap-1 ${getSeverityColor(bottleneck.severity)}`}>
+              <TrendingDown className="w-3 h-3" /> -{bottleneck.impactScore}% Flow
+            </Badge>
+          )}
+          <Button size="sm" variant="ghost" onClick={runAIAnalysis} disabled={analyzing} className="h-8 w-8 p-0">
+            {analyzing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
           </Button>
         </div>
       </div>
 
-      {/* Bottleneck Details */}
       <div className="space-y-4">
-        <div className="p-4 bg-orange-500/5 rounded-lg border border-orange-500/10">
-          <p className="text-sm font-medium mb-2 text-orange-700 dark:text-orange-400">
-            {bottleneck.title}
-          </p>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            {bottleneck.description}
-          </p>
+        <div className={`p-4 rounded-lg border ${bottleneck.severity === 'low' ? 'bg-emerald-500/5 border-emerald-500/10' : 'bg-orange-500/5 border-orange-500/10'}`}>
+          <p className="text-sm text-foreground/80 leading-relaxed">{bottleneck.description}</p>
         </div>
 
-        {/* Impact Stats */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg">
-            <Clock className="w-4 h-4 text-orange-500" />
-            <div>
-              <p className="text-xs text-muted-foreground">Time Blocked</p>
-              <p className="text-sm font-semibold">{bottleneck.timeBlocked}</p>
+        {bottleneck.severity !== 'low' && (
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex items-center gap-2 p-2 bg-muted/50 rounded">
+              <Clock className="w-4 h-4 text-orange-500" />
+              <div>
+                <p className="text-[10px] text-muted-foreground uppercase">Blocked For</p>
+                <p className="text-sm font-semibold">{bottleneck.timeBlocked}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 p-2 bg-muted/50 rounded">
+              <Workflow className="w-4 h-4 text-orange-500" />
+              <div>
+                <p className="text-[10px] text-muted-foreground uppercase">Impact</p>
+                <p className="text-sm font-semibold">{bottleneck.impact}</p>
+              </div>
             </div>
           </div>
-          <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg">
-            <TrendingDown className="w-4 h-4 text-orange-500" />
-            <div>
-              <p className="text-xs text-muted-foreground">Impact Score</p>
-              <p className="text-sm font-semibold">{bottleneck.impactScore}%</p>
-            </div>
-          </div>
+        )}
+
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <CheckCircle2 className="w-4 h-4 text-primary" />
+          <span>{bottleneck.recommendation}</span>
         </div>
-
-        {/* AI Recommendation */}
-        <div className="flex items-start gap-3 p-4 bg-gradient-to-r from-green-500/10 to-emerald-500/10 rounded-lg border border-green-500/20">
-          <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
-          <div className="flex-1">
-            <p className="text-xs font-medium text-green-700 dark:text-green-400 mb-1">
-              Recommendation
-            </p>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              {bottleneck.recommendation}
-            </p>
-          </div>
-        </div>
-
-        {/* Action Button */}
-        <Button variant="outline" className="w-full gap-2">
-          <CheckCircle2 className="w-4 h-4" />
-          Mark as Resolved
-        </Button>
       </div>
-
-      {/* Bottom Indicators */}
-      <div className="flex items-center justify-center gap-1 mt-4 pt-4 border-t">
-        {bottlenecks.map((_, idx) => (
-          <button
-            key={idx}
-            onClick={() => setCurrentIndex(idx)}
-            className={`h-1 rounded-full transition-all ${
-              idx === currentIndex ? 'w-6 bg-orange-500' : 'w-1.5 bg-muted hover:bg-muted-foreground/50'
-            }`}
-          />
-        ))}
-      </div>
-
-      {/* Last Analyzed Timestamp */}
-      {lastAnalyzed && (
-        <p className="text-xs text-muted-foreground text-center mt-2">
-          Last analyzed: {lastAnalyzed.toLocaleTimeString()}
-        </p>
-      )}
     </Card>
   );
 };

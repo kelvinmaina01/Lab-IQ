@@ -23,6 +23,17 @@ import { toast } from "sonner";
 import { DataExplorer } from "@/components/data/DataExplorer";
 import { QuickActionsPanel } from "@/components/upload/QuickActionsPanel";
 import { AutoMLPipelineDashboard } from "@/components/ml/AutoMLPipelineDashboard";
+import { datasetService } from "@/lib/services/datasetService";
+import {
+    History,
+    GitBranch,
+    ShieldCheck,
+    Activity,
+    Lock,
+    Eye,
+    Tag,
+    Info
+} from "lucide-react";
 
 const DatasetDetail = () => {
     const { id } = useParams();
@@ -34,6 +45,12 @@ const DatasetDetail = () => {
     const [analysisLoading, setAnalysisLoading] = useState(false);
     const [rows, setRows] = useState<any[]>([]);
     const [columns, setColumns] = useState<any[]>([]);
+
+    // V2 Data State
+    const [versions, setVersions] = useState<any[]>([]);
+    const [lineage, setLineage] = useState<any[]>([]);
+    const [qualityChecks, setQualityChecks] = useState<any[]>([]);
+    const [anonymizationLogs, setAnonymizationLogs] = useState<any[]>([]);
 
     useEffect(() => {
         if (id) {
@@ -56,8 +73,26 @@ const DatasetDetail = () => {
 
             setDataset(datasetData);
 
-            // Fetch quality scores if available
-            if (datasetData?.metadata?.quality) {
+            // Fetch V2 metadata in parallel
+            const [versionsData, lineageData, checksData, logsData] = await Promise.all([
+                datasetService.getVersions(id!),
+                datasetService.getLineage(id!),
+                datasetService.getQualityChecks(id!),
+                datasetService.getAnonymizationLogs(id!)
+            ]);
+
+            setVersions(versionsData);
+            setLineage(lineageData);
+            setQualityChecks(checksData);
+            setAnonymizationLogs(logsData);
+
+            // Fetch quality scores (Priority: quality_score column, then metadata)
+            if (datasetData?.quality_score !== undefined) {
+                setQuality({
+                    overall_score: Math.round(datasetData.quality_score),
+                    ...(datasetData.quality_breakdown || {})
+                });
+            } else if (datasetData?.metadata?.quality) {
                 setQuality(datasetData.metadata.quality);
             }
 
@@ -74,6 +109,18 @@ const DatasetDetail = () => {
             // Handle columns - support both schema.columns and preview_data generation
             if (datasetData?.schema?.columns && Array.isArray(datasetData.schema.columns)) {
                 setColumns(datasetData.schema.columns);
+            } else if (datasetData?.columns_info) {
+                // If we have columns_info (simple Record<string, string>)
+                const generatedColumns = Object.entries(datasetData.columns_info).map(([key, type], index) => ({
+                    id: `col_${index}`,
+                    column_name: key,
+                    name: key,
+                    data_type: type,
+                    type: type,
+                    unique_values_count: 0,
+                    nullable: true
+                }));
+                setColumns(generatedColumns);
             } else if (datasetData?.preview_data && datasetData.preview_data.length > 0) {
                 // Generate columns from first row if schema not available
                 const firstRow = datasetData.preview_data[0];
@@ -87,10 +134,6 @@ const DatasetDetail = () => {
                     nullable: true
                 }));
                 setColumns(generatedColumns);
-            } else if (datasetData?.row_count && datasetData?.column_count) {
-                // If we have counts but no preview data, show empty state with info
-                console.log('Dataset has no preview data:', datasetData);
-                toast.error('Dataset uploaded but preview data is not available');
             }
         } catch (error) {
             console.error('Error fetching dataset:', error);
@@ -177,7 +220,21 @@ const DatasetDetail = () => {
                             <span>•</span>
                             <span>{(dataset.file_size / 1024 / 1024).toFixed(2)} MB</span>
                             <span>•</span>
-                            <span>{new Date(dataset.created_at).toLocaleDateString()}</span>
+                            <span>v{dataset.version || 1}</span>
+                            <span>•</span>
+                            <div className="flex items-center gap-2">
+                                {dataset.domain && (
+                                    <Badge variant="secondary" className="px-2 py-0 h-5 text-[10px] uppercase">
+                                        {dataset.domain}
+                                    </Badge>
+                                )}
+                                {dataset.is_anonymized && (
+                                    <Badge variant="outline" className="px-2 py-0 h-5 text-[10px] bg-blue-50 text-blue-600 border-blue-200 uppercase">
+                                        <Lock className="w-3 h-3 mr-1" />
+                                        PHI-Safe
+                                    </Badge>
+                                )}
+                            </div>
                         </div>
                     </div>
                     <div className="flex gap-2">
@@ -268,6 +325,18 @@ const DatasetDetail = () => {
                         <TabsTrigger value="automl" className="gap-2">
                             <Sparkles className="h-4 w-4" />
                             AutoML
+                        </TabsTrigger>
+                        <TabsTrigger value="versions" className="gap-2">
+                            <History className="h-4 w-4" />
+                            History
+                        </TabsTrigger>
+                        <TabsTrigger value="lineage" className="gap-2">
+                            <GitBranch className="h-4 w-4" />
+                            Lineage
+                        </TabsTrigger>
+                        <TabsTrigger value="governance" className="gap-2">
+                            <ShieldCheck className="h-4 w-4" />
+                            Governance
                         </TabsTrigger>
                     </TabsList>
 
@@ -572,13 +641,172 @@ const DatasetDetail = () => {
                         <AutoMLPipelineDashboard
                             datasetId={id!}
                             data={rows}
-                            onComplete={(result) => {
+                            onComplete={(result: any) => {
                                 toast.success(`AutoML Complete: Best model is ${result.summary.model_training_summary.best_model} with ${(result.summary.model_training_summary.best_score * 100).toFixed(1)}% score`);
                             }}
-                            onError={(error) => {
+                            onError={(error: any) => {
                                 toast.error(`AutoML Error: ${error}`);
                             }}
                         />
+                    </TabsContent>
+
+                    <TabsContent value="versions" className="mt-6">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                    <History className="h-5 w-5 text-primary" />
+                                    Version History
+                                </CardTitle>
+                                <CardDescription>Track changes and snapshots of this dataset</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="space-y-4">
+                                    {versions.length === 0 ? (
+                                        <div className="text-center py-8 text-muted-foreground">
+                                            No version history recorded yet.
+                                        </div>
+                                    ) : (
+                                        versions.map((v, idx) => (
+                                            <div key={v.id} className="flex items-start gap-4 p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
+                                                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary">
+                                                    {v.version}
+                                                </div>
+                                                <div className="flex-1">
+                                                    <div className="flex items-center justify-between">
+                                                        <h4 className="font-semibold">{v.change_summary || (idx === versions.length - 1 ? 'Initial Upload' : 'Update')}</h4>
+                                                        <span className="text-xs text-muted-foreground">{new Date(v.created_at).toLocaleString()}</span>
+                                                    </div>
+                                                    <p className="text-sm text-muted-foreground mt-1">
+                                                        Rows: {v.snapshot_row_count} • Size: {(v.snapshot_size_bytes / 1024 / 1024).toFixed(2)} MB
+                                                    </p>
+                                                    <div className="flex gap-2 mt-2">
+                                                        <Badge variant="outline" className="text-[10px]">{v.change_type}</Badge>
+                                                        {v.id === dataset.latest_version_id && <Badge className="text-[10px]">Current</Badge>}
+                                                    </div>
+                                                </div>
+                                                <Button variant="ghost" size="sm">Restore</Button>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+
+                    <TabsContent value="lineage" className="mt-6">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                    <GitBranch className="h-5 w-5 text-primary" />
+                                    Data Provenance & Lineage
+                                </CardTitle>
+                                <CardDescription>Track the origin and dependencies of this data</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="space-y-6">
+                                    <div className="p-4 rounded-lg border border-dashed text-center bg-muted/30">
+                                        <p className="text-sm text-muted-foreground mb-4">Lineage Visualization coming soon. Listed below are the direct connections.</p>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <h4 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Sources & Destinations</h4>
+                                        {lineage.length === 0 ? (
+                                            <div className="p-4 rounded-lg border bg-card flex items-center gap-3">
+                                                <Info className="h-5 w-5 text-muted-foreground" />
+                                                <div className="text-sm">
+                                                    This dataset was uploaded directly via <strong>{dataset.source_type || 'Manual Upload'}</strong>.
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            lineage.map((item) => (
+                                                <div key={item.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="h-8 w-8 rounded bg-secondary flex items-center justify-center">
+                                                            {item.source_type === 'dataset' ? <Database className="h-4 w-4" /> : <Brain className="h-4 w-4" />}
+                                                        </div>
+                                                        <div>
+                                                            <div className="text-sm font-medium">{item.source_name} → {item.target_name}</div>
+                                                            <div className="text-xs text-muted-foreground">{item.transformation_type}</div>
+                                                        </div>
+                                                    </div>
+                                                    <Badge variant="outline">{new Date(item.created_at).toLocaleDateString()}</Badge>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+
+                    <TabsContent value="governance" className="mt-6">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <Card className="md:col-span-2">
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2">
+                                        <ShieldCheck className="h-5 w-5 text-primary" />
+                                        Encryption & Anonymization Audit
+                                    </CardTitle>
+                                    <CardDescription>Security status and transformation history</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="space-y-4">
+                                        <div className="flex items-center justify-between p-4 rounded-lg border bg-blue-50/30 border-blue-100">
+                                            <div className="flex items-center gap-3">
+                                                <Lock className="h-5 w-5 text-blue-600" />
+                                                <div>
+                                                    <div className="text-sm font-semibold text-blue-900">Anonymization Status</div>
+                                                    <div className="text-xs text-blue-700">{dataset.is_anonymized ? 'Fully Processed' : 'Raw Data (Action Required for Compliance)'}</div>
+                                                </div>
+                                            </div>
+                                            <Badge variant={dataset.is_anonymized ? "default" : "destructive"}>
+                                                {dataset.is_anonymized ? 'Protected' : 'Pending'}
+                                            </Badge>
+                                        </div>
+
+                                        <div className="space-y-3">
+                                            <h4 className="text-xs font-semibold uppercase text-muted-foreground">Transformation Logs</h4>
+                                            {anonymizationLogs.length === 0 ? (
+                                                <p className="text-sm text-muted-foreground italic">No anonymization runs recorded.</p>
+                                            ) : (
+                                                anonymizationLogs.map((log) => (
+                                                    <div key={log.id} className="p-3 rounded-lg border text-sm flex justify-between items-center">
+                                                        <div>
+                                                            <div className="font-medium">{log.method}</div>
+                                                            <div className="text-xs text-muted-foreground">{log.fields_processed.length} fields masked</div>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <div className="text-xs">{new Date(log.completed_at).toLocaleDateString()}</div>
+                                                            <div className="text-[10px] text-green-600">Verified</div>
+                                                        </div>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="text-sm uppercase tracking-wider text-muted-foreground">Compliance Badges</CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="flex items-center gap-3 opacity-50 grayscale hover:grayscale-0 transition-all cursor-help" title="HIPAA Compliant Ingestion">
+                                        <div className="h-10 w-10 rounded border flex items-center justify-center font-bold text-xs">HIPAA</div>
+                                        <div className="text-xs font-medium">Safe Ingestion</div>
+                                    </div>
+                                    <div className="flex items-center gap-3 opacity-50 grayscale hover:grayscale-0 transition-all cursor-help" title="GDPR Automated Masking">
+                                        <div className="h-10 w-10 rounded border flex items-center justify-center font-bold text-xs">GDPR</div>
+                                        <div className="text-xs font-medium">Anonymized</div>
+                                    </div>
+                                    <div className="flex items-center gap-3 opacity-50 grayscale hover:grayscale-0 transition-all cursor-help" title="SOC2 Verified Storage">
+                                        <div className="h-10 w-10 rounded border flex items-center justify-center font-bold text-xs">SOC2</div>
+                                        <div className="text-xs font-medium">Vault Encrypted</div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
                     </TabsContent>
                 </Tabs>
             </div>

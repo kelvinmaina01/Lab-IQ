@@ -9,6 +9,7 @@ from .model_selection_agent import ModelSelectionAgent
 from .hyperparameter_agent import HyperparameterAgent
 from .training_agent import TrainingAgent
 from .insights_agent import InsightsAgent
+from .labai_agent import LabAIAgent
 import logging
 from datetime import datetime
 
@@ -28,6 +29,7 @@ class OrchestratorAgent(BaseAgent):
         self.hyperparameter_agent = HyperparameterAgent()
         self.training_agent = TrainingAgent()
         self.insights_agent = InsightsAgent()
+        self.labai_agent = LabAIAgent()
         
         self.pipeline_status = {}
         self.progress = 0
@@ -145,6 +147,27 @@ class OrchestratorAgent(BaseAgent):
             
             insights_result = await self.insights_agent.run(engineered_data, shared_context)
             results["stages"]["insights"] = insights_result
+            
+            # Stage 7: LabAI Integration (Narrative Generation)
+            logger.info("=" * 60)
+            logger.info("STAGE 7: LABAI NARRATIVE GENERATION")
+            logger.info("=" * 60)
+            self.progress = 95
+            
+            # Prepare context for LabAI
+            # We need the summary created by insights agent, 
+            # or we create a provisional summary first
+            provisional_summary = self._create_summary({
+                "stages": {
+                    "training": {"results": training_result.get("results")},
+                    "insights": {"results": insights_result.get("results")}
+                }
+            }, shared_context, 0)
+            
+            shared_context["pipeline_summary"] = provisional_summary
+            
+            labai_result = await self.labai_agent.run(None, shared_context)
+            results["stages"]["labai_narrative"] = labai_result
             
             # Finalize
             self.progress = 100

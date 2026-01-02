@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { eventBus, EventTypes, WorkflowPayload } from '@/lib/events';
+import { eventBus, EventTypes, WorkflowPayload } from './eventBus';
 
 export interface WorkflowStep {
   type: 'quality_check' | 'transform' | 'train_model' | 'analyze' | 'notify' | 'export';

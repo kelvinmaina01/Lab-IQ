@@ -53,6 +53,8 @@ import { useLocation } from 'react-router-dom';
 import { labIQAI, AISection } from '@/lib/ai/LabIQAI';
 import { dashboardService } from '@/lib/services/dashboardService';
 import { useToast } from '@/hooks/use-toast';
+import { ModeSelector, AIMode } from './ai/ModeSelector';
+import { ExplainabilityPanel } from './ai/ExplainabilityPanel';
 
 // =============================================================================
 // TYPES
@@ -159,8 +161,8 @@ export function AIAssistantChat({
   const location = useLocation();
 
   // Current mode config
-  const currentMode = MODE_CONFIG[mode];
-  const ModeIcon = currentMode.icon;
+  const currentMode = MODE_CONFIG[mode] || MODE_CONFIG.analysis;
+  const ModeIcon = currentMode?.icon || BarChart;
 
   // =============================================================================
   // EFFECTS
@@ -256,18 +258,18 @@ export function AIAssistantChat({
     if (!selectedDataset) return;
 
     try {
-      // Load dataset metadata for Data Explorer
+      // Load dataset schema for Data Explorer
       const { data } = await supabase
         .from('datasets')
-        .select('name, columns, row_count')
+        .select('name, schema, row_count' as any)
         .eq('id', selectedDataset)
         .single();
 
       if (data) {
-        const columns = typeof data.columns === 'string'
-          ? JSON.parse(data.columns)
-
-          : data.columns || []
+        const schema = (data as any).schema || [];
+        const columns = typeof schema === 'string'
+          ? JSON.parse(schema)
+          : schema;
 
         setDataframes([{
           id: selectedDataset,
@@ -475,30 +477,12 @@ export function AIAssistantChat({
           <header className="flex items-center justify-between px-4 py-3 border-b bg-background animate-in slide-in-from-top-2 duration-300">
             <div className="flex items-center gap-4">
               {/* Mode Selector */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="gap-2 font-semibold text-lg">
-                    <ModeIcon className={`w-5 h-5 ${currentMode.color}`} />
-                    Health Data Analysis
-                    <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-48">
-                  {Object.entries(MODE_CONFIG).map(([key, config]) => {
-                    const Icon = config.icon;
-                    return (
-                      <DropdownMenuItem
-                        key={key}
-                        onClick={() => onModeChange?.(key as AssistantMode)}
-                        className="gap-2"
-                      >
-                        <Icon className={`w-4 h-4 ${config.color}`} />
-                        {config.description}
-                      </DropdownMenuItem>
-                    );
-                  })}
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <ModeSelector
+                mode={mode}
+                onModeChange={(m) => onModeChange?.(m)}
+                variant="dropdown"
+                size="md"
+              />
 
               {/* Selected Dataset Indicator */}
               {selectedDataset && (
@@ -613,6 +597,28 @@ export function AIAssistantChat({
                               <RefreshCw className="h-3.5 w-3.5" />
                               Regenerate
                             </Button>
+
+                            {/* Explainability Panel */}
+                            {(message.thoughtProcess || message.role === 'assistant') && (
+                              <div className="pt-2">
+                                <ExplainabilityPanel
+                                  thoughtProcess={message.thoughtProcess?.map((t, i) => ({
+                                    step: i + 1,
+                                    thought: t,
+                                    reasoning: 'Analysis step',
+                                    confidence: 0.9
+                                  }))}
+                                  findings={message.sections?.filter(s => s.type === 'insight').map(s => ({
+                                    title: s.title || 'Insight',
+                                    description: s.content || '',
+                                    type: 'insight',
+                                    confidence: 0.85
+                                  }))}
+                                  compact={true}
+                                  confidence={0.88}
+                                />
+                              </div>
+                            )}
 
                             {/* Pin Button */}
                             <Button

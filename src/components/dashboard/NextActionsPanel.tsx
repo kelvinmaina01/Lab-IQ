@@ -12,6 +12,7 @@ import { Zap, AlertCircle, Target, CheckCircle2, RefreshCw, Loader2, ArrowUpRigh
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { labIQAI } from "@/lib/ai/LabIQAI";
+import { useNavigate } from "react-router-dom";
 
 // =============================================================================
 // TYPES
@@ -191,6 +192,24 @@ export const NextActionsPanel = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
+
+  const getActionRoute = (action: NextAction): string => {
+    switch (action.category) {
+      case 'experiment':
+        return '/experiments';
+      case 'dataset':
+        return '/upload';
+      case 'workflow':
+        return '/automation';
+      case 'model':
+        return '/models';
+      case 'review':
+        return '/dashboards';
+      default:
+        return '/dashboard';
+    }
+  };
 
   const fetchActions = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -301,7 +320,8 @@ export const NextActionsPanel = () => {
               return (
                 <div
                   key={action.id}
-                  className="flex items-start gap-4 p-4 rounded-lg bg-muted/50 hover:bg-muted/80 transition-colors group"
+                  onClick={() => navigate(getActionRoute(action))}
+                  className="flex items-start gap-4 p-4 rounded-lg bg-muted/50 hover:bg-muted/80 transition-all group cursor-pointer hover:shadow-md"
                 >
                   {/* Priority Number */}
                   <div className="flex flex-col items-center gap-1">
@@ -325,16 +345,22 @@ export const NextActionsPanel = () => {
                     <p className="text-xs text-muted-foreground">{action.description}</p>
                   </div>
 
-                  {/* Action Button */}
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={() => handleCompleteAction(action.id)}
-                  >
-                    Complete
-                    <CheckCircle2 className="w-4 h-4 ml-1" />
-                  </Button>
+                  {/* Navigate Icon & Action Button */}
+                  <div className="flex items-center gap-2">
+                    <ArrowUpRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCompleteAction(action.id);
+                      }}
+                    >
+                      Complete
+                      <CheckCircle2 className="w-4 h-4 ml-1" />
+                    </Button>
+                  </div>
                 </div>
               );
             })

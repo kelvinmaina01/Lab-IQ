@@ -1,437 +1,224 @@
-/**
- * ExperimentService - Experiment Management with State Machine
- * 
- * Per Blueprint Phase 4: Experiments System
- * Handles experiment lifecycle: PLANNED → RUNNING → COMPLETED → FAILED
- * 
- * Key capabilities:
- * - Auto-create experiments from datasets (via automation rules)
- * - State machine transitions with validation
- * - Link datasets and models to experiments
- * - Track results and proposals
- */
-
 import { supabase } from '@/integrations/supabase/client';
-import { eventBus, EventTypes } from '@/lib/events';
+import { eventBus, EventTypes, EventPayload } from './eventBus';
+import { labAIService } from './labAIService';
 
-// =============================================================================
-// TYPES
-// =============================================================================
+export type ExperimentStatus = 'planned' | 'running' | 'completed' | 'failed' | 'cancelled';
+export type ExperimentType = 'classification' | 'regression' | 'clustering' | 'anomaly_detection' | 'forecasting';
 
-export type ExperimentStatus = 'PLANNED' | 'RUNNING' | 'COMPLETED' | 'FAILED';
+export interface ExperimentConfig {
+    targetColumn: string;
+    features: string[];
+    modelType: 'auto' | 'random_forest' | 'xgboost' | 'linear' | 'neural_network';
+    hyperparameters?: Record<string, any>;
+    validationSplit?: number;
+}
 
 export interface Experiment {
     id: string;
-    title: string;
-    description: string;
-    status: ExperimentStatus;
-    objective?: string;
-    hypothesis?: string;
-    successMetrics?: Record<string, unknown>;
-    protocolSteps?: string[];
-    allowedModels?: string[];
-    results?: Record<string, unknown>;
-    datasetIds: string[];
-    modelIds: string[];
-    createdBy: string;
-    proposedBy?: 'user' | 'ai';
-    startedAt?: string;
-    completedAt?: string;
-    createdAt: string;
-    updatedAt: string;
-}
-
-export interface CreateExperimentInput {
-    title: string;
+    dataset_id: string;
+    name: string;
     description?: string;
-    objective?: string;
-    hypothesis?: string;
-    datasetId?: string;
-    proposedBy?: 'user' | 'ai';
+    type: ExperimentType;
+    status: ExperimentStatus;
+    config: ExperimentConfig;
+    metrics?: Record<string, number>;
+    created_at: string;
+    updated_at: string;
+    started_at?: string;
+    completed_at?: string;
+    error_message?: string;
+    created_by: string;
 }
 
-export interface ExperimentProposal {
-    id: string;
-    experimentId?: string;
-    datasetId: string;
-    title: string;
-    description: string;
-    type: string;
-    rationale: string;
-    expectedOutcome: string;
-    confidence: number;
-    createdAt: string;
-    status: 'pending' | 'accepted' | 'rejected';
-}
+class ExperimentService {
+    private static instance: ExperimentService;
 
-// State machine valid transitions
-const VALID_TRANSITIONS: Record<ExperimentStatus, ExperimentStatus[]> = {
-    'PLANNED': ['RUNNING', 'FAILED'],
-    'RUNNING': ['COMPLETED', 'FAILED'],
-    'COMPLETED': [], // Terminal state
-    'FAILED': ['PLANNED'], // Can retry
-};
+    private constructor() { }
 
-// =============================================================================
-// EXPERIMENT SERVICE CLASS
-// =============================================================================
-
-export class ExperimentService {
-    private userId: string | null = null;
-
-    constructor() {
-        this.initializeUser();
-    }
-
-    private async initializeUser(): Promise<void> {
-        const { data: { user } } = await supabase.auth.getUser();
-        this.userId = user?.id || null;
-    }
-
-    // =========================================================================
-    // CRUD OPERATIONS
-    // =========================================================================
-
-    /**
-     * Create a new experiment
-     */
-    async create(input: CreateExperimentInput): Promise<Experiment> {
-        if (!this.userId) {
-            await this.initializeUser();
+    public static getInstance(): ExperimentService {
+        if (!ExperimentService.instance) {
+            ExperimentService.instance = new ExperimentService();
         }
-
-        const { data, error } = await supabase
-            .from('experiments')
-            .insert({
-                title: input.title,
-                description: input.description || '',
-                objective: input.objective,
-                hypothesis: input.hypothesis,
-                status: 'PLANNED',
-                proposed_by: input.proposedBy || 'user',
-                dataset_id: input.datasetId,
-                user_id: this.userId,
-            })
-            .select()
-            .single();
-
-        if (error) {
-            console.error('[ExperimentService] Create error:', error);
-            throw new Error(`Failed to create experiment: ${error.message}`);
-        }
-
-        const experiment = this.mapToExperiment(data);
-
-        // Emit event
-        eventBus.emit(EventTypes.EXPERIMENT_CREATED, {
-            experimentId: experiment.id,
-            title: experiment.title,
-            datasetId: input.datasetId,
-            proposedBy: input.proposedBy,
-        }, {
-            source: 'experimentService',
-            userId: this.userId || undefined,
-        });
-
-        console.log('[ExperimentService] Created experiment:', experiment.id);
-        return experiment;
+        return ExperimentService.instance;
     }
 
     /**
-     * Get experiment by ID
+     * Create a new experiment (PLANNED state)
      */
-    async getById(id: string): Promise<Experiment | null> {
-        const { data, error } = await supabase
-            .from('experiments')
-            .select('*')
-            .eq('id', id)
-            .single();
+    async createExperiment(
+        datasetId: string,
+        name: string,
+        type: ExperimentType,
+        config: ExperimentConfig
+    ): Promise<Experiment> {
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error('No user logged in');
 
-        if (error) {
-            console.error('[ExperimentService] Get error:', error);
-            return null;
-        }
+            const newExperiment = {
+                dataset_id: datasetId,
+                name,
+                type,
+                status: 'planned',
+                config,
+                created_by: user.id
+            };
 
-        return this.mapToExperiment(data);
-    }
-
-    /**
-     * Get all experiments for current user
-     */
-    async getAll(): Promise<Experiment[]> {
-        const { data, error } = await supabase
-            .from('experiments')
-            .select('*')
-            .order('created_at', { ascending: false });
-
-        if (error) {
-            console.error('[ExperimentService] GetAll error:', error);
-            return [];
-        }
-
-        return data.map(this.mapToExperiment);
-    }
-
-    /**
-     * Get experiments by status
-     */
-    async getByStatus(status: ExperimentStatus): Promise<Experiment[]> {
-        const { data, error } = await supabase
-            .from('experiments')
-            .select('*')
-            .eq('status', status)
-            .order('created_at', { ascending: false });
-
-        if (error) {
-            console.error('[ExperimentService] GetByStatus error:', error);
-            return [];
-        }
-
-        return data.map(this.mapToExperiment);
-    }
-
-    // =========================================================================
-    // STATE MACHINE
-    // =========================================================================
-
-    /**
-     * Update experiment status with state machine validation
-     */
-    async updateStatus(id: string, newStatus: ExperimentStatus): Promise<Experiment> {
-        const experiment = await this.getById(id);
-        if (!experiment) {
-            throw new Error(`Experiment ${id} not found`);
-        }
-
-        const currentStatus = experiment.status;
-        const allowedTransitions = VALID_TRANSITIONS[currentStatus];
-
-        if (!allowedTransitions.includes(newStatus)) {
-            throw new Error(
-                `Invalid transition from ${currentStatus} to ${newStatus}. ` +
-                `Allowed: ${allowedTransitions.join(', ') || 'none'}`
-            );
-        }
-
-        const updates: Record<string, unknown> = {
-            status: newStatus,
-            updated_at: new Date().toISOString(),
-        };
-
-        // Set timestamps based on transition
-        if (newStatus === 'RUNNING' && currentStatus === 'PLANNED') {
-            updates.started_at = new Date().toISOString();
-        } else if (newStatus === 'COMPLETED' || newStatus === 'FAILED') {
-            updates.completed_at = new Date().toISOString();
-        }
-
-        const { data, error } = await supabase
-            .from('experiments')
-            .update(updates)
-            .eq('id', id)
-            .select()
-            .single();
-
-        if (error) {
-            throw new Error(`Failed to update status: ${error.message}`);
-        }
-
-        const updated = this.mapToExperiment(data);
-
-        // Emit appropriate event
-        const eventType = this.getStatusEventType(newStatus);
-        if (eventType) {
-            eventBus.emit(eventType, {
-                experimentId: id,
-                previousStatus: currentStatus,
-                newStatus,
-                title: updated.title,
-            }, {
-                source: 'experimentService',
-                userId: this.userId || undefined,
-            });
-        }
-
-        console.log(`[ExperimentService] Status updated: ${id} ${currentStatus} → ${newStatus}`);
-        return updated;
-    }
-
-    /**
-     * Start an experiment (PLANNED → RUNNING)
-     */
-    async start(id: string): Promise<Experiment> {
-        return this.updateStatus(id, 'RUNNING');
-    }
-
-    /**
-     * Complete an experiment (RUNNING → COMPLETED)
-     */
-    async complete(id: string, results?: Record<string, unknown>): Promise<Experiment> {
-        if (results) {
-            await supabase
+            const { data, error } = await supabase
                 .from('experiments')
-                .update({ results })
-                .eq('id', id);
+                .insert(newExperiment)
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            eventBus.emit(EventTypes.EXPERIMENT_CREATED, {
+                timestamp: new Date().toISOString(),
+                source: 'experimentService',
+                userId: user.id,
+                data: {
+                    experimentId: data.id,
+                    name: data.name,
+                    type: data.type
+                }
+            });
+
+            return data as Experiment;
+        } catch (error) {
+            console.error('Error creating experiment:', error);
+            throw error;
         }
-        return this.updateStatus(id, 'COMPLETED');
     }
 
     /**
-     * Fail an experiment (any → FAILED)
+     * Start an experiment (PLANNED -> RUNNING)
      */
-    async fail(id: string, reason?: string): Promise<Experiment> {
-        if (reason) {
-            await supabase
+    async startExperiment(experimentId: string): Promise<void> {
+        try {
+            // Update status to running
+            const { error } = await supabase
                 .from('experiments')
                 .update({
-                    results: { failureReason: reason }
+                    status: 'running',
+                    started_at: new Date().toISOString()
                 })
-                .eq('id', id);
+                .eq('id', experimentId);
+
+            if (error) throw error;
+
+            eventBus.emit(EventTypes.EXPERIMENT_RUNNING, {
+                timestamp: new Date().toISOString(),
+                source: 'experimentService',
+                data: { experimentId }
+            });
+
+            // Trigger actual execution (mocked for V1, would call ML service)
+            this.executeExperimentMock(experimentId);
+
+        } catch (error) {
+            console.error('Error starting experiment:', error);
+            throw error;
         }
-        return this.updateStatus(id, 'FAILED');
     }
 
-    // =========================================================================
-    // AUTO-CREATION FROM DATASETS
-    // =========================================================================
+    /**
+     * Execute experiment logic (Mock implementation for V1)
+     */
+    private async executeExperimentMock(experimentId: string): Promise<void> {
+        console.log(`🧪 [ExperimentService] Executing experiment ${experimentId}...`);
+
+        // Simulate training time
+        setTimeout(async () => {
+            try {
+                // Mock metrics
+                const metrics = {
+                    accuracy: 0.85 + Math.random() * 0.1,
+                    precision: 0.80 + Math.random() * 0.1,
+                    recall: 0.82 + Math.random() * 0.1,
+                    f1_score: 0.81 + Math.random() * 0.1
+                };
+
+                // Update to completed
+                const { error } = await supabase
+                    .from('experiments')
+                    .update({
+                        status: 'completed',
+                        completed_at: new Date().toISOString(),
+                        metrics: metrics
+                    })
+                    .eq('id', experimentId);
+
+                if (error) throw new Error(error.message);
+
+                eventBus.emit(EventTypes.EXPERIMENT_COMPLETED, {
+                    timestamp: new Date().toISOString(),
+                    source: 'experimentService',
+                    data: {
+                        experimentId,
+                        status: 'completed',
+                        metrics
+                    }
+                });
+
+                // Auto-trigger AI Interpretation (Rule: experiment-to-report)
+                // In a real system the RulesEngine picks this up.
+                // For V1, we can also explicitly call LabAI if needed, 
+                // but the RulesEngine should handle it if listening.
+
+            } catch (error) {
+                console.error('Experiment execution failed:', error);
+                await this.failExperiment(experimentId, error instanceof Error ? error.message : 'Unknown error');
+            }
+        }, 5000); // 5 seconds simulation
+    }
 
     /**
-     * Create an experiment from a dataset (called by automation rules)
+     * Mark experiment as failed
      */
-    async createFromDataset(params: {
-        datasetId: string;
-        datasetName?: string;
-        domain?: string;
-        proposedBy?: 'user' | 'ai';
-    }): Promise<Experiment> {
-        const title = params.datasetName
-            ? `Analysis: ${params.datasetName}`
-            : `Dataset Analysis - ${new Date().toLocaleDateString()}`;
+    private async failExperiment(experimentId: string, errorMessage: string): Promise<void> {
+        await supabase
+            .from('experiments')
+            .update({
+                status: 'failed',
+                completed_at: new Date().toISOString(),
+                error_message: errorMessage
+            })
+            .eq('id', experimentId);
 
-        const description = params.domain
-            ? `Auto-created experiment for ${params.domain} domain analysis`
-            : 'Auto-created experiment from uploaded dataset';
-
-        return this.create({
-            title,
-            description,
-            datasetId: params.datasetId,
-            proposedBy: params.proposedBy || 'ai',
-            objective: 'Analyze dataset and discover insights',
+        eventBus.emit(EventTypes.EXPERIMENT_FAILED, {
+            timestamp: new Date().toISOString(),
+            source: 'experimentService',
+            data: { experimentId, error: errorMessage }
         });
     }
 
-    // =========================================================================
-    // LINKING
-    // =========================================================================
-
     /**
-     * Link a dataset to an experiment
+     * Get experiment details
      */
-    async attachDataset(experimentId: string, datasetId: string): Promise<void> {
-        const experiment = await this.getById(experimentId);
-        if (!experiment) {
-            throw new Error(`Experiment ${experimentId} not found`);
-        }
-
-        // Update the dataset_id field (simple FK relationship)
-        const { error } = await supabase
-            .from('experiments')
-            .update({ dataset_id: datasetId })
-            .eq('id', experimentId);
-
-        if (error) {
-            throw new Error(`Failed to attach dataset: ${error.message}`);
-        }
-
-        console.log(`[ExperimentService] Attached dataset ${datasetId} to experiment ${experimentId}`);
-    }
-
-    /**
-     * Link a model to an experiment
-     */
-    async linkModel(experimentId: string, modelId: string): Promise<void> {
-        // For now, store in a JSON field or separate table
-        // This can be enhanced with a proper junction table
-        console.log(`[ExperimentService] Linking model ${modelId} to experiment ${experimentId}`);
-
-        // TODO: Implement proper model linking when ml_models table has experiment_id FK
-    }
-
-    /**
-     * Record experiment results
-     */
-    async recordResults(experimentId: string, results: Record<string, unknown>): Promise<Experiment> {
+    async getExperiment(experimentId: string): Promise<Experiment> {
         const { data, error } = await supabase
             .from('experiments')
-            .update({
-                results,
-                updated_at: new Date().toISOString(),
-            })
+            .select('*')
             .eq('id', experimentId)
-            .select()
             .single();
 
-        if (error) {
-            throw new Error(`Failed to record results: ${error.message}`);
-        }
-
-        console.log(`[ExperimentService] Recorded results for experiment ${experimentId}`);
-        return this.mapToExperiment(data);
+        if (error) throw error;
+        return data as Experiment;
     }
-
-    // =========================================================================
-    // AI PROPOSALS
-    // =========================================================================
 
     /**
-     * Get AI-proposed experiments for a dataset
+     * List experiments for a dataset
      */
-    async getProposedExperiments(datasetId: string): Promise<ExperimentProposal[]> {
-        // TODO: Query from experiment_proposals table when created
-        // For now, return empty array
-        console.log(`[ExperimentService] Getting proposals for dataset ${datasetId}`);
-        return [];
-    }
+    async listExperiments(datasetId: string): Promise<Experiment[]> {
+        const { data, error } = await supabase
+            .from('experiments')
+            .select('*')
+            .eq('dataset_id', datasetId)
+            .order('created_at', { ascending: false });
 
-    // =========================================================================
-    // HELPERS
-    // =========================================================================
-
-    private mapToExperiment(data: Record<string, unknown>): Experiment {
-        return {
-            id: data.id as string,
-            title: data.title as string,
-            description: data.description as string || '',
-            status: (data.status as ExperimentStatus) || 'PLANNED',
-            objective: data.objective as string,
-            hypothesis: data.hypothesis as string,
-            successMetrics: data.success_metrics as Record<string, unknown>,
-            protocolSteps: data.protocol_steps as string[],
-            allowedModels: data.allowed_models as string[],
-            results: data.results as Record<string, unknown>,
-            datasetIds: data.dataset_id ? [data.dataset_id as string] : [],
-            modelIds: [],
-            createdBy: data.user_id as string,
-            proposedBy: data.proposed_by as 'user' | 'ai',
-            startedAt: data.started_at as string,
-            completedAt: data.completed_at as string,
-            createdAt: data.created_at as string,
-            updatedAt: data.updated_at as string,
-        };
-    }
-
-    private getStatusEventType(status: ExperimentStatus): string | null {
-        switch (status) {
-            case 'RUNNING':
-                return EventTypes.EXPERIMENT_RUNNING;
-            case 'COMPLETED':
-                return EventTypes.EXPERIMENT_COMPLETED;
-            default:
-                return null;
-        }
+        if (error) throw error;
+        return data as Experiment[];
     }
 }
 
-// Singleton export
-export const experimentService = new ExperimentService();
+export const experimentService = ExperimentService.getInstance();

@@ -1,6 +1,9 @@
 import React, { createContext, useContext } from "react";
 import { IServiceContainer } from "./interfaces";
-import { SupabaseAuthService, SupabaseStorageService, PythonMLService, SupabaseCollaborationService } from "./services";
+import { SupabaseAuthService } from "@/services/authService";
+import { SupabaseStorageService } from "@/services/storageService";
+import { PythonMLService } from "@/services/mlService";
+import { SupabaseCollaborationService } from "@/services/collaborationServiceAdapter";
 
 // Initialize services (Singletons)
 const services: IServiceContainer = {

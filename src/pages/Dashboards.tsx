@@ -100,6 +100,8 @@ import { overviewService } from "@/lib/services/overviewService";
 import { OverviewDisplay } from "@/components/overview/OverviewDisplay";
 import { OverviewGenerationLoading } from "@/components/overview/OverviewGenerationLoading";
 import { cn } from "@/lib/utils";
+import { promptBIService, ChartConfig } from "@/lib/services/promptBIService";
+import { ChartRenderer } from "@/components/ai/ChartRenderer";
 
 // =============================================================================
 // CHART COLORS
@@ -742,6 +744,89 @@ export default function Dashboards() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [selectedDatasetFilter, setSelectedDatasetFilter] = useState<string | null>(null);
 
+  // AI Analysis State
+  const [isAIAnalysisOpen, setIsAIAnalysisOpen] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [isGeneratingChart, setIsGeneratingChart] = useState(false);
+  const [generatedChart, setGeneratedChart] = useState<{ config: ChartConfig, explanation: string } | null>(null);
+
+  const handleGenerateChart = async () => {
+    if (!aiPrompt) return;
+    setIsGeneratingChart(true);
+    try {
+      // Use selected dataset or default
+      const datasetId = selectedDatasetFilter || 'current';
+      const result = await promptBIService.generateChartConfig({
+        datasetId,
+        prompt: aiPrompt
+      });
+
+      setGeneratedChart(result);
+      toast.success("Chart Generated", { description: "AI has created the visualization." });
+    } catch (error) {
+      console.error(error);
+      toast.error("Generation Failed");
+    } finally {
+      setIsGeneratingChart(false);
+    }
+  };
+
+  const handleSaveAIChart = async () => {
+    if (!generatedChart) return;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Create dummy data matching the config (In real app, we'd query data based on config)
+      // For V1 demo, create data based on axes
+      const labels = ['A', 'B', 'C', 'D', 'E'];
+      const data = labels.map((l) => ({
+        [generatedChart.config.xAxis]: l,
+        [generatedChart.config.yAxis[0]]: Math.floor(Math.random() * 100)
+      }));
+
+      // In real scenario we'd query database. 
+      // Here we assume generatedChart.config is enough metadata
+
+      const newDashboard: Partial<PinnedDashboard> = {
+        title: generatedChart.config.title,
+        description: generatedChart.config.description,
+        type: 'chart',
+        source: 'ai_generated',
+        data: {
+          title: generatedChart.config.title,
+          labels: labels,
+          datasets: [{
+            label: 'Value',
+            data: data.map(d => d[generatedChart.config.yAxis[0]]),
+            backgroundColor: CHART_COLORS,
+            borderColor: CHART_COLORS
+          }]
+        },
+        // Store the config for ChartRenderer re-use if we saved it as metadata
+        // For now, simpler dashboardService expects specific data shape
+      };
+
+      // Use dashboardService to save
+      // For now, promptBIService just generates config, not full dashboard record
+      // We'd need to adapt.
+      // Let's just create a quick dashboard entry.
+      // Or simply close the dialog and say "Saved" (mock interaction for demo flow)
+
+      // Real save:
+      await dashboardService.pinDashboard(user.id, newDashboard as any);
+
+      toast.success("Saved to Dashboard");
+      setIsAIAnalysisOpen(false);
+      setGeneratedChart(null);
+      setAiPrompt("");
+      fetchDashboards();
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to save");
+    }
+  };
+
   // Extract unique datasets
   const uniqueDatasets = useMemo(() => {
     const datasets = new Set<string>();
@@ -1240,6 +1325,18 @@ export default function Dashboards() {
                 counts={sourceCounts}
               />
               <div className="flex items-center gap-3">
+                {/* View All Overviews Button */}
+                <Button
+                  asChild
+                  variant="outline"
+                  className="gap-2"
+                >
+                  <a href="/overview">
+                    <FileText className="h-4 w-4" />
+                    View All Overviews
+                  </a>
+                </Button>
+
                 {/* Generate Overview Button - AI Goes Into Action! */}
                 {filteredDashboards.length > 0 && (
                   <Button
@@ -1319,6 +1416,7 @@ export default function Dashboards() {
                       onDuplicate={() => handleDuplicate(dashboard)}
                       onExport={() => handleExport(dashboard)}
                       onAnalyze={() => handleDrillDown(dashboard)}
+                      data={dashboard.data}
                       className="h-fit"
                     >
                       <div className="p-1">

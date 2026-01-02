@@ -31,6 +31,11 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { detectHealthFileFormat, analyzeHealthData } from "@/lib/parsers/healthDataTypes";
+import JSZip from "jszip";
+import { datasetService } from "@/lib/services/datasetService";
+import { csvParser } from "@/lib/parsers/csvParser";
+import { excelParser } from "@/lib/parsers/excelParser";
+import { jsonParser } from "@/lib/parsers/jsonParser";
 
 // =============================================================================
 // TYPES
@@ -47,6 +52,8 @@ interface FileUploadState {
     healthFormat?: string;
     isHealthFormat?: boolean;
     phiDetected?: boolean;
+    domain?: string;
+    qualityScore?: number;
 }
 
 interface UploadProgress {
@@ -71,10 +78,12 @@ const SUPPORTED_TYPES = [
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     'application/json',
     'text/plain',
-    'text/tab-separated-values'
+    'text/tab-separated-values',
+    'application/zip',
+    'application/x-zip-compressed'
 ];
 
-const SUPPORTED_EXTENSIONS = ['.csv', '.xlsx', '.xls', '.json', '.tsv', '.txt', '.hl7'];
+const SUPPORTED_EXTENSIONS = ['.csv', '.xlsx', '.xls', '.json', '.tsv', '.txt', '.hl7', '.zip'];
 
 // =============================================================================
 // COMPONENT
@@ -115,7 +124,7 @@ export function MultiFileUpload() {
     // FILE HANDLERS
     // ---------------------------------------------------------------------------
 
-    const addFiles = useCallback((files: File[]) => {
+    const addFiles = useCallback(async (files: File[]) => {
         const currentCount = fileQueue.length;
         const remainingSlots = MAX_FILES - currentCount;
 
@@ -128,7 +137,49 @@ export function MultiFileUpload() {
             return;
         }
 
-        const filesToAdd = files.slice(0, remainingSlots);
+        const processedFiles: File[] = [];
+
+        for (const file of files) {
+            const extension = '.' + file.name.split('.').pop()?.toLowerCase();
+            if (extension === '.zip') {
+                try {
+                    toast({
+                        title: "Extracting zip",
+                        description: `Unzipping ${file.name}...`
+                    });
+                    const zip = new JSZip();
+                    const contents = await zip.loadAsync(file);
+                    const zipFiles: File[] = [];
+
+                    for (const [relativePath, zipEntry] of Object.entries(contents.files)) {
+                        if (zipEntry.dir) continue;
+
+                        const fileName = relativePath.split('/').pop() || zipEntry.name;
+                        const zipExt = '.' + fileName.split('.').pop()?.toLowerCase();
+
+                        if (SUPPORTED_EXTENSIONS.includes(zipExt) && zipExt !== '.zip') {
+                            const blob = await zipEntry.async("blob");
+                            const unzippedFile = new File([blob], fileName, {
+                                type: getMimeType(zipExt)
+                            });
+                            zipFiles.push(unzippedFile);
+                        }
+                    }
+                    processedFiles.push(...zipFiles);
+                } catch (error) {
+                    console.error("Zip extraction error:", error);
+                    toast({
+                        title: "Extraction failed",
+                        description: `Could not unzip ${file.name}`,
+                        variant: "destructive"
+                    });
+                }
+            } else {
+                processedFiles.push(file);
+            }
+        }
+
+        const filesToAdd = processedFiles.slice(0, remainingSlots);
         const newFileStates: FileUploadState[] = [];
 
         for (const file of filesToAdd) {
@@ -164,6 +215,19 @@ export function MultiFileUpload() {
             });
         }
     }, [fileQueue, validateFile, toast]);
+
+    const getMimeType = (extension: string) => {
+        const types: Record<string, string> = {
+            '.csv': 'text/csv',
+            '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            '.xls': 'application/vnd.ms-excel',
+            '.json': 'application/json',
+            '.tsv': 'text/tab-separated-values',
+            '.txt': 'text/plain',
+            '.hl7': 'text/plain'
+        };
+        return types[extension] || 'application/octet-stream';
+    };
 
     const removeFile = useCallback((fileId: string) => {
         setFileQueue(prev => prev.filter(f => f.id !== fileId));
@@ -209,87 +273,76 @@ export function MultiFileUpload() {
                 f.id === id ? { ...f, status: 'uploading', currentStep: 'Uploading...', progress: 10 } : f
             ));
 
-            // Upload to storage
-            const filePath = `${userId}/${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}_${Date.now()}.${file.name.split('.').pop()}`;
+            // Parse file properly using our parsers
+            let parseResult;
+            const extension = '.' + file.name.split('.').pop()?.toLowerCase();
 
-            const { error: uploadError } = await supabase.storage
-                .from('datasets')
-                .upload(filePath, file, { upsert: false });
-
-            if (uploadError) throw uploadError;
-
-            // Update progress - parsing
-            setFileQueue(prev => prev.map(f =>
-                f.id === id ? { ...f, progress: 40, currentStep: 'Parsing file...' } : f
-            ));
-
-            // Parse file
-            const text = await file.text();
-            const lines = text.split('\n').filter(l => l.trim());
-            const columns = lines[0]?.split(',').map(c => c.trim().replace(/"/g, '')) || [];
-            const rows = lines.slice(1).map(line => {
-                const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
-                const row: Record<string, any> = {};
-                columns.forEach((col, idx) => {
-                    row[col] = values[idx] || null;
+            if (extension === '.csv') {
+                parseResult = await csvParser.parse(file);
+            } else if (extension === '.xlsx' || extension === '.xls') {
+                parseResult = await excelParser.parse(file);
+            } else if (extension === '.json') {
+                parseResult = await jsonParser.parse(file);
+            } else {
+                // Fallback for .txt or other types
+                const text = await file.text();
+                const lines = text.split('\n').filter(l => l.trim());
+                const columns = lines[0]?.split(',').map(c => c.trim().replace(/"/g, '')) || [];
+                const rows = lines.slice(1).map(line => {
+                    const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
+                    const row: Record<string, any> = {};
+                    columns.forEach((col, idx) => {
+                        row[col] = values[idx] || null;
+                    });
+                    return row;
                 });
-                return row;
-            });
-
-            // Analyze for health data
-            setFileQueue(prev => prev.map(f =>
-                f.id === id ? { ...f, progress: 60, currentStep: 'Detecting health data patterns...' } : f
-            ));
-
-            const healthMetadata = analyzeHealthData(columns, rows);
-
-            // Update PHI detection
-            setFileQueue(prev => prev.map(f =>
-                f.id === id ? { ...f, phiDetected: healthMetadata.phiFields.length > 0 } : f
-            ));
-
-            // Detect schema
-            setFileQueue(prev => prev.map(f =>
-                f.id === id ? { ...f, progress: 75, currentStep: 'Creating dataset...' } : f
-            ));
-
-            const schema: Record<string, string> = {};
-            columns.forEach(column => {
-                const samples = rows.slice(0, 100).map(row => row[column]).filter(v => v != null);
-                if (samples.length === 0) {
-                    schema[column] = 'text';
-                } else if (samples.every(v => !isNaN(parseFloat(v)))) {
-                    schema[column] = 'numeric';
-                } else if (samples.every(v => !isNaN(Date.parse(v)))) {
-                    schema[column] = 'date';
-                } else {
-                    schema[column] = 'text';
-                }
-            });
-
-            // Create dataset record
-            const { data: dataset, error: datasetError } = await supabase
-                .from('datasets')
-                .insert({
-                    user_id: userId,
-                    name: file.name.replace(/\.[^/.]+$/, ''),
-                    file_name: file.name,
-                    file_path: filePath,
-                    file_size: file.size,
-                    file_type: file.name.split('.').pop() || 'unknown',
-                    row_count: rows.length,
-                    column_count: columns.length,
-                    columns_info: schema,
-                    status: 'ready',
-                    metadata: {
-                        healthMetadata,
-                        uploadedAt: new Date().toISOString()
+                parseResult = {
+                    success: true,
+                    data: {
+                        fileName: file.name,
+                        fileSize: file.size,
+                        fileType: extension.slice(1),
+                        rowCount: rows.length,
+                        columnCount: columns.length,
+                        rows,
+                        columns: columns.map((name, index) => ({
+                            name,
+                            index,
+                            dataType: 'string',
+                            nullable: true,
+                            uniqueValues: 0,
+                            sampleValues: []
+                        }))
                     }
-                })
-                .select()
-                .single();
+                };
+            }
 
-            if (datasetError) throw datasetError;
+            if (!parseResult || !parseResult.success || !parseResult.data) {
+                throw new Error(parseResult?.error || 'Failed to parse file');
+            }
+
+            // Save using DatasetService for full consistency
+            const datasetId = await datasetService.saveDataset(
+                userId,
+                parseResult.data,
+                file, // rawFile is now 3rd arg
+                (progress, message) => {
+                    setFileQueue(prev => prev.map(f =>
+                        f.id === id ? { ...f, progress: 40 + (progress * 0.6), currentStep: message } : f
+                    ));
+                },
+                {
+                    healthFormat: fileState.healthFormat,
+                    isHealthFormat: fileState.isHealthFormat
+                }
+            );
+
+            // Fetch metadata for feedback
+            const { data: datasetInfo } = await supabase
+                .from('datasets')
+                .select('domain, quality_score')
+                .eq('id', datasetId)
+                .single();
 
             // Complete
             setFileQueue(prev => prev.map(f =>
@@ -297,8 +350,10 @@ export function MultiFileUpload() {
                     ...f,
                     status: 'complete',
                     progress: 100,
-                    currentStep: 'Complete!',
-                    datasetId: dataset.id
+                    currentStep: 'Uploaded & Indexed!',
+                    datasetId: datasetId,
+                    domain: datasetInfo?.domain,
+                    qualityScore: datasetInfo?.quality_score
                 } : f
             ));
 
@@ -402,8 +457,8 @@ export function MultiFileUpload() {
                 {/* Drop Zone */}
                 <div
                     className={`border-2 border-dashed rounded-lg p-8 text-center transition-all cursor-pointer ${isDragging
-                            ? 'border-primary bg-primary/5'
-                            : 'border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/50'
+                        ? 'border-primary bg-primary/5'
+                        : 'border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/50'
                         }`}
                     onDrop={handleDrop}
                     onDragOver={handleDragOver}
@@ -476,7 +531,7 @@ export function MultiFileUpload() {
                         )}
 
                         {/* File List */}
-                        <ScrollArea className="h-[300px] pr-4">
+                        <ScrollArea className="h-[350px] pr-4">
                             <div className="space-y-2">
                                 {fileQueue.map((fileState) => {
                                     const FileIcon = getFileIcon(fileState.file);
@@ -484,83 +539,104 @@ export function MultiFileUpload() {
                                     return (
                                         <div
                                             key={fileState.id}
-                                            className={`flex items-center gap-3 p-3 rounded-lg border ${fileState.status === 'complete' ? 'bg-green-50 border-green-200 dark:bg-green-950/20' :
-                                                    fileState.status === 'error' ? 'bg-red-50 border-red-200 dark:bg-red-950/20' :
-                                                        fileState.status === 'uploading' || fileState.status === 'processing' ? 'bg-blue-50 border-blue-200 dark:bg-blue-950/20' :
-                                                            'bg-muted/30'
+                                            className={`p-3 rounded-lg border transition-colors ${fileState.status === 'complete' ? 'bg-green-50/50 border-green-200 dark:bg-green-950/20' :
+                                                fileState.status === 'error' ? 'bg-red-50/50 border-red-200 dark:bg-red-950/20' :
+                                                    fileState.status === 'uploading' || fileState.status === 'processing' ? 'bg-blue-50/50 border-blue-200 dark:bg-blue-950/20' :
+                                                        'bg-muted/30 border-transparent'
                                                 }`}
                                         >
-                                            {/* Icon */}
-                                            <div className="flex-shrink-0">
-                                                {fileState.status === 'uploading' || fileState.status === 'processing' ? (
-                                                    <Loader2 className="h-8 w-8 text-blue-500 animate-spin" />
-                                                ) : fileState.status === 'complete' ? (
-                                                    <CheckCircle className="h-8 w-8 text-green-500" />
-                                                ) : fileState.status === 'error' ? (
-                                                    <AlertCircle className="h-8 w-8 text-red-500" />
-                                                ) : (
-                                                    <FileIcon className="h-8 w-8 text-muted-foreground" />
-                                                )}
-                                            </div>
-
-                                            {/* File Info */}
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-medium truncate">{fileState.file.name}</span>
-                                                    {fileState.isHealthFormat && (
-                                                        <Badge variant="outline" className="text-xs">
-                                                            {fileState.healthFormat}
-                                                        </Badge>
-                                                    )}
-                                                    {fileState.phiDetected && (
-                                                        <Badge variant="destructive" className="text-xs">
-                                                            <Shield className="h-3 w-3 mr-1" />
-                                                            PHI
-                                                        </Badge>
+                                            <div className="flex items-center gap-3">
+                                                {/* Icon */}
+                                                <div className="flex-shrink-0">
+                                                    {fileState.status === 'uploading' || fileState.status === 'processing' ? (
+                                                        <Loader2 className="h-8 w-8 text-blue-500 animate-spin" />
+                                                    ) : fileState.status === 'complete' ? (
+                                                        <CheckCircle className="h-8 w-8 text-green-500" />
+                                                    ) : fileState.status === 'error' ? (
+                                                        <AlertCircle className="h-8 w-8 text-red-500" />
+                                                    ) : (
+                                                        <FileIcon className="h-8 w-8 text-muted-foreground" />
                                                     )}
                                                 </div>
-                                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                                    <span>{formatFileSize(fileState.file.size)}</span>
-                                                    <span>•</span>
-                                                    <span>{fileState.currentStep}</span>
+
+                                                {/* File Info */}
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="font-semibold truncate text-sm">{fileState.file.name}</span>
+                                                        {fileState.isHealthFormat && (
+                                                            <Badge variant="outline" className="text-[10px] py-0">
+                                                                {fileState.healthFormat}
+                                                            </Badge>
+                                                        )}
+                                                        {fileState.phiDetected && (
+                                                            <Badge variant="destructive" className="text-[10px] py-0">
+                                                                <Shield className="h-2.5 w-2.5 mr-1" />
+                                                                PHI
+                                                            </Badge>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                                                        <span>{formatFileSize(fileState.file.size)}</span>
+                                                        <span>•</span>
+                                                        <span>{fileState.currentStep}</span>
+                                                        {fileState.status === 'complete' && fileState.qualityScore !== undefined && (
+                                                            <>
+                                                                <span>•</span>
+                                                                <span className="text-green-600 font-bold">Quality: {Math.round(fileState.qualityScore)}%</span>
+                                                            </>
+                                                        )}
+                                                        {fileState.status === 'complete' && fileState.domain && (
+                                                            <>
+                                                                <span>•</span>
+                                                                <span className="capitalize text-blue-600 px-1.5 py-0 bg-blue-50 border border-blue-100 rounded text-[10px] font-medium">
+                                                                    {fileState.domain}
+                                                                </span>
+                                                            </>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                                {(fileState.status === 'uploading' || fileState.status === 'processing') && (
-                                                    <Progress value={fileState.progress} className="h-1 mt-2" />
-                                                )}
-                                                {fileState.status === 'error' && fileState.error && (
-                                                    <p className="text-xs text-red-500 mt-1">{fileState.error}</p>
-                                                )}
+
+                                                {/* Actions */}
+                                                <div className="flex-shrink-0 flex items-center gap-2">
+                                                    {fileState.status === 'pending' && !isUploading && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-muted-foreground hover:text-red-500"
+                                                            onClick={() => removeFile(fileState.id)}
+                                                        >
+                                                            <X className="h-4 w-4" />
+                                                        </Button>
+                                                    )}
+                                                    {fileState.status === 'complete' && fileState.datasetId && (
+                                                        <Button
+                                                            variant="secondary"
+                                                            size="sm"
+                                                            className="h-8 gap-1"
+                                                            onClick={() => window.location.href = `/dashboard/datasets/${fileState.datasetId}`}
+                                                        >
+                                                            View
+                                                            <ArrowRight className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                    )}
+                                                </div>
                                             </div>
 
-                                            {/* Actions */}
-                                            <div className="flex-shrink-0">
-                                                {fileState.status === 'pending' && !isUploading && (
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        onClick={() => removeFile(fileState.id)}
-                                                    >
-                                                        <X className="h-4 w-4" />
-                                                    </Button>
-                                                )}
-                                                {fileState.status === 'complete' && fileState.datasetId && (
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        onClick={() => window.location.href = `/dashboard/datasets/${fileState.datasetId}`}
-                                                    >
-                                                        View
-                                                        <ArrowRight className="h-4 w-4 ml-1" />
-                                                    </Button>
-                                                )}
-                                            </div>
+                                            {(fileState.status === 'uploading' || fileState.status === 'processing') && (
+                                                <div className="mt-2 pl-11">
+                                                    <Progress value={fileState.progress} className="h-1" />
+                                                </div>
+                                            )}
+                                            {fileState.status === 'error' && fileState.error && (
+                                                <p className="text-[10px] text-red-500 mt-1 pl-11">{fileState.error}</p>
+                                            )}
                                         </div>
                                     );
                                 })}
                             </div>
                         </ScrollArea>
 
-                        {/* Actions */}
+                        {/* Queue Actions */}
                         <div className="flex gap-3">
                             <Button
                                 onClick={startUploadAll}
@@ -581,11 +657,10 @@ export function MultiFileUpload() {
                                 )}
                             </Button>
 
-                            {!isUploading && (
+                            {!isUploading && fileQueue.length < MAX_FILES && (
                                 <Button
                                     variant="outline"
                                     onClick={() => fileInputRef.current?.click()}
-                                    disabled={fileQueue.length >= MAX_FILES}
                                 >
                                     <Plus className="h-4 w-4 mr-1" />
                                     Add More

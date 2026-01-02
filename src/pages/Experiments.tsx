@@ -23,6 +23,7 @@ import { useActivityTracker } from "@/hooks/useActivityTracker";
 import { UpgradeDialog } from "@/components/UpgradeDialog";
 import { ExperimentTemplates } from "@/components/experiments/ExperimentTemplates";
 import { ExperimentStateFlow, ExperimentStatusBadge, ExperimentStatus } from "@/components/experiments/ExperimentStateFlow";
+import { experimentService } from "@/lib/services/experimentService";
 
 const Experiments = () => {
   const location = useLocation();
@@ -199,32 +200,17 @@ const Experiments = () => {
     }
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from('experiments')
-        .insert({
-          user_id: user.id,
-          title,
-          description,
-          type: experimentType,
-          dataset_id: selectedDatasetId || null,
-          auto_created: !!selectedDatasetId,
-          status: 'pending',
-          protocol: {
-            steps: [
-              'Prepare materials and equipment',
-              'Set up experimental conditions',
-              'Execute protocol',
-              'Collect and record data',
-              'Analyze results'
-            ]
-          }
-        })
-        .select();
-
-      if (error) throw error;
+      // Use ExperimentService
+      await experimentService.createExperiment(
+        selectedDatasetId,
+        title,
+        experimentType as any,
+        {
+          targetColumn: 'target', // Default, user should select
+          features: [],
+          modelType: 'auto'
+        }
+      );
 
       trackActivity("Experiment created", title, "FlaskConical");
       toast({

@@ -239,6 +239,7 @@ CREATE INDEX IF NOT EXISTS idx_quality_checks_dataset ON public.quality_checks(d
 -- Dataset versions RLS
 ALTER TABLE public.dataset_versions ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view versions of their datasets" ON public.dataset_versions;
 CREATE POLICY "Users can view versions of their datasets" ON public.dataset_versions
     FOR SELECT USING (
         EXISTS (
@@ -248,6 +249,7 @@ CREATE POLICY "Users can view versions of their datasets" ON public.dataset_vers
         )
     );
 
+DROP POLICY IF EXISTS "Users can create versions for their datasets" ON public.dataset_versions;
 CREATE POLICY "Users can create versions for their datasets" ON public.dataset_versions
     FOR INSERT WITH CHECK (
         EXISTS (
@@ -260,15 +262,18 @@ CREATE POLICY "Users can create versions for their datasets" ON public.dataset_v
 -- Data lineage RLS
 ALTER TABLE public.data_lineage ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view their data lineage" ON public.data_lineage;
 CREATE POLICY "Users can view their data lineage" ON public.data_lineage
     FOR SELECT USING (created_by = auth.uid());
 
+DROP POLICY IF EXISTS "Users can create lineage records" ON public.data_lineage;
 CREATE POLICY "Users can create lineage records" ON public.data_lineage
     FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
 
 -- Anonymization logs RLS
 ALTER TABLE public.anonymization_logs ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view anonymization logs for their datasets" ON public.anonymization_logs;
 CREATE POLICY "Users can view anonymization logs for their datasets" ON public.anonymization_logs
     FOR SELECT USING (
         EXISTS (
@@ -278,6 +283,7 @@ CREATE POLICY "Users can view anonymization logs for their datasets" ON public.a
         )
     );
 
+DROP POLICY IF EXISTS "Users can create anonymization logs" ON public.anonymization_logs;
 CREATE POLICY "Users can create anonymization logs" ON public.anonymization_logs
     FOR INSERT WITH CHECK (
         EXISTS (
@@ -290,6 +296,7 @@ CREATE POLICY "Users can create anonymization logs" ON public.anonymization_logs
 -- Domain classifications RLS
 ALTER TABLE public.domain_classifications ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view domain classifications for their datasets" ON public.domain_classifications;
 CREATE POLICY "Users can view domain classifications for their datasets" ON public.domain_classifications
     FOR SELECT USING (
         EXISTS (
@@ -302,6 +309,7 @@ CREATE POLICY "Users can view domain classifications for their datasets" ON publ
 -- Quality checks RLS  
 ALTER TABLE public.quality_checks ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view quality checks for their datasets" ON public.quality_checks;
 CREATE POLICY "Users can view quality checks for their datasets" ON public.quality_checks
     FOR SELECT USING (
         EXISTS (
@@ -311,6 +319,7 @@ CREATE POLICY "Users can view quality checks for their datasets" ON public.quali
         )
     );
 
+DROP POLICY IF EXISTS "Users can create quality checks" ON public.quality_checks;
 CREATE POLICY "Users can create quality checks" ON public.quality_checks
     FOR INSERT WITH CHECK (
         EXISTS (
