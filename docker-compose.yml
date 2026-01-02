@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  # Frontend - React/Vite Application
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    environment:
+      - NODE_ENV=production
+    networks:
+      - labiq-network
+    restart: unless-stopped
+
+  # ML Service - Python FastAPI
+  ml-service:
+    build:
+      context: ./ml-service
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+    volumes:
+      - ml-models:/app/models
+    networks:
+      - labiq-network
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Supabase Local (Optional - for development)
+  supabase-db:
+    image: supabase/postgres:15.1.0.117
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: postgres
+    volumes:
+      - supabase-db-data:/var/lib/postgresql/data
+      - ./supabase/migrations:/docker-entrypoint-initdb.d
+    networks:
+      - labiq-network
+    restart: unless-stopped
+    profiles:
+      - with-db
+
+networks:
+  labiq-network:
+    driver: bridge
+
+volumes:
+  ml-models:
+    driver: local
+  supabase-db-data:
+    driver: local
