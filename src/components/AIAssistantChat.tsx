@@ -4,12 +4,11 @@
  * 
  * Features:
  * - Clean, professional header with Share button
- * - Collapsible Data Explorer right sidebar
  * - Storytelling insights with structured analysis
  * - Interactive charts and tables
  */
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -36,19 +35,19 @@ import {
   Database as DatabaseIcon,
   Zap,
   Lightbulb,
-  RefreshCw
+  RefreshCw,
+  PanelRight
 } from 'lucide-react';
 import { AIResponseRenderer } from './assistant/AIResponseRenderer';
 import { UserQuery } from './assistant/UserQuery';
-import { DataExplorerPanel } from './assistant/DataExplorerPanel';
 import { DatasetSelector } from './assistant/DatasetSelector';
+import { AssistantPanel } from './assistant/AssistantPanel';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-// Removed: AIChatToolbar for cleaner UI
 import { useLocation } from 'react-router-dom';
 import { labIQAI, AISection } from '@/lib/ai/LabIQAI';
 import { dashboardService } from '@/lib/services/dashboardService';
@@ -70,13 +69,14 @@ interface Message {
   suggestions?: string[];
 }
 
-type AssistantMode = 'analysis' | 'automl' | 'educator';
+type AssistantMode = 'analyst' | 'ml' | 'learn';
 
 interface AIAssistantChatProps {
   mode?: AssistantMode;
   onModeChange?: (mode: AssistantMode) => void;
   onImmersiveChange?: (isImmersive: boolean) => void;
   initialDatasetId?: string;
+  onDatasetChange?: (datasetId: string | null) => void;
 }
 
 // =============================================================================
@@ -84,46 +84,25 @@ interface AIAssistantChatProps {
 // =============================================================================
 
 const MODE_CONFIG = {
-  analysis: {
+  analyst: {
     icon: BarChart,
     color: 'text-blue-500',
     label: 'Analysis',
     description: 'Health Data Analysis'
   },
-  automl: {
+  ml: {
     icon: FlaskConical,
     color: 'text-purple-500',
     label: 'AutoML',
     description: 'Predictive Health Models'
   },
-  educator: {
+  learn: {
     icon: GraduationCap,
     color: 'text-green-500',
     label: 'Educator',
     description: 'Health Stats Education'
   }
 } as const;
-
-const SUGGESTIONS = {
-  analysis: [
-    "What are the key health indicators in this dataset?",
-    "Identify correlations between health variables",
-    "Detect outliers in vital signs or health metrics",
-    "Suggest which health patterns need deeper investigation"
-  ],
-  automl: [
-    "Build a risk prediction model for this health outcome",
-    "Evaluate model performance on health data",
-    "Which health variables matter most for prediction?",
-    "Optimize model for health data classification"
-  ],
-  educator: [
-    "Explain what normal ranges mean for these health metrics",
-    "How do I interpret correlations in health data?",
-    "What's the best way to visualize population health trends?",
-    "Explain statistical significance in this health context"
-  ]
-};
 
 // =============================================================================
 // COMPONENT
@@ -145,14 +124,9 @@ export function AIAssistantChat({
   const [userId, setUserId] = useState<string | null>(null);
   const [pinnedMessageIds, setPinnedMessageIds] = useState<Set<number>>(new Set());
   const [reasoningEnabled, setReasoningEnabled] = useState(false);
-  const [showDataExplorer, setShowDataExplorer] = useState(true);
-  const [dataframes, setDataframes] = useState<{
-    id: string;
-    name: string;
-    type: 'table' | 'matrix' | 'dataframe';
-    dimensions: string;
-    columns: string[];
-  }[]>([]);
+
+  // Sidebar State
+  const [showAssistantPanel, setShowAssistantPanel] = useState(true);
 
   // Refs
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -160,9 +134,18 @@ export function AIAssistantChat({
   const { toast } = useToast();
   const location = useLocation();
 
-  // Current mode config
-  const currentMode = MODE_CONFIG[mode] || MODE_CONFIG.analysis;
-  const ModeIcon = currentMode?.icon || BarChart;
+  // Current mode config with safer fallback
+  const currentMode = MODE_CONFIG[mode] || MODE_CONFIG.analyst;
+  const ModeIcon = currentMode.icon;
+
+  // Computed: Latest Thought Process for Planning Tab
+  const currentThoughtProcess = useMemo(() => {
+    // Look for the last assistant message with thought process
+    const lastThinkingMessage = [...messages].reverse().find(
+      m => m.role === 'assistant' && ((m.thoughtProcess?.length || 0) > 0)
+    );
+    return lastThinkingMessage?.thoughtProcess || [];
+  }, [messages]);
 
   // =============================================================================
   // EFFECTS
@@ -186,20 +169,17 @@ export function AIAssistantChat({
   useEffect(() => {
     if (selectedDataset && userId) {
       loadChatHistory();
-      loadDataframes();
     } else {
       setMessages([]);
-      setDataframes([]);
     }
   }, [selectedDataset, mode, userId]);
 
-  // Handle drill-down from Dashboard with Rich Context
+  // Handle drill-down from Dashboard
   useEffect(() => {
     const state = location.state as { pinnedInsight?: any };
     if (state?.pinnedInsight) {
       const insight = state.pinnedInsight;
 
-      // 1. Restore Dataset Context if available
       if (insight.data?.metadata?.dataset_id || insight.data?.context?.datasetId) {
         const targetDatasetId = insight.data?.metadata?.dataset_id || insight.data?.context?.datasetId;
         if (targetDatasetId !== selectedDataset) {
@@ -207,21 +187,15 @@ export function AIAssistantChat({
         }
       }
 
-      // 2. Clear state to avoid re-triggering
       window.history.replaceState({}, document.title);
 
-      // 3. Construct Context-Aware Prompt
       let prompt = `I'm analyzing the "${insight.title}" item from my dashboard.`;
-
-      // Use rich findings if available (PromptBI style)
       if (insight.data?.findings) {
         const findings = insight.data.findings;
         prompt += `\n\nSpecific Findings to Review:\n`;
         if (findings.correlation_coefficient) prompt += `- Correlation: ${findings.correlation_coefficient}\n`;
         if (findings.statistical_significance) prompt += `- Significance: ${findings.statistical_significance}\n`;
       }
-
-      // Use key points
       if (insight.data?.keyPoints && insight.data.keyPoints.length > 0) {
         prompt += `\nContext:\n${insight.data.keyPoints.join('\n')}`;
       } else if (insight.data?.summary) {
@@ -229,22 +203,17 @@ export function AIAssistantChat({
       } else if (insight.description) {
         prompt += `\nContext: ${insight.description}`;
       }
-
       prompt += `\n\nCan you explain these patterns in more detail and showing me the raw data?`;
 
-      // 4. Auto-send user message
       setTimeout(() => {
         setInput(prompt);
-        // We set it in input so user can just hit send, or we could auto-send
-        // handleSend(prompt); 
       }, 500);
     }
   }, [location.state]);
 
-  // Auto-scroll to bottom when messages change - using scroll container directly
+  // Auto-scroll
   useEffect(() => {
     if (scrollContainerRef.current && (messages.length > 0 || processingStep)) {
-      // Scroll the container to the bottom instead of using scrollIntoView
       const container = scrollContainerRef.current;
       container.scrollTop = container.scrollHeight;
     }
@@ -254,35 +223,10 @@ export function AIAssistantChat({
   // HANDLERS
   // =============================================================================
 
-  const loadDataframes = useCallback(async () => {
-    if (!selectedDataset) return;
-
-    try {
-      // Load dataset schema for Data Explorer
-      const { data } = await supabase
-        .from('datasets')
-        .select('name, schema, row_count' as any)
-        .eq('id', selectedDataset)
-        .single();
-
-      if (data) {
-        const schema = (data as any).schema || [];
-        const columns = typeof schema === 'string'
-          ? JSON.parse(schema)
-          : schema;
-
-        setDataframes([{
-          id: selectedDataset,
-          name: data.name || 'Dataset',
-          type: 'dataframe',
-          dimensions: `${data.row_count || 0} × ${columns.length}`,
-          columns: columns.map((c: any) => typeof c === 'string' ? c : c.name || c)
-        }]);
-      }
-    } catch (error) {
-      console.error('Error loading dataframes:', error);
-    }
-  }, [selectedDataset]);
+  const handleDatasetChange = (id: string | null) => {
+    setSelectedDataset(id);
+    onDatasetChange?.(id);
+  };
 
   const loadChatHistory = useCallback(async () => {
     if (!selectedDataset || !userId) return;
@@ -315,11 +259,6 @@ export function AIAssistantChat({
     }
   }, [selectedDataset, userId, mode]);
 
-  // Load dataset info for Data Explorer (REAL DATA)
-
-
-
-
   const saveChatMessage = useCallback(async (message: Message) => {
     if (!selectedDataset || !userId) return;
 
@@ -346,7 +285,6 @@ export function AIAssistantChat({
     setIsLoading(true);
     setProcessingStep('Understanding your question...');
 
-    // Add user message
     const userMessage: Message = {
       role: 'user',
       content: messageText,
@@ -357,13 +295,6 @@ export function AIAssistantChat({
     await saveChatMessage(userMessage);
 
     try {
-      // Build context
-      const conversationHistory = messages.slice(-6).map(m => ({
-        role: m.role as 'user' | 'assistant',
-        content: m.content
-      }));
-
-      // Call the unified AI service
       setProcessingStep('Analyzing data...');
       const response = await labIQAI.dataAnalysis.process(
         selectedDataset,
@@ -373,7 +304,6 @@ export function AIAssistantChat({
         reasoningEnabled
       );
 
-      // Create assistant message
       const assistantMessage: Message = {
         role: 'assistant',
         content: response.success ? 'Analysis complete' : response.content,
@@ -386,18 +316,13 @@ export function AIAssistantChat({
       setMessages(prev => [...prev, assistantMessage]);
       await saveChatMessage(assistantMessage);
 
-      // Auto-pin removed per user request for cleaner experience
-
-
     } catch (error) {
       console.error('Chat error:', error);
-
       const errorMessage: Message = {
         role: 'assistant',
         content: `I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`,
         timestamp: new Date().toISOString()
       };
-
       setMessages(prev => [...prev, errorMessage]);
       await saveChatMessage(errorMessage);
     } finally {
@@ -413,7 +338,6 @@ export function AIAssistantChat({
     }
   }, [handleSend]);
 
-  // Pin a message to dashboard
   const pinToDashboard = useCallback(async (messageIndex: number, message: Message) => {
     if (pinnedMessageIds.has(messageIndex)) {
       toast({
@@ -476,21 +400,18 @@ export function AIAssistantChat({
         {!isLoading && messages.length === 0 && (
           <header className="flex items-center justify-between px-4 py-3 border-b bg-background animate-in slide-in-from-top-2 duration-300">
             <div className="flex items-center gap-4">
-              {/* Mode Selector */}
               <ModeSelector
                 mode={mode}
                 onModeChange={(m) => onModeChange?.(m)}
                 variant="dropdown"
                 size="md"
               />
-
-              {/* Selected Dataset Indicator */}
               {selectedDataset && (
                 <Button
                   variant="ghost"
                   size="sm"
                   className="text-xs text-muted-foreground hover:text-foreground gap-1.5"
-                  onClick={() => setSelectedDataset(null)}
+                  onClick={() => handleDatasetChange(null)}
                 >
                   <span className="w-2 h-2 rounded-full bg-green-500" />
                   Dataset Active
@@ -498,8 +419,6 @@ export function AIAssistantChat({
                 </Button>
               )}
             </div>
-
-            {/* Header Actions */}
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" className="gap-1.5" onClick={handleShare}>
                 <Share2 className="h-4 w-4" />
@@ -509,12 +428,12 @@ export function AIAssistantChat({
           </header>
         )}
 
-        {/* Dataset Selector - Only show when no dataset selected */}
+        {/* Dataset Selector */}
         {!selectedDataset && !isImmersive && (
           <div className="p-4 animate-fade-in border-b bg-muted/20">
             <DatasetSelector
               selectedDataset={selectedDataset}
-              onSelectDataset={setSelectedDataset}
+              onSelectDataset={handleDatasetChange}
             />
           </div>
         )}
@@ -523,21 +442,15 @@ export function AIAssistantChat({
         <main ref={scrollContainerRef} className="flex-1 overflow-y-auto scroll-smooth pb-20">
           <div className={cn(
             "mx-auto space-y-6 px-4 py-2 transition-all duration-300",
-            showDataExplorer ? "max-w-5xl" : "max-w-7xl"
+            "max-w-7xl"
           )}>
-            {/* Empty State - Minimal */}
             {messages.length === 0 && (
-              <div className="text-center py-4 animate-fade-in opacity-0">
-                {/* Content hidden */}
-              </div>
+              <div className="text-center py-4 animate-fade-in opacity-0"></div>
             )}
 
-            {/* Message List */}
-            {/* Message List - Professional Thread Style */}
             <div className="flex flex-col gap-8 pb-8">
               {messages.map((message, i) => (
                 <div key={i} className="flex gap-4 group animate-fade-in text-left">
-                  {/* Avatar Column */}
                   <div className="shrink-0 mt-1">
                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center border shadow-sm ${message.role === 'assistant' ? 'bg-primary/10 border-primary/20' : 'bg-muted border-border'}`}>
                       {message.role === 'assistant' ? (
@@ -547,10 +460,7 @@ export function AIAssistantChat({
                       )}
                     </div>
                   </div>
-
-                  {/* Content Column */}
                   <div className="flex-1 min-w-0 space-y-2">
-                    {/* Header */}
                     <div className="flex items-center gap-2">
                       <span className="font-semibold text-sm">
                         {message.role === 'assistant' ? 'LabIQ Assistant' : 'You'}
@@ -559,8 +469,6 @@ export function AIAssistantChat({
                         {message.timestamp ? new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                       </span>
                     </div>
-
-                    {/* Body */}
                     <div className="text-base leading-relaxed text-foreground/90">
                       {message.role === 'user' ? (
                         <p className="whitespace-pre-wrap">{message.content}</p>
@@ -577,16 +485,12 @@ export function AIAssistantChat({
                           ) : (
                             <p className="text-foreground/80">{message.content}</p>
                           )}
-
-                          {/* Actions Row */}
                           <div className="flex items-center gap-2 pt-2">
-                            {/* Refresh Button */}
                             <Button
                               variant="ghost"
                               size="sm"
                               className="h-8 text-xs gap-1.5 px-2 text-muted-foreground hover:text-primary"
                               onClick={() => {
-                                // Find the last user message and resend it
                                 const lastUserMsg = messages.slice(0, i).reverse().find(m => m.role === 'user');
                                 if (lastUserMsg) {
                                   handleSend(lastUserMsg.content);
@@ -597,8 +501,6 @@ export function AIAssistantChat({
                               <RefreshCw className="h-3.5 w-3.5" />
                               Regenerate
                             </Button>
-
-                            {/* Explainability Panel */}
                             {(message.thoughtProcess || message.role === 'assistant') && (
                               <div className="pt-2">
                                 <ExplainabilityPanel
@@ -619,8 +521,6 @@ export function AIAssistantChat({
                                 />
                               </div>
                             )}
-
-                            {/* Pin Button */}
                             <Button
                               variant="ghost"
                               size="sm"
@@ -641,8 +541,6 @@ export function AIAssistantChat({
                               )}
                             </Button>
                           </div>
-
-                          {/* Dynamic Suggestions */}
                           {message.suggestions && message.suggestions.length > 0 && (
                             <div className="mt-4 pt-3 border-t border-border/40">
                               <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
@@ -670,46 +568,40 @@ export function AIAssistantChat({
               ))}
             </div>
 
-            {/* Loading Indicator */}
-            {
-              isLoading && (
-                <div className="flex items-center gap-3 px-6 py-4 animate-fade-in bg-muted/30 rounded-lg">
-                  <div className="flex gap-1.5">
-                    <div className="w-2 h-2 rounded-full bg-primary/60 animate-pulse" style={{ animationDelay: '0ms' }} />
-                    <div className="w-2 h-2 rounded-full bg-primary/60 animate-pulse" style={{ animationDelay: '150ms' }} />
-                    <div className="w-2 h-2 rounded-full bg-primary/60 animate-pulse" style={{ animationDelay: '300ms' }} />
-                  </div>
-                  <span className="text-sm text-muted-foreground">{processingStep}</span>
+            {isLoading && (
+              <div className="flex items-center gap-3 px-6 py-4 animate-fade-in bg-muted/30 rounded-lg">
+                <div className="flex gap-1.5">
+                  <div className="w-2 h-2 rounded-full bg-primary/60 animate-pulse" style={{ animationDelay: '0ms' }} />
+                  <div className="w-2 h-2 rounded-full bg-primary/60 animate-pulse" style={{ animationDelay: '150ms' }} />
+                  <div className="w-2 h-2 rounded-full bg-primary/60 animate-pulse" style={{ animationDelay: '300ms' }} />
                 </div>
-              )
-            }
-
+                <span className="text-sm text-muted-foreground">{processingStep}</span>
+              </div>
+            )}
             <div ref={messagesEndRef} />
-          </div >
-        </main >
+          </div>
+        </main>
 
-        {/* Floating Input Area - Fixed at VERY bottom */}
+        {/* Floating Input Area */}
         <div className="absolute bottom-0 left-0 right-0 p-2 border-t bg-background/95 backdrop-blur-sm z-50">
           <div className="max-w-4xl mx-auto">
             <div className="relative flex items-center gap-2 bg-background border border-border/40 rounded-xl shadow-sm p-2 ring-1 ring-black/5 dark:ring-white/5">
-
-              {/* Attachment Button */}
               <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full text-muted-foreground hover:bg-muted/50 hover:text-foreground shrink-0">
                 <Pin className="h-5 w-5" />
               </Button>
 
-              {/* Data Explorer Toggle */}
+              {/* Sidebar Toggle */}
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => setShowDataExplorer(!showDataExplorer)}
+                onClick={() => setShowAssistantPanel(!showAssistantPanel)}
                 className={cn(
                   "h-10 w-10 rounded-full hover:bg-muted/50 shrink-0 transition-colors",
-                  showDataExplorer ? "text-primary bg-primary/10 hover:bg-primary/20" : "text-muted-foreground hover:text-foreground"
+                  showAssistantPanel ? "text-primary bg-primary/10 hover:bg-primary/20" : "text-muted-foreground hover:text-foreground"
                 )}
-                title="Toggle Data Explorer"
+                title="Toggle Assistant Panel"
               >
-                <DatabaseIcon className="h-5 w-5" />
+                <PanelRight className="h-5 w-5" />
               </Button>
 
               <Input
@@ -721,7 +613,6 @@ export function AIAssistantChat({
                 className="flex-1 border-0 bg-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 text-base py-6 px-2 placeholder:text-muted-foreground/60 h-12"
               />
 
-              {/* Fast / Planning Toggle */}
               <div className="flex items-center gap-2 pr-2">
                 <button
                   onClick={() => setReasoningEnabled(!reasoningEnabled)}
@@ -763,16 +654,18 @@ export function AIAssistantChat({
         </div>
       </div>
 
-      {/* Right Sidebar - Data Explorer */}
-      <DataExplorerPanel
-        isOpen={showDataExplorer}
-        onToggle={() => setShowDataExplorer(!showDataExplorer)}
-        dataframes={dataframes}
-        selectedDataframeId={selectedDataset || undefined}
-        thoughtProcess={messages.slice().reverse().find(m => m.role === 'assistant')?.thoughtProcess}
-      />
+      {/* Advanced Assistant Panel */}
+      {selectedDataset && userId && (
+        <AssistantPanel
+          isOpen={showAssistantPanel}
+          onToggle={() => setShowAssistantPanel(!showAssistantPanel)}
+          notebook={null}
+          datasetId={selectedDataset}
+          userId={userId}
+          currentThoughtProcess={currentThoughtProcess}
+          onDatasetSelect={handleDatasetChange}
+        />
+      )}
     </div>
   );
 };
-
-export default AIAssistantChat;

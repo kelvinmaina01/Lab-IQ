@@ -108,6 +108,7 @@ const App = () => {
                       <Route path="/collaboration" element={<Collaboration />} />
                       <Route path="/reports" element={<Reports />} />
                       <Route path="/assistant" element={<Assistant />} />
+                      <Route path="/assistant/:datasetId" element={<Assistant />} />
                       <Route path="/pricing" element={<Pricing />} />
                       <Route path="/settings" element={<SettingsPage />} />
                       <Route path="/settings/notifications" element={<NotificationPreferences />} />

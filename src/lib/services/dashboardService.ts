@@ -196,8 +196,53 @@ class DashboardService {
         return [];
       }
 
-      // Return only real data from database - no demo/mocked data
-      return data || [];
+      // Fetch pinned insights from notebook analysis
+      const { data: notebookInsights, error: insightsError } = await supabase
+        .from('pinned_insights')
+        .select('*, notebooks(dataset_id)')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (insightsError) {
+        console.error('Error fetching pinned insights:', insightsError);
+      }
+
+      // Map notebook insights to PinnedDashboard format
+      const mappedInsights: PinnedDashboard[] = (notebookInsights || []).map((i: any) => ({
+        id: i.id,
+        user_id: i.user_id,
+        title: i.title,
+        description: i.description,
+        type: 'insight',
+        source: 'ai_assistant',
+        config: {},
+        data: {
+          summary: i.insight_data.summary,
+          keyPoints: i.insight_data.key_evidence || [],
+          recommendations: i.insight_data.implications || [],
+          context: {
+            notebookId: i.notebook_id,
+            cellId: i.cell_id,
+            datasetId: i.notebooks?.dataset_id,
+            analysisType: 'notebook_insight'
+          }
+        },
+        category: 'ai_insights',
+        tags: i.tags || [],
+        is_favorite: true, // Insights are pinned, so implicitly favorite/important
+        layout: { w: 2, h: 2, x: 0, y: 0 },
+        created_at: i.created_at,
+        updated_at: i.created_at,
+        userId: i.user_id,
+        is_archived: false
+      }));
+
+      // Merge and sort
+      const allDashboards = [...(data || []), ...mappedInsights].sort((a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+
+      return allDashboards;
     } catch (error) {
       console.error('Dashboard fetch error:', error);
       return [];

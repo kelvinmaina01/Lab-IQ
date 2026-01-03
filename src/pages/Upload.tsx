@@ -19,7 +19,7 @@ import { SampleDatasetCTA } from "@/components/upload/SampleDatasetCTA";
 import { ResourceUsageRow } from "@/components/upload/ResourceUsageRow";
 import { supabase } from "@/integrations/supabase/client";
 import { TemplateSuggestions } from "@/components/upload/TemplateSuggestions";
-import { suggestTemplates } from "@/lib/utils/templateSuggestions";
+import type { TemplateRecommendation } from "@/lib/types/templates";
 import { EnhancedFileUpload } from "@/components/upload/EnhancedFileUpload";
 import { MultiFileUpload } from "@/components/upload/MultiFileUpload";
 import { UploadJobMonitor } from "@/components/upload/UploadJobMonitor";
@@ -98,6 +98,11 @@ export default function Upload() {
   const [parsedData, setParsedData] = useState<any>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [successData, setSuccessData] = useState<any>(null);
+
+  // AI Recommendations state
+  const [aiRecommendations, setAiRecommendations] = useState<any[]>([]);
+  const [recommendationsLoading, setRecommendationsLoading] = useState(false);
+  const [recommendationsError, setRecommendationsError] = useState<string | null>(null);
 
   const handleFile = async (file: File) => {
     const allowedTypes = ['.csv', '.xlsx', '.xls', '.json', '.zip'];
@@ -188,6 +193,7 @@ export default function Upload() {
           title: "File parsed successfully",
           description: `Found ${result.data.rowCount} rows and ${result.data.columnCount} columns`
         });
+        // AI recommendations will be triggered AFTER upload completes
       } else {
         throw new Error(result?.error || "Parsing failed or format not supported");
       }
@@ -213,6 +219,49 @@ export default function Upload() {
       '.json': 'application/json'
     };
     return types[extension] || 'application/octet-stream';
+  };
+
+  // Fetch AI-powered template recommendations
+  const fetchAIRecommendations = async (fileName: string, data: any) => {
+    setRecommendationsLoading(true);
+    setRecommendationsError(null);
+
+    try {
+      const { suggestTemplatesWithAI } = await import('@/lib/utils/templateSuggestions');
+
+      // Build context with column info and sample data
+      const context = {
+        fileName,
+        columns: (data.columns || []).map((col: any) => ({
+          name: col.name,
+          type: col.dataType,
+          sampleValues: col.sampleValues,
+          uniqueCount: col.uniqueValues,
+          nullCount: col.nullCount
+        })),
+        sampleRows: data.rows?.slice(0, 10),
+        rowCount: data.rowCount,
+        columnCount: data.columnCount,
+        dataQuality: data.quality_score
+      };
+
+      const recommendations = await suggestTemplatesWithAI(context);
+      setAiRecommendations(recommendations);
+    } catch (error) {
+      console.error('Failed to get AI recommendations:', error);
+      setRecommendationsError('Using pattern matching for recommendations');
+
+      // Fallback to simple pattern matching
+      const { suggestTemplates } = await import('@/lib/utils/templateSuggestions');
+      const simpleIds = suggestTemplates(fileName, data.headers || []);
+      setAiRecommendations(simpleIds.map(id => ({
+        id,
+        confidence: 0.5,
+        reasoning: 'Matched based on filename and column patterns'
+      })));
+    } finally {
+      setRecommendationsLoading(false);
+    }
   };
 
   const handleProcess = async () => {
@@ -291,6 +340,11 @@ export default function Upload() {
         title: "Success!",
         description: "Dataset uploaded and processed successfully."
       });
+
+      // Trigger AI recommendations AFTER successful upload
+      if (uploadedFile && parsedData) {
+        fetchAIRecommendations(uploadedFile.name, parsedData);
+      }
 
     } catch (error: any) {
       console.error("Processing error:", error);
@@ -665,11 +719,11 @@ export default function Upload() {
                         )}
                       </Button>
 
-                      {parsedData && (
-                        <TemplateSuggestions
-                          suggestedTemplateIds={suggestTemplates(uploadedFile.name, parsedData.headers || [])}
-                        />
-                      )}
+                      <TemplateSuggestions
+                        recommendations={aiRecommendations}
+                        loading={recommendationsLoading}
+                        error={recommendationsError}
+                      />
                     </div>
                   )}
 

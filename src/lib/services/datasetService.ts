@@ -1,6 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { ParsedData, ColumnInfo, QualityMetrics } from '@/lib/parsers/types';
 import { qualityAnalyzer } from '@/lib/analysis/qualityAnalyzer';
+// statisticalAnalyzer will be imported dynamically where needed to avoid build issues
 import { eventBus, EventTypes, DatasetUploadedPayload } from '@/lib/events';
 import { analyzeHealthData, HealthMetadata } from '@/lib/parsers/healthDataTypes';
 
@@ -184,7 +185,7 @@ export class DatasetService {
      * Save column definitions
      */
     private async saveColumns(datasetId: string, columns: ColumnInfo[], rows: Record<string, any>[]) {
-        // Import dynamically to avoid circular dependencies if any, or just use the imported one
+        // Dynamically import to avoid build issues
         const { statisticalAnalyzer } = await import('@/lib/analysis/statisticalAnalyzer');
 
         const columnRecords = columns.map(col => {

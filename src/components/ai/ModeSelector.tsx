@@ -100,7 +100,7 @@ const DropdownSelector: React.FC<ModeSelectorProps> = ({
     size = 'md',
     className,
 }) => {
-    const config = MODE_CONFIG[mode];
+    const config = MODE_CONFIG[mode] || MODE_CONFIG.analyst; // Safe fallback
     const Icon = config.icon;
 
     const sizeClasses = {
@@ -289,7 +289,7 @@ export const ModeInfoBanner: React.FC<{ mode: AIMode; className?: string }> = ({
     mode,
     className,
 }) => {
-    const config = MODE_CONFIG[mode];
+    const config = MODE_CONFIG[mode] || MODE_CONFIG.analyst; // Safe fallback
 
     return (
         <div

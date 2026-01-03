@@ -988,6 +988,17 @@ export default function Dashboards() {
   };
 
   const handleDrillDown = (item: PinnedDashboard) => {
+    // Deep link to Notebook for AI insights
+    if (item.source === 'ai_assistant' && item.data.context?.notebookId) {
+      const datasetId = item.data.context.datasetId || 'default';
+      const notebookId = item.data.context.notebookId;
+      const cellId = item.data.context.cellId;
+
+      navigate(`/assistant/${datasetId}?notebookId=${notebookId}${cellId ? `&cellId=${cellId}` : ''}`);
+      return;
+    }
+
+    // Fallback for demo/manual dashboards
     navigate('/insights', { state: { pinnedInsight: item } });
   };
 

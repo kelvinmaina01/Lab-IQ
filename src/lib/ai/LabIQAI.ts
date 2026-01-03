@@ -1709,3 +1709,13 @@ export const predictMetric = (data: { date: string; value: number }[], name: str
 
 export const generateDescription = (type: 'experiment' | 'dataset' | 'workflow', name: string, context?: string) =>
   labIQAI.generateDescription(type, name, context);
+
+/**
+ * Generate structured notebook analysis (for notebook mode)
+ * Returns raw AI response for JSON parsing in NotebookAgent
+ */
+export const generateNotebookAnalysis = async (prompt: string): Promise<string> => {
+  // Use generateDescription as a pass-through to the AI
+  // The prompt already contains full instructions
+  return await labIQAI.generateDescription('dataset', 'notebook_analysis', prompt);
+};
