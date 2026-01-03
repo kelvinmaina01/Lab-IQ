@@ -85,8 +85,8 @@ export class NotebookEngine {
      */
     private async saveNotebook(
         notebook: NotebookOutput,
-        userId: string,
-        datasetId: string
+        datasetId: string,
+        userId: string
     ): Promise<void> {
         // Insert notebook record
         const { data: notebookRecord, error: notebookError } = await supabase
