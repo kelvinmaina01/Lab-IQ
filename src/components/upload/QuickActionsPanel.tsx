@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -10,6 +10,7 @@ import {
     Rocket
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { ModeSelectionDialog } from '@/components/notebook/ModeSelectionDialog';
 
 interface QuickActionsPanelProps {
     datasetId: string;
@@ -104,77 +105,95 @@ export const QuickActionsPanel: React.FC<QuickActionsPanelProps> = ({
         });
     };
 
+    const [showModeDialog, setShowModeDialog] = useState(false);
+
     const handleAnalyzeWithAI = () => {
-        // Navigate to insights with dataset pre-selected
+        // Show mode selection dialog
+        setShowModeDialog(true);
+    };
+
+    const handleModeSelect = (mode: 'chat' | 'notebook') => {
+        setShowModeDialog(false);
+
+        // Navigate to insights with selected mode
         navigate('/insights', {
             state: {
                 datasetId,
-                mode: 'analysis'
+                insightsMode: mode
             }
         });
     };
 
     return (
-        <Card className="border-primary/20 bg-gradient-to-br from-primary/5 via-background to-secondary/5">
-            <CardHeader>
-                <div className="flex items-center gap-2">
-                    <div className="p-2 bg-gradient-to-br from-primary to-secondary rounded-lg">
-                        <Rocket className="h-5 w-5 text-white" />
+        <>
+            <Card className="border-primary/20 bg-gradient-to-br from-primary/5 via-background to-secondary/5">
+                <CardHeader>
+                    <div className="flex items-center gap-2">
+                        <div className="p-2 bg-gradient-to-br from-primary to-secondary rounded-lg">
+                            <Rocket className="h-5 w-5 text-white" />
+                        </div>
+                        <div>
+                            <CardTitle className="text-xl">Quick Actions</CardTitle>
+                            <CardDescription>What would you like to do with this dataset?</CardDescription>
+                        </div>
                     </div>
-                    <div>
-                        <CardTitle className="text-xl">Quick Actions</CardTitle>
-                        <CardDescription>What would you like to do with this dataset?</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {quickActions.map((action) => {
+                            const Icon = action.icon;
+                            return (
+                                <Card
+                                    key={action.id}
+                                    className="group cursor-pointer hover:shadow-xl transition-all duration-300 hover:-translate-y-2 border-border/50 overflow-hidden"
+                                    onClick={action.action}
+                                >
+                                    <CardContent className="p-6">
+                                        <div className="space-y-4">
+                                            {/* Icon with gradient background */}
+                                            <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${action.gradient} flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg`}>
+                                                <Icon className="w-7 h-7 text-white" />
+                                            </div>
+
+                                            {/* Title */}
+                                            <h3 className="text-lg font-bold group-hover:text-primary transition-colors">
+                                                {action.title}
+                                            </h3>
+
+                                            {/* Description */}
+                                            <p className="text-sm text-muted-foreground leading-relaxed">
+                                                {action.description}
+                                            </p>
+
+                                            {/* Arrow indicator */}
+                                            <div className="flex items-center gap-1 text-sm font-medium text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <span>Get started</span>
+                                                <ArrowRight className="w-4 h-4" />
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            );
+                        })}
                     </div>
-                </div>
-            </CardHeader>
-            <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {quickActions.map((action) => {
-                        const Icon = action.icon;
-                        return (
-                            <Card
-                                key={action.id}
-                                className="group cursor-pointer hover:shadow-xl transition-all duration-300 hover:-translate-y-2 border-border/50 overflow-hidden"
-                                onClick={action.action}
-                            >
-                                <CardContent className="p-6">
-                                    <div className="space-y-4">
-                                        {/* Icon with gradient background */}
-                                        <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${action.gradient} flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg`}>
-                                            <Icon className="w-7 h-7 text-white" />
-                                        </div>
 
-                                        {/* Title */}
-                                        <h3 className="text-lg font-bold group-hover:text-primary transition-colors">
-                                            {action.title}
-                                        </h3>
+                    {/* Additional context */}
+                    <div className="mt-6 p-4 bg-muted/30 rounded-lg border border-border/50">
+                        <p className="text-sm text-muted-foreground">
+                            💡 <strong>Tip:</strong> These quick actions help you immediately leverage your data.
+                            Start with experiments for hypothesis testing, train ML models for predictions,
+                            build workflows for automation, or use AI for instant insights.
+                        </p>
+                    </div>
+                </CardContent>
+            </Card>
 
-                                        {/* Description */}
-                                        <p className="text-sm text-muted-foreground leading-relaxed">
-                                            {action.description}
-                                        </p>
-
-                                        {/* Arrow indicator */}
-                                        <div className="flex items-center gap-1 text-sm font-medium text-primary opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <span>Get started</span>
-                                            <ArrowRight className="w-4 h-4" />
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        );
-                    })}
-                </div>
-
-                {/* Additional context */}
-                <div className="mt-6 p-4 bg-muted/30 rounded-lg border border-border/50">
-                    <p className="text-sm text-muted-foreground">
-                        💡 <strong>Tip:</strong> These quick actions help you immediately leverage your data.
-                        Start with experiments for hypothesis testing, train ML models for predictions,
-                        build workflows for automation, or use AI for instant insights.
-                    </p>
-                </div>
-            </CardContent>
-        </Card>
+            {/* Mode Selection Dialog */}
+            <ModeSelectionDialog
+                open={showModeDialog}
+                onClose={() => setShowModeDialog(false)}
+                onSelectMode={handleModeSelect}
+            />
+        </>
     );
 };

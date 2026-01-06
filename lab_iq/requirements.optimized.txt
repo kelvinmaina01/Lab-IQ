@@ -1,0 +1,103 @@
+# =============================================================================
+# LAB-IQ ML SERVICE - OPTIMIZED FOR HUGGING FACE SPACES (FREE TIER)
+# =============================================================================
+# Memory Budget: < 16GB RAM
+# Focus: Biotech, Biopharma, Clinical Health
+# Architecture: CPU-optimized (no GPU dependencies)
+# =============================================================================
+
+# --- Core API Framework ---
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+python-multipart==0.0.6
+python-dotenv==1.0.1
+pydantic==2.10.1
+pydantic-settings==2.6.1
+websockets==12.0
+
+# --- Data Manipulation (Essential) ---
+numpy==1.26.4
+pandas==2.2.3
+scipy==1.13.1
+openpyxl==3.1.2  # For Excel file support
+
+# --- Machine Learning (CPU-Optimized) ---
+scikit-learn==1.5.2
+xgboost==2.1.3
+lightgbm==4.5.0
+imbalanced-learn==0.12.4
+joblib==1.4.2
+
+# --- Hyperparameter Optimization ---
+optuna==4.1.0
+
+# --- Explainable AI (CRITICAL FOR TRUST) ---
+shap==0.45.0  # For model interpretability
+lime==0.2.0.1  # Alternative explainability method
+
+# --- Domain-Specific Libraries ---
+
+## Biotech/Genomics
+biopython==1.84  # Sequence analysis, GenBank, FASTA parsing
+pysam==0.22.0  # BAM/SAM file handling (for NGS data)
+
+## Biopharma/Chemistry
+rdkit==2023.9.6  # Molecular structure analysis, drug-likeness
+chembl-webresource-client==0.10.8  # ChEMBL database access
+pubchempy==1.0.4  # PubChem API wrapper
+
+## Clinical/Health
+lifelines==0.29.0  # Survival analysis (Kaplan-Meier, Cox regression)
+
+# --- Visualization (Static Generation Only) ---
+matplotlib==3.9.2
+seaborn==0.13.2
+plotly==5.24.1
+
+# --- Database & Storage ---
+supabase==2.10.0
+httpx==0.27.2  # For async HTTP requests
+
+# --- AI & Reasoning (API-Based, No Local Models) ---
+google-generativeai==0.8.3  # Gemini API for insights
+langchain==0.3.9  # LLM orchestration
+langchain-google-genai==2.0.6
+groq==0.11.0  # Alternative fast inference API
+
+# --- Statistical Analysis ---
+statsmodels==0.14.4  # Advanced statistical models
+pingouin==0.5.5  # Statistical tests (t-test, ANOVA, correlation)
+
+# --- Utilities ---
+requests==2.32.3
+aiofiles==24.1.0  # Async file I/O
+python-dateutil==2.9.0
+
+# --- Text Processing (for report generation) ---
+jinja2==3.1.4  # Template engine for reports
+markdown==3.7  # Markdown to HTML conversion
+
+# =============================================================================
+# REMOVED (To save memory):
+# =============================================================================
+# ❌ tensorflow - 500MB+ (replaced with scikit-learn + XGBoost)
+# ❌ torch/pytorch - 800MB+ (replaced with XGBoost/LightGBM)
+# ❌ transformers - 400MB+ (use Gemini API instead for text generation)
+# ❌ keras - Included in tensorflow (not needed)
+# ❌ catboost - 200MB+ (lightgbm is lighter and faster)
+# ❌ opencv - Not needed for tabular data focus
+# ❌ dask - Not needed for current scal
+e
+#
+# Total Savings: ~2GB+ of dependencies
+# =============================================================================
+
+# =============================================================================
+# DEPLOYMENT NOTES:
+# =============================================================================
+# 1. This file is optimized for Hugging Face Spaces CPU (16GB RAM)
+# 2. RDKit installation requires: apt-get install libxrender1 libxext6
+# 3. Pysam requires: apt-get install libbz2-dev liblzma-dev
+# 4. Total install time: ~5 minutes on HF Spaces
+# 5. Memory footprint after imports: ~3-4GB (leaves 12GB for ML workloads)
+# =============================================================================

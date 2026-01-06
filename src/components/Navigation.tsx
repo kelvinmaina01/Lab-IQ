@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { FlaskConical, Activity, TrendingUp } from "lucide-react";
+import { HeartPulse, Activity, TrendingUp } from "lucide-react";
 
 const Navigation = () => {
   return (
@@ -9,10 +9,10 @@ const Navigation = () => {
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-            <FlaskConical className="w-5 h-5 text-white" />
+            <HeartPulse className="w-5 h-5 text-white" />
           </div>
           <span className="text-xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-            LabIQ
+            LabIQ Health
           </span>
         </Link>
 

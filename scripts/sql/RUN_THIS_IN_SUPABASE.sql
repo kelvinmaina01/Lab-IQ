@@ -1,0 +1,1 @@
+Error: Failed to run sql query: ERROR: 42703: column "created_by" does not exist HINT: Perhaps you meant to reference the column "labs.created_at".

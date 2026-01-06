@@ -1,42 +1,34 @@
-import React, { useState } from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import React, { useState, useEffect } from "react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
 import {
-    MessageSquare,
-    Reply,
-    Heart,
-    MoreVertical,
+    MessageCircle,
+    Send,
+    ThumbsUp,
+    MoreHorizontal,
     Pin,
+    Reply,
     Trash2,
-    Edit
-} from 'lucide-react';
+    Loader2
+} from "lucide-react";
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
+    DropdownMenuSeparator,
     DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { toast } from 'sonner';
-
-interface Comment {
-    id: string;
-    user: string;
-    avatar: string;
-    content: string;
-    timestamp: string;
-    likes: number;
-    isLiked: boolean;
-    isPinned: boolean;
-    replies?: Comment[];
-}
+} from "@/components/ui/dropdown-menu";
+import { useServices } from "@/core/ServiceProvider";
+import { Comment } from "@/core/interfaces";
+import { toast } from "sonner";
 
 interface CommentsSystemProps {
     entityId: string;
-    entityType: 'dataset' | 'experiment' | 'report';
+    entityType: 'project' | 'experiment' | 'dataset' | 'file';
     entityName?: string;
 }
 
@@ -45,306 +37,242 @@ export const CommentsSystem: React.FC<CommentsSystemProps> = ({
     entityType,
     entityName
 }) => {
-    const [comments, setComments] = useState<Comment[]>([
-        {
-            id: '1',
-            user: 'Dr. Sarah Chen',
-            avatar: '/placeholder.svg',
-            content: 'The data quality looks excellent! I particularly like the preprocessing steps applied.',
-            timestamp: '2 hours ago',
-            likes: 5,
-            isLiked: false,
-            isPinned: true,
-            replies: [
-                {
-                    id: '1-1',
-                    user: 'John Smith',
-                    avatar: '/placeholder.svg',
-                    content: 'Agreed! The normalization technique used here is spot-on.',
-                    timestamp: '1 hour ago',
-                    likes: 2,
-                    isLiked: true,
-                    isPinned: false
-                }
-            ]
-        },
-        {
-            id: '2',
-            user: 'Emma Wilson',
-            avatar: '/placeholder.svg',
-            content: 'Should we consider adding more validation samples? Current sample size might be limiting.',
-            timestamp: '5 hours ago',
-            likes: 3,
-            isLiked: false,
-            isPinned: false
+    const { collaboration } = useServices();
+    const [comments, setComments] = useState<Comment[]>([]);
+    const [newComment, setNewComment] = useState("");
+    const [replyTo, setReplyTo] = useState<string | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
+
+    useEffect(() => {
+        if (!entityId) return;
+        fetchComments();
+    }, [entityId, entityType]);
+
+    const fetchComments = async () => {
+        setLoading(true);
+        try {
+            const { data } = await collaboration.getComments(entityId, entityType);
+            if (data) setComments(data);
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to load comments");
+        } finally {
+            setLoading(false);
         }
-    ]);
+    };
 
-    const [newComment, setNewComment] = useState('');
-    const [replyingTo, setReplyingTo] = useState<string | null>(null);
-    const [replyContent, setReplyContent] = useState('');
-
-    const handleAddComment = () => {
+    const handlePostComment = async () => {
         if (!newComment.trim()) return;
 
-        const comment: Comment = {
-            id: Date.now().toString(),
-            user: 'You',
-            avatar: '/placeholder.svg',
-            content: newComment,
-            timestamp: 'Just now',
-            likes: 0,
-            isLiked: false,
-            isPinned: false
-        };
+        setSubmitting(true);
+        try {
+            const { data, error } = await collaboration.addComment(
+                entityId,
+                entityType,
+                newComment,
+                replyTo || undefined
+            );
 
-        setComments([comment, ...comments]);
-        setNewComment('');
-        toast.success('Comment added successfully');
-    };
+            if (error) throw error;
 
-    const handleAddReply = (parentId: string) => {
-        if (!replyContent.trim()) return;
-
-        const reply: Comment = {
-            id: `${parentId}-${Date.now()}`,
-            user: 'You',
-            avatar: '/placeholder.svg',
-            content: replyContent,
-            timestamp: 'Just now',
-            likes: 0,
-            isLiked: false,
-            isPinned: false
-        };
-
-        setComments(comments.map(comment => {
-            if (comment.id === parentId) {
-                return {
-                    ...comment,
-                    replies: [...(comment.replies || []), reply]
-                };
+            if (data) {
+                await fetchComments();
+                setNewComment("");
+                setReplyTo(null);
+                toast.success("Comment posted");
             }
-            return comment;
-        }));
-
-        setReplyContent('');
-        setReplyingTo(null);
-        toast.success('Reply added successfully');
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to post comment");
+        } finally {
+            setSubmitting(false);
+        }
     };
 
-    const handleLikeComment = (commentId: string) => {
-        setComments(comments.map(comment => {
-            if (comment.id === commentId) {
-                return {
-                    ...comment,
-                    likes: comment.isLiked ? comment.likes - 1 : comment.likes + 1,
-                    isLiked: !comment.isLiked
-                };
-            }
-            // Also handle nested replies
-            if (comment.replies) {
-                return {
-                    ...comment,
-                    replies: comment.replies.map(reply => {
-                        if (reply.id === commentId) {
-                            return {
-                                ...reply,
-                                likes: reply.isLiked ? reply.likes - 1 : reply.likes + 1,
-                                isLiked: !reply.isLiked
-                            };
-                        }
-                        return reply;
-                    })
-                };
-            }
-            return comment;
-        }));
+    const handleLike = async (commentId: string) => {
+        try {
+            setComments(prev => prev.map(c => {
+                if (c.id === commentId) {
+                    return { ...c, likes: c.isLiked ? c.likes - 1 : c.likes + 1, isLiked: !c.isLiked };
+                }
+                if (c.replies) {
+                    return {
+                        ...c,
+                        replies: c.replies.map(r => r.id === commentId ? { ...r, likes: r.isLiked ? r.likes - 1 : r.likes + 1, isLiked: !r.isLiked } : r)
+                    };
+                }
+                return c;
+            }));
+
+            await collaboration.toggleLikeComment(commentId);
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to like comment");
+            await fetchComments();
+        }
     };
 
-    const handlePinComment = (commentId: string) => {
-        setComments(comments.map(comment => {
-            if (comment.id === commentId) {
-                toast.success(comment.isPinned ? 'Comment unpinned' : 'Comment pinned');
-                return { ...comment, isPinned: !comment.isPinned };
-            }
-            return comment;
-        }));
+    const handlePin = async (commentId: string) => {
+        try {
+            const { error } = await collaboration.togglePinComment(commentId);
+            if (error) throw error;
+
+            setComments(prev => prev.map(c => {
+                if (c.id === commentId) return { ...c, isPinned: !c.isPinned };
+                return c;
+            }));
+            toast.success("Comment pin status updated");
+
+        } catch (err) {
+            console.error("Failed to pin", err);
+            toast.error("Failed to update pin status");
+        }
     };
 
-    const handleDeleteComment = (commentId: string) => {
-        setComments(comments.filter(comment => comment.id !== commentId));
-        toast.success('Comment deleted');
+    const handleDelete = async (commentId: string) => {
+        try {
+            await collaboration.deleteComment(commentId);
+            setComments(prev => prev.filter(c => c.id !== commentId));
+            toast.success("Comment deleted");
+            await fetchComments();
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to delete comment");
+        }
     };
 
-    const renderComment = (comment: Comment, isReply: boolean = false) => (
-        <div
-            key={comment.id}
-            className={`group ${isReply ? 'ml-12 mt-3' : 'mb-4'} animate-in fade-in-50 slide-in-from-top-2`}
-        >
-            <div className="flex items-start gap-3">
-                <Avatar className={isReply ? 'w-8 h-8' : 'w-10 h-10'}>
-                    <AvatarImage src={comment.avatar} alt={comment.user} />
-                    <AvatarFallback>{comment.user.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                </Avatar>
-
-                <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                        <span className="font-semibold text-sm">{comment.user}</span>
-                        <span className="text-xs text-muted-foreground">{comment.timestamp}</span>
-                        {comment.isPinned && (
-                            <Badge variant="secondary" className="gap-1">
-                                <Pin className="w-3 h-3" />
-                                Pinned
-                            </Badge>
-                        )}
-                    </div>
-
-                    <p className="text-sm mb-2 leading-relaxed">{comment.content}</p>
-
-                    <div className="flex items-center gap-3">
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 gap-1.5 hover:bg-red-50 dark:hover:bg-red-950"
-                            onClick={() => handleLikeComment(comment.id)}
-                        >
-                            <Heart className={`w-3.5 h-3.5 ${comment.isLiked ? 'fill-red-500 text-red-500' : ''}`} />
-                            <span className="text-xs">{comment.likes}</span>
-                        </Button>
-
-                        {!isReply && (
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-7 gap-1.5"
-                                onClick={() => setReplyingTo(comment.id)}
-                            >
-                                <Reply className="w-3.5 h-3.5" />
-                                <span className="text-xs">Reply</span>
-                            </Button>
-                        )}
-
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                >
-                                    <MoreVertical className="w-3.5 h-3.5" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => handlePinComment(comment.id)}>
-                                    <Pin className="w-4 h-4 mr-2" />
-                                    {comment.isPinned ? 'Unpin' : 'Pin'} Comment
-                                </DropdownMenuItem>
-                                <DropdownMenuItem>
-                                    <Edit className="w-4 h-4 mr-2" />
-                                    Edit
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                    className="text-destructive"
-                                    onClick={() => handleDeleteComment(comment.id)}
-                                >
-                                    <Trash2 className="w-4 h-4 mr-2" />
-                                    Delete
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </div>
-
-                    {/* Reply Input */}
-                    {replyingTo === comment.id && (
-                        <div className="mt-3 animate-in fade-in-50 slide-in-from-top-2">
-                            <Textarea
-                                placeholder="Write a reply..."
-                                value={replyContent}
-                                onChange={(e) => setReplyContent(e.target.value)}
-                                className="mb-2 min-h-[80px]"
-                            />
-                            <div className="flex gap-2">
-                                <Button size="sm" onClick={() => handleAddReply(comment.id)}>
-                                    Reply
-                                </Button>
-                                <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => {
-                                        setReplyingTo(null);
-                                        setReplyContent('');
-                                    }}
-                                >
-                                    Cancel
-                                </Button>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Replies */}
-                    {comment.replies && comment.replies.length > 0 && (
-                        <div className="mt-3 space-y-3">
-                            {comment.replies.map(reply => renderComment(reply, true))}
-                        </div>
+    const CommentItem = ({ comment, isReply = false }: { comment: Comment; isReply?: boolean }) => (
+        <div className={`group flex gap-3 ${isReply ? "ml-12 mt-3" : "mb-6"}`}>
+            <Avatar className={isReply ? "w-8 h-8" : "w-10 h-10"}>
+                <AvatarImage src={comment.avatar} />
+                <AvatarFallback>{comment.user[0]}</AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                    <span className="font-semibold text-sm">{comment.user}</span>
+                    <span className="text-xs text-muted-foreground">{comment.timestamp}</span>
+                    {comment.isPinned && (
+                        <Badge variant="secondary" className="h-5 px-1.5 text-[10px] gap-1">
+                            <Pin className="w-3 h-3" /> Pinned
+                        </Badge>
                     )}
                 </div>
+                <div className="text-sm text-foreground/90 mb-2 whitespace-pre-wrap">
+                    {comment.content}
+                </div>
+                <div className="flex items-center gap-4">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className={`h-6 px-2 text-xs gap-1.5 ${comment.isLiked ? "text-primary" : "text-muted-foreground"}`}
+                        onClick={() => handleLike(comment.id)}
+                    >
+                        <ThumbsUp className={`w-3 h-3 ${comment.isLiked ? "fill-current" : ""}`} />
+                        {comment.likes || "Like"}
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-xs gap-1.5 text-muted-foreground"
+                        onClick={() => setReplyTo(comment.id)}
+                    >
+                        <Reply className="w-3 h-3" />
+                        Reply
+                    </Button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <MoreHorizontal className="w-3 h-3" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handlePin(comment.id)}>
+                                <Pin className="w-3 h-3 mr-2" />
+                                {comment.isPinned ? "Unpin" : "Pin"}
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(comment.id)}>
+                                <Trash2 className="w-3 h-3 mr-2" />
+                                Delete
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
+                {comment.replies && comment.replies.map(reply => (
+                    <CommentItem key={reply.id} comment={reply} isReply />
+                ))}
             </div>
         </div>
     );
 
-    // Sort comments: pinned first, then by timestamp
-    const sortedComments = [...comments].sort((a, b) => {
-        if (a.isPinned && !b.isPinned) return -1;
-        if (!a.isPinned && b.isPinned) return 1;
-        return 0;
-    });
-
     return (
-        <Card>
-            <CardHeader className="border-b">
+        <Card className="h-full flex flex-col">
+            <CardHeader className="border-b py-4">
                 <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <MessageSquare className="w-5 h-5 text-primary" />
-                        <CardTitle>Comments</CardTitle>
-                        <Badge variant="secondary">{comments.length}</Badge>
+                    <div>
+                        <CardTitle className="text-lg flex items-center gap-2">
+                            <MessageCircle className="w-5 h-5" />
+                            Comments
+                            <Badge variant="secondary">{comments.length}</Badge>
+                        </CardTitle>
+                        {entityName && (
+                            <CardDescription className="mt-1">
+                                {entityName}
+                            </CardDescription>
+                        )}
                     </div>
-                    {entityName && (
-                        <span className="text-sm text-muted-foreground">
-                            On {entityType}: <span className="font-medium">{entityName}</span>
-                        </span>
-                    )}
                 </div>
             </CardHeader>
 
-            <CardContent className="p-6">
-                {/* New Comment Input */}
-                <div className="mb-6">
-                    <Textarea
-                        placeholder="Share your thoughts or ask a question..."
-                        value={newComment}
-                        onChange={(e) => setNewComment(e.target.value)}
-                        className="mb-3 min-h-[100px]"
-                    />
-                    <Button onClick={handleAddComment} className="gap-2">
-                        <MessageSquare className="w-4 h-4" />
-                        Add Comment
-                    </Button>
-                </div>
+            <ScrollArea className="flex-1 p-6">
+                {loading && comments.length === 0 ? (
+                    <div className="flex justify-center p-8">
+                        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                    </div>
+                ) : comments.length === 0 ? (
+                    <div className="text-center text-muted-foreground py-10">
+                        No comments yet. Be the first to start the discussion!
+                    </div>
+                ) : (
+                    comments.map(comment => (
+                        <CommentItem key={comment.id} comment={comment} />
+                    ))
+                )}
+            </ScrollArea>
 
-                {/* Comments List */}
-                <ScrollArea className="h-[500px] pr-4">
-                    {sortedComments.length > 0 ? (
-                        <div>
-                            {sortedComments.map(comment => renderComment(comment))}
+            <div className="p-4 border-t bg-muted/10">
+                {replyTo && (
+                    <div className="flex items-center justify-between text-xs text-muted-foreground mb-2 px-1">
+                        <span>Replying to comment...</span>
+                        <Button variant="ghost" size="sm" className="h-auto p-0" onClick={() => setReplyTo(null)}>Cancel</Button>
+                    </div>
+                )}
+                <div className="flex gap-3">
+                    <Avatar className="w-8 h-8">
+                        <AvatarFallback>ME</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                        <Textarea
+                            placeholder={replyTo ? "Write a reply..." : "Add a comment..."}
+                            value={newComment}
+                            onChange={(e) => setNewComment(e.target.value)}
+                            className="min-h-[80px] mb-2 resize-none bg-background"
+                        />
+                        <div className="flex justify-end">
+                            <Button
+                                size="sm"
+                                onClick={handlePostComment}
+                                disabled={!newComment.trim() || submitting}
+                                className="gap-2"
+                            >
+                                {submitting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+                                Post Comment
+                            </Button>
                         </div>
-                    ) : (
-                        <div className="text-center py-12">
-                            <MessageSquare className="w-12 h-12 mx-auto mb-3 text-muted-foreground" />
-                            <p className="text-muted-foreground">No comments yet. Be the first to share your thoughts!</p>
-                        </div>
-                    )}
-                </ScrollArea>
-            </CardContent>
+                    </div>
+                </div>
+            </div>
         </Card>
     );
 };

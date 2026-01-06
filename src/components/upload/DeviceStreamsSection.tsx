@@ -6,10 +6,12 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Activity, Plus, Trash2, Wifi, Lock, Zap } from "lucide-react";
+import { Activity, Plus, Trash2, Wifi, Lock, Zap, Eye, ChevronRight } from "lucide-react";
 import { useSubscription } from "@/hooks/useSubscription";
+import { DeviceStreamDetail } from "./DeviceStreamDetail";
 
 interface DeviceStream {
   id: string;
@@ -18,6 +20,8 @@ interface DeviceStream {
   status: string;
   created_at: string;
   last_data_received?: string;
+  data_points_count: number;
+  connection_config: any;
 }
 
 export function DeviceStreamsSection() {
@@ -26,9 +30,17 @@ export function DeviceStreamsSection() {
   const [streams, setStreams] = useState<DeviceStream[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedStream, setSelectedStream] = useState<DeviceStream | null>(null);
   const [newStream, setNewStream] = useState({
     name: "",
     stream_type: "mqtt",
+    broker_url: "mqtt://broker.lab-iq.com:1883",
+    topic: "",
+    username: "",
+    password: "",
+    endpoint_url: "",
+    secret_key: "",
+    api_token: "",
   });
 
   useEffect(() => {
@@ -79,6 +91,22 @@ export function DeviceStreamsSection() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
+      // Build connection config based on stream type
+      const connection_config: any = {};
+
+      if (newStream.stream_type === 'mqtt') {
+        connection_config.broker_url = newStream.broker_url || 'mqtt://broker.lab-iq.com:1883';
+        connection_config.topic = newStream.topic || `lab/${user.id}/data`;
+        connection_config.username = newStream.username || `device_${Date.now()}`;
+        connection_config.password = newStream.password || generateRandomPassword();
+      } else if (newStream.stream_type === 'webhook') {
+        const streamId = `wh_${Date.now()}`;
+        connection_config.endpoint_url = newStream.endpoint_url || `https://api.lab-iq.com/webhooks/${streamId}`;
+        connection_config.secret_key = newStream.secret_key || `sk_${generateRandomPassword()}`;
+      } else if (newStream.stream_type === 'token_auth') {
+        connection_config.api_token = newStream.api_token || `Bearer ${generateRandomPassword(32)}`;
+      }
+
       const { error } = await supabase
         .from('device_streams')
         .insert({
@@ -86,17 +114,29 @@ export function DeviceStreamsSection() {
           name: newStream.name,
           stream_type: newStream.stream_type,
           status: 'inactive',
+          connection_config,
+          data_points_count: 0,
         });
 
       if (error) throw error;
 
       toast({
-        title: "Stream created",
-        description: "Device stream has been configured successfully.",
+        title: "Stream created successfully!",
+        description: "Your device credentials have been generated. Click to view details.",
       });
 
       setDialogOpen(false);
-      setNewStream({ name: "", stream_type: "mqtt" });
+      setNewStream({
+        name: "",
+        stream_type: "mqtt",
+        broker_url: "mqtt://broker.lab-iq.com:1883",
+        topic: "",
+        username: "",
+        password: "",
+        endpoint_url: "",
+        secret_key: "",
+        api_token: "",
+      });
       fetchStreams();
     } catch (error) {
       console.error('Error creating stream:', error);
@@ -106,6 +146,15 @@ export function DeviceStreamsSection() {
         variant: "destructive",
       });
     }
+  };
+
+  const generateRandomPassword = (length: number = 16) => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let password = '';
+    for (let i = 0; i < length; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return password;
   };
 
   const deleteStream = async (id: string) => {
@@ -229,7 +278,22 @@ export function DeviceStreamsSection() {
         </div>
       </CardHeader>
       <CardContent>
-        {streams.length === 0 ? (
+        {selectedStream ? (
+          <div className="space-y-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedStream(null)}
+              className="mb-4"
+            >
+              ← Back to Streams
+            </Button>
+            <DeviceStreamDetail
+              stream={selectedStream}
+              onUpdate={fetchStreams}
+            />
+          </div>
+        ) : streams.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <Activity className="h-12 w-12 mx-auto mb-3 opacity-50" />
             <p className="font-medium">No device streams configured</p>
@@ -240,16 +304,17 @@ export function DeviceStreamsSection() {
             {streams.map((stream) => (
               <div
                 key={stream.id}
-                className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-accent/50 transition-colors"
+                className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-accent/50 transition-colors cursor-pointer"
+                onClick={() => setSelectedStream(stream)}
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 flex-1">
                   <div className="p-2 bg-primary/10 rounded-lg">
                     {getStreamIcon(stream.stream_type)}
                   </div>
-                  <div>
+                  <div className="flex-1">
                     <p className="font-medium text-sm">{stream.name}</p>
                     <p className="text-xs text-muted-foreground capitalize">
-                      {stream.stream_type.replace('_', ' ')}
+                      {stream.stream_type.replace('_', ' ')} • {stream.data_points_count || 0} points
                     </p>
                   </div>
                 </div>
@@ -260,10 +325,14 @@ export function DeviceStreamsSection() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => deleteStream(stream.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteStream(stream.id);
+                    }}
                   >
                     <Trash2 className="h-4 w-4 text-destructive" />
                   </Button>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </div>
               </div>
             ))}

@@ -1,28 +1,90 @@
-
 import { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Zap, Clock, PlayCircle, PauseCircle, Settings, TrendingUp } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Plus,
+  Zap,
+  Clock,
+  PlayCircle,
+  Settings,
+  TrendingUp,
+  MoreVertical,
+  Play,
+  Trash2,
+  Activity,
+  CheckCircle2,
+  XCircle,
+  Loader2,
+  Crown,
+  Lock,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { WorkflowBuilder } from "@/components/workflows/WorkflowBuilder";
-import { supabase } from "@/integrations/supabase/client";
+import { workflowService, Workflow } from "@/lib/services/workflowService";
+import { useSubscription } from "@/hooks/use-subscription";
+import { UpgradePrompt } from "@/components/subscription/UpgradePrompt";
+
+// Free tier limits
+const FREE_WORKFLOW_LIMIT = 3;
 
 const Automation = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isTemplatesDialogOpen, setIsTemplatesDialogOpen] = useState(false);
   const [useBuilder, setUseBuilder] = useState(false);
+  const [workflows, setWorkflows] = useState<Workflow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [executeLoading, setExecuteLoading] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [workflowToDelete, setWorkflowToDelete] = useState<string | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [workflowToEdit, setWorkflowToEdit] = useState<Workflow | null>(null);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const { toast } = useToast();
   const [initialDatasetId, setInitialDatasetId] = useState<string>();
+  const [stats, setStats] = useState({
+    active: 0,
+    totalRuns: 0,
+    successRate: 0,
+    timeSaved: 0,
+  });
+
+  // Subscription check
+  const { subscription, isPro, canUseFeature, loading: subscriptionLoading } = useSubscription();
+  const hasWorkflowAccess = canUseFeature('workflowAutomation');
+  const workflowLimit = isPro ? -1 : FREE_WORKFLOW_LIMIT; // -1 means unlimited
+  const hasReachedLimit = !isPro && workflows.length >= FREE_WORKFLOW_LIMIT;
 
   useEffect(() => {
     // Check if coming from QuickActions
@@ -34,104 +96,272 @@ const Automation = () => {
     }
   }, [location.state]);
 
-  const workflows = [
-    {
-      id: 1,
-      name: "Daily Data Backup",
-      description: "Automatically backup all experimental data to cloud storage",
-      trigger: "Schedule",
-      schedule: "Every day at 2:00 AM",
-      enabled: true,
-      lastRun: "2025-01-27 02:00",
-      status: "success",
-      runs: 145
-    },
-    {
-      id: 2,
-      name: "Anomaly Detection",
-      description: "Scan incoming data for anomalies and send alerts",
-      trigger: "Data Upload",
-      schedule: "On new upload",
-      enabled: true,
-      lastRun: "2025-01-27 10:15",
-      status: "success",
-      runs: 89
-    },
-    {
-      id: 3,
-      name: "Weekly Report Generation",
-      description: "Generate and email comprehensive lab reports",
-      trigger: "Schedule",
-      schedule: "Every Monday at 9:00 AM",
-      enabled: true,
-      lastRun: "2025-01-22 09:00",
-      status: "success",
-      runs: 52
-    },
-    {
-      id: 4,
-      name: "Model Retraining",
-      description: "Retrain ML models with new data when accuracy drops",
-      trigger: "Threshold",
-      schedule: "When accuracy < 85%",
-      enabled: false,
-      lastRun: "2025-01-20 14:30",
-      status: "warning",
-      runs: 12
-    },
-    {
-      id: 5,
-      name: "Experiment Status Notifications",
-      description: "Send notifications when experiments complete",
-      trigger: "Event",
-      schedule: "On experiment completion",
-      enabled: true,
-      lastRun: "2025-01-27 11:45",
-      status: "success",
-      runs: 234
-    },
-  ];
+  useEffect(() => {
+    loadWorkflows();
+  }, []);
 
-  const handleToggleWorkflow = (id: number) => {
-    toast({
-      title: "Workflow Updated",
-      description: "Workflow status has been changed.",
-    });
+  const loadWorkflows = async () => {
+    try {
+      setLoading(true);
+      const data = await workflowService.fetchWorkflows();
+      setWorkflows(data);
+
+      // Calculate stats
+      const active = data.filter((w) => w.status === "active").length;
+      const totalRuns = data.reduce(
+        (sum, w) => sum + w.success_count + w.failure_count,
+        0
+      );
+      const totalSuccess = data.reduce((sum, w) => sum + w.success_count, 0);
+      const successRate =
+        totalRuns > 0 ? (totalSuccess / totalRuns) * 100 : 0;
+
+      // Estimate time saved (5 minutes per successful workflow run)
+      const timeSavedMinutes = totalSuccess * 5;
+      const timeSavedHours = Math.round(timeSavedMinutes / 60);
+
+      setStats({
+        active,
+        totalRuns,
+        successRate: Math.round(successRate * 10) / 10,
+        timeSaved: timeSavedHours,
+      });
+    } catch (error) {
+      console.error("Error loading workflows:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load workflows",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleToggleWorkflow = async (id: string, currentStatus: string) => {
+    try {
+      const newStatus =
+        currentStatus === "active" ? "paused" : "active";
+      await workflowService.updateWorkflowStatus(id, newStatus);
+
+      toast({
+        title: "Workflow Updated",
+        description: `Workflow ${newStatus === "active" ? "activated" : "paused"
+          } successfully.`,
+      });
+
+      loadWorkflows();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update workflow",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleExecuteWorkflow = async (id: string) => {
+    try {
+      setExecuteLoading(id);
+      const execution = await workflowService.executeWorkflow(id);
+
+      toast({
+        title: "Workflow Executed",
+        description: "Opening execution details...",
+      });
+
+      // Navigate to execution detail page
+      navigate(`/automation/execution/${execution.id}`);
+    } catch (error) {
+      toast({
+        title: "Execution Failed",
+        description: "Failed to execute workflow",
+        variant: "destructive",
+      });
+      setExecuteLoading(null);
+    }
+  };
+
+  const handleEditWorkflow = async (updatedWorkflow: any) => {
+    if (!workflowToEdit) return;
+
+    try {
+      await workflowService.updateWorkflow(workflowToEdit.id, updatedWorkflow);
+
+      toast({
+        title: "Workflow Updated",
+        description: "Your workflow has been updated successfully.",
+      });
+
+      setIsEditDialogOpen(false);
+      setWorkflowToEdit(null);
+      setUseBuilder(false);
+      loadWorkflows();
+    } catch (error) {
+      console.error("Error updating workflow:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update workflow",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteWorkflow = async () => {
+    if (!workflowToDelete) return;
+
+    try {
+      await workflowService.deleteWorkflow(workflowToDelete);
+
+      toast({
+        title: "Workflow Deleted",
+        description: "Workflow has been deleted successfully.",
+      });
+
+      setDeleteDialogOpen(false);
+      setWorkflowToDelete(null);
+      loadWorkflows();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete workflow",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleCreateWorkflow = async (workflow: any) => {
+    // Check workflow limit for free users
+    if (hasReachedLimit) {
+      setShowUpgradeModal(true);
+      return;
+    }
+
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { error } = await supabase
-        .from('workflows' as any)
-        .insert({
-          user_id: user.id,
-          name: workflow.name,
-          description: workflow.description,
-          trigger_type: workflow.trigger_type,
-          trigger_config: workflow.trigger_config || {},
-          steps: workflow.steps,
-          status: workflow.status || 'active'
-        });
-
-      if (error) throw error;
+      await workflowService.createWorkflow(workflow);
 
       toast({
         title: "Workflow Created",
         description: "Your automation workflow has been created successfully.",
       });
+
       setIsCreateDialogOpen(false);
       setUseBuilder(false);
+      loadWorkflows();
     } catch (error) {
-      console.error('Error creating workflow:', error);
+      console.error("Error creating workflow:", error);
       toast({
         title: "Error",
         description: "Failed to create workflow",
-        variant: "destructive"
+        variant: "destructive",
       });
     }
+  };
+
+  const handleCreateClick = () => {
+    if (hasReachedLimit) {
+      setShowUpgradeModal(true);
+    } else {
+      setIsCreateDialogOpen(true);
+    }
+  };
+
+  const handleCreateFromTemplate = async (template: any) => {
+    try {
+      await workflowService.createWorkflow(template);
+
+      toast({
+        title: "Workflow Created",
+        description: "Workflow created from template successfully.",
+      });
+
+      setIsTemplatesDialogOpen(false);
+      loadWorkflows();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create workflow from template",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const getTriggerLabel = (workflow: Workflow) => {
+    switch (workflow.trigger_type) {
+      case "dataset_upload":
+        return "On Dataset Upload";
+      case "manual":
+        return "Manual Trigger";
+      case "schedule":
+        return "Scheduled";
+      case "threshold":
+        return "Threshold Based";
+      case "event":
+        return "On Event";
+      default:
+        return workflow.trigger_type;
+    }
+  };
+
+  const getStatusBadge = (workflow: Workflow) => {
+    const totalRuns = workflow.success_count + workflow.failure_count;
+    const successRate =
+      totalRuns > 0 ? (workflow.success_count / totalRuns) * 100 : 0;
+
+    if (workflow.status !== "active") {
+      return (
+        <Badge className="bg-gray-500/10 text-gray-500 border-gray-500/20">
+          Paused
+        </Badge>
+      );
+    }
+
+    if (totalRuns === 0) {
+      return (
+        <Badge className="bg-blue-500/10 text-blue-500 border-blue-500/20">
+          Not Run Yet
+        </Badge>
+      );
+    }
+
+    if (successRate >= 95) {
+      return (
+        <Badge className="bg-green-500/10 text-green-500 border-green-500/20">
+          Running Smoothly
+        </Badge>
+      );
+    }
+
+    if (successRate >= 80) {
+      return (
+        <Badge className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20">
+          Minor Issues
+        </Badge>
+      );
+    }
+
+    return (
+      <Badge className="bg-red-500/10 text-red-500 border-red-500/20">
+        Needs Attention
+      </Badge>
+    );
+  };
+
+  const formatRelativeTime = (dateString: string | null) => {
+    if (!dateString) return "Never";
+
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins} min ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString();
   };
 
   return (
@@ -141,41 +371,164 @@ const Automation = () => {
           {/* Header */}
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h1 className="text-3xl font-bold text-foreground mb-2">Automation</h1>
-              <p className="text-muted-foreground">Configure automated workflows and processes</p>
+              <h1 className="text-3xl font-bold text-foreground mb-2">
+                Automation
+              </h1>
+              <p className="text-muted-foreground">
+                Configure automated workflows and processes
+              </p>
             </div>
-            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className="gap-2">
-                  <Plus className="w-4 h-4" />
-                  Create Workflow
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>Create Automation Workflow</DialogTitle>
-                </DialogHeader>
-                {useBuilder ? (
-                  <WorkflowBuilder
-                    onSave={handleCreateWorkflow}
-                    onCancel={() => {
-                      setIsCreateDialogOpen(false);
-                      setUseBuilder(false);
-                    }}
-                    initialDatasetId={initialDatasetId}
-                  />
-                ) : (
-                  <div className="text-center py-8">
-                    <Button
-                      onClick={() => setUseBuilder(true)}
-                      size="lg"
-                    >
-                      Open Workflow Builder
-                    </Button>
+            <div className="flex gap-2">
+              <Dialog
+                open={isTemplatesDialogOpen}
+                onOpenChange={setIsTemplatesDialogOpen}
+              >
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="gap-2">
+                    <Activity className="w-4 h-4" />
+                    Templates
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>Workflow Templates</DialogTitle>
+                    <DialogDescription>
+                      Choose from pre-built industry-specific workflow templates
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="mt-6 space-y-6">
+                    {(() => {
+                      const templates = workflowService.getWorkflowTemplates();
+                      const categories = ['General', 'Biotech', 'Pharmaceutical', 'Chemistry', 'Clinical'];
+
+                      return categories.map((category) => {
+                        const categoryTemplates = templates.filter((t: any) => t.category === category);
+                        if (categoryTemplates.length === 0) return null;
+
+                        return (
+                          <div key={category}>
+                            <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                              {category === 'General' && '⚙️'}
+                              {category === 'Biotech' && '🧬'}
+                              {category === 'Pharmaceutical' && '💊'}
+                              {category === 'Chemistry' && '⚗️'}
+                              {category === 'Clinical' && '🏥'}
+                              <span>{category}</span>
+                              <Badge variant="secondary" className="ml-2">{categoryTemplates.length}</Badge>
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              {categoryTemplates.map((template: any, index: number) => (
+                                <Card
+                                  key={index}
+                                  className="p-4 hover:bg-accent/50 cursor-pointer transition-all hover:shadow-md"
+                                  onClick={() => handleCreateFromTemplate(template)}
+                                >
+                                  <div className="flex items-start gap-3 mb-2">
+                                    <span className="text-2xl">{template.icon}</span>
+                                    <div className="flex-1">
+                                      <h4 className="font-semibold text-sm mb-1">{template.name}</h4>
+                                      <p className="text-xs text-muted-foreground line-clamp-2">
+                                        {template.description}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center justify-between text-xs mt-3">
+                                    <div className="flex items-center gap-2">
+                                      <Badge variant="outline" className="text-xs">{template.steps.length} steps</Badge>
+                                      <span className="text-muted-foreground">⏱️ Saves {template.estimatedTimeSaved}</span>
+                                    </div>
+                                  </div>
+                                </Card>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()}
                   </div>
-                )}
-              </DialogContent>
-            </Dialog>
+                </DialogContent>
+              </Dialog>
+
+              <Dialog
+                open={isCreateDialogOpen}
+                onOpenChange={setIsCreateDialogOpen}
+              >
+                <DialogTrigger asChild>
+                  <Button className="gap-2" onClick={(e) => {
+                    if (hasReachedLimit) {
+                      e.preventDefault();
+                      setShowUpgradeModal(true);
+                    }
+                  }}>
+                    {hasReachedLimit && <Lock className="w-4 h-4" />}
+                    {!hasReachedLimit && <Plus className="w-4 h-4" />}
+                    Create Workflow
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>Create Automation Workflow</DialogTitle>
+                    <DialogDescription>
+                      Build a custom workflow with sequential steps to automate your data processing pipeline
+                    </DialogDescription>
+                  </DialogHeader>
+                  {useBuilder ? (
+                    <WorkflowBuilder
+                      onSave={handleCreateWorkflow}
+                      onCancel={() => {
+                        setIsCreateDialogOpen(false);
+                        setUseBuilder(false);
+                      }}
+                      initialDatasetId={initialDatasetId}
+                    />
+                  ) : (
+                    <div className="text-center py-8">
+                      <Button onClick={() => setUseBuilder(true)} size="lg">
+                        Open Workflow Builder
+                      </Button>
+                    </div>
+                  )}
+                </DialogContent>
+              </Dialog>
+
+              {/* Edit Workflow Dialog */}
+              <Dialog
+                open={isEditDialogOpen}
+                onOpenChange={(open) => {
+                  setIsEditDialogOpen(open);
+                  if (!open) {
+                    setWorkflowToEdit(null);
+                    setUseBuilder(false);
+                  }
+                }}
+              >
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>Edit Workflow</DialogTitle>
+                    <DialogDescription>
+                      Update your workflow configuration and steps
+                    </DialogDescription>
+                  </DialogHeader>
+                  {useBuilder && workflowToEdit ? (
+                    <WorkflowBuilder
+                      onSave={handleEditWorkflow}
+                      onCancel={() => {
+                        setIsEditDialogOpen(false);
+                        setWorkflowToEdit(null);
+                        setUseBuilder(false);
+                      }}
+                      initialWorkflow={workflowToEdit}
+                    />
+                  ) : (
+                    <div className="text-center py-8">
+                      <Button onClick={() => setUseBuilder(true)} size="lg">
+                        Open Workflow Builder
+                      </Button>
+                    </div>
+                  )}
+                </DialogContent>
+              </Dialog>
+            </div>
           </div>
 
           {/* Statistics Cards */}
@@ -186,8 +539,10 @@ const Automation = () => {
                   <Zap className="w-6 h-6 text-blue-500" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">5</p>
-                  <p className="text-sm text-muted-foreground">Active Workflows</p>
+                  <p className="text-2xl font-bold">{stats.active}</p>
+                  <p className="text-sm text-muted-foreground">
+                    Active Workflows
+                  </p>
                 </div>
               </div>
             </Card>
@@ -197,7 +552,7 @@ const Automation = () => {
                   <PlayCircle className="w-6 h-6 text-green-500" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">532</p>
+                  <p className="text-2xl font-bold">{stats.totalRuns}</p>
                   <p className="text-sm text-muted-foreground">Total Runs</p>
                 </div>
               </div>
@@ -208,7 +563,7 @@ const Automation = () => {
                   <TrendingUp className="w-6 h-6 text-purple-500" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">98.5%</p>
+                  <p className="text-2xl font-bold">{stats.successRate}%</p>
                   <p className="text-sm text-muted-foreground">Success Rate</p>
                 </div>
               </div>
@@ -219,7 +574,7 @@ const Automation = () => {
                   <Clock className="w-6 h-6 text-orange-500" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">124h</p>
+                  <p className="text-2xl font-bold">{stats.timeSaved}h</p>
                   <p className="text-sm text-muted-foreground">Time Saved</p>
                 </div>
               </div>
@@ -227,53 +582,143 @@ const Automation = () => {
           </div>
 
           {/* Workflows List */}
-          <div className="space-y-4">
-            {workflows.map((workflow) => (
-              <Card key={workflow.id} className="p-6">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start gap-4 flex-1">
-                    <div className={`p-3 rounded-lg ${workflow.enabled ? 'bg-primary/10' : 'bg-muted'}`}>
-                      <Zap className={`w-6 h-6 ${workflow.enabled ? 'text-primary' : 'text-muted-foreground'}`} />
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-lg font-semibold">{workflow.name}</h3>
-                        <Badge variant="outline">{workflow.trigger}</Badge>
-                        {workflow.status === "success" && (
-                          <Badge className="bg-green-500/10 text-green-500 border-green-500/20">
-                            Running smoothly
-                          </Badge>
-                        )}
-                        {workflow.status === "warning" && (
-                          <Badge className="bg-orange-500/10 text-orange-500 border-orange-500/20">
-                            Needs attention
-                          </Badge>
-                        )}
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : workflows.length === 0 ? (
+            <Card className="p-12 text-center">
+              <Zap className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50" />
+              <h3 className="text-lg font-semibold mb-2">
+                No Workflows Yet
+              </h3>
+              <p className="text-muted-foreground mb-6">
+                Create your first automation workflow to save time on repetitive tasks
+              </p>
+              <div className="flex gap-2 justify-center">
+                <Button onClick={() => setIsTemplatesDialogOpen(true)} variant="outline">
+                  Browse Templates
+                </Button>
+                <Button onClick={() => {
+                  setIsCreateDialogOpen(true);
+                  setUseBuilder(true);
+                }}>
+                  Create Custom Workflow
+                </Button>
+              </div>
+            </Card>
+          ) : (
+            <div className="space-y-4" data-tour="workflows-list">
+              {workflows.map((workflow) => (
+                <Card key={workflow.id} className="p-6">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-4 flex-1">
+                      <div
+                        className={`p-3 rounded-lg ${workflow.status === "active"
+                            ? "bg-primary/10"
+                            : "bg-muted"
+                          }`}
+                      >
+                        <Zap
+                          className={`w-6 h-6 ${workflow.status === "active"
+                              ? "text-primary"
+                              : "text-muted-foreground"
+                            }`}
+                        />
                       </div>
-                      <p className="text-muted-foreground mb-4">{workflow.description}</p>
-                      <div className="flex items-center gap-6 text-sm text-muted-foreground">
-                        <div className="flex items-center gap-2">
-                          <Clock className="w-4 h-4" />
-                          {workflow.schedule}
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="text-lg font-semibold">
+                            {workflow.name}
+                          </h3>
+                          <Badge variant="outline">
+                            {getTriggerLabel(workflow)}
+                          </Badge>
+                          {getStatusBadge(workflow)}
                         </div>
-                        <div>Last run: {workflow.lastRun}</div>
-                        <div>{workflow.runs} total runs</div>
+                        <p className="text-muted-foreground mb-4">
+                          {workflow.description}
+                        </p>
+                        <div className="flex items-center gap-6 text-sm text-muted-foreground">
+                          <div className="flex items-center gap-2">
+                            <Clock className="w-4 h-4" />
+                            Last run: {formatRelativeTime(workflow.last_run_at)}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <CheckCircle2 className="w-4 h-4 text-green-500" />
+                            {workflow.success_count} success
+                          </div>
+                          {workflow.failure_count > 0 && (
+                            <div className="flex items-center gap-1">
+                              <XCircle className="w-4 h-4 text-red-500" />
+                              {workflow.failure_count} failed
+                            </div>
+                          )}
+                          <div className="text-xs">
+                            {workflow.steps.length} steps
+                          </div>
+                        </div>
                       </div>
                     </div>
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        checked={workflow.status === "active"}
+                        onCheckedChange={() =>
+                          handleToggleWorkflow(workflow.id, workflow.status)
+                        }
+                      />
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreVertical className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => handleExecuteWorkflow(workflow.id)}
+                            disabled={executeLoading === workflow.id}
+                          >
+                            {executeLoading === workflow.id ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Running...
+                              </>
+                            ) : (
+                              <>
+                                <Play className="mr-2 h-4 w-4" />
+                                Run Now
+                              </>
+                            )}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setWorkflowToEdit(workflow);
+                              setIsEditDialogOpen(true);
+                              setUseBuilder(true);
+                            }}
+                          >
+                            <Settings className="mr-2 h-4 w-4" />
+                            Edit Workflow
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={() => {
+                              setWorkflowToDelete(workflow.id);
+                              setDeleteDialogOpen(true);
+                            }}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <Switch
-                      checked={workflow.enabled}
-                      onCheckedChange={() => handleToggleWorkflow(workflow.id)}
-                    />
-                    <Button variant="ghost" size="icon">
-                      <Settings className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              </Card>
-            ))}
-          </div>
+                </Card>
+              ))}
+            </div>
+          )}
 
           {/* Info Card */}
           <Card className="mt-8 p-6 bg-primary/5 border-primary/20">
@@ -284,12 +729,80 @@ const Automation = () => {
               <div>
                 <h3 className="font-semibold mb-2">Automation Benefits</h3>
                 <p className="text-sm text-muted-foreground">
-                  Automation workflows help you save time by handling repetitive tasks automatically.
-                  Set up triggers based on schedules, events, or thresholds, and let LabIQ handle the rest.
+                  Automation workflows help you save time by handling repetitive
+                  tasks automatically. Set up triggers based on schedules, events,
+                  or thresholds, and let LabIQ Health handle the rest. Each successful
+                  workflow run saves approximately 5 minutes of manual work.
                 </p>
               </div>
             </div>
           </Card>
+
+          {/* Delete Confirmation Dialog */}
+          <AlertDialog
+            open={deleteDialogOpen}
+            onOpenChange={setDeleteDialogOpen}
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Workflow?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This action cannot be undone. This will permanently delete the
+                  workflow and all its execution history.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDeleteWorkflow}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          {/* Upgrade Modal */}
+          <UpgradePrompt
+            feature="Unlimited Workflows"
+            description={`You've reached the free tier limit of ${FREE_WORKFLOW_LIMIT} workflows. Upgrade to Pro for unlimited workflow automation.`}
+            requiredPlan="pro"
+            variant="modal"
+            isOpen={showUpgradeModal}
+            onClose={() => setShowUpgradeModal(false)}
+          />
+
+          {/* Workflow limit banner for free users */}
+          {!isPro && workflows.length > 0 && (
+            <div className="fixed bottom-4 right-4 z-40">
+              <Card className="p-4 border-violet-500/30 bg-gradient-to-br from-violet-500/5 to-fuchsia-500/5 shadow-lg max-w-sm">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center flex-shrink-0">
+                    <Zap className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">
+                      {workflows.length}/{FREE_WORKFLOW_LIMIT} workflows used
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {hasReachedLimit ? 'Upgrade for unlimited' : `${FREE_WORKFLOW_LIMIT - workflows.length} remaining`}
+                    </p>
+                  </div>
+                  {hasReachedLimit && (
+                    <Button
+                      size="sm"
+                      onClick={() => setShowUpgradeModal(true)}
+                      className="bg-gradient-to-r from-violet-500 to-fuchsia-500"
+                    >
+                      <Crown className="w-3 h-3 mr-1" />
+                      Upgrade
+                    </Button>
+                  )}
+                </div>
+              </Card>
+            </div>
+          )}
         </main>
       </MainLayout>
     </AuthGuard>

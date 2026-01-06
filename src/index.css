@@ -206,6 +206,103 @@ html {
   }
 }
 
+/* Advanced Antigravity-style Animations */
+@keyframes float-rotate {
+
+  0%,
+  100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+
+  50% {
+    transform: translateY(-30px) rotate(5deg);
+  }
+}
+
+@keyframes pulse-glow {
+
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(0, 204, 204, 0.3);
+  }
+
+  50% {
+    box-shadow: 0 0 40px rgba(0, 204, 204, 0.6);
+  }
+}
+
+@keyframes slide-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-100px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes zoom-in {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes gradient-shift {
+
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes bounce-subtle {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes reveal-up {
+  from {
+    opacity: 0;
+    transform: translateY(60px);
+    filter: blur(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% center;
+  }
+
+  100% {
+    background-position: 200% center;
+  }
+}
+
 /* Animation utility classes */
 .animate-fade-in-up {
   animation: fade-in-up 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
@@ -215,6 +312,44 @@ html {
 .animate-fade-in {
   animation: fade-in 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
   opacity: 0;
+}
+
+.animate-reveal-up {
+  animation: reveal-up 1s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  opacity: 0;
+}
+
+.animate-slide-in-left {
+  animation: slide-in-left 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  opacity: 0;
+}
+
+.animate-zoom-in {
+  animation: zoom-in 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  opacity: 0;
+}
+
+.animate-float-rotate {
+  animation: float-rotate 6s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.animate-gradient-shift {
+  background-size: 200% 200%;
+  animation: gradient-shift 3s ease infinite;
+}
+
+.animate-bounce-subtle {
+  animation: bounce-subtle 2s ease-in-out infinite;
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
 }
 
 .animate-float {
@@ -229,6 +364,50 @@ html {
 .animate-slide-in-right {
   animation: slide-in-right 0.7s cubic-bezier(0.4, 0, 0.2, 1) forwards;
   opacity: 0;
+}
+
+/* Typing animation for hero headline */
+@keyframes typing {
+  from {
+    width: 0;
+  }
+
+  to {
+    width: 100%;
+  }
+}
+
+@keyframes blink-caret {
+
+  0%,
+  100% {
+    border-color: transparent;
+  }
+
+  50% {
+    border-color: hsl(var(--primary));
+  }
+}
+
+@keyframes caret-fade {
+
+  0%,
+  80% {
+    border-color: hsl(var(--primary));
+  }
+
+  100% {
+    border-color: transparent;
+  }
+}
+
+.animate-typing {
+  animation:
+    typing 3.5s steps(25, end) forwards,
+    blink-caret 0.75s step-end 4,
+    caret-fade 1s ease-out 3.5s forwards;
+  width: 0;
+  border-right-width: 3px;
 }
 
 /* Smooth transitions for all interactive elements */
@@ -268,4 +447,30 @@ html {
 .animate-gradient {
   background-size: 200% 200%;
   animation: gradient-shift 3s ease infinite;
+}
+
+/* Custom Scrollbar Styles - Thin and almost invisible */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.2);
+  border-radius: 3px;
+  transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.4);
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted-foreground) / 0.2) transparent;
 }

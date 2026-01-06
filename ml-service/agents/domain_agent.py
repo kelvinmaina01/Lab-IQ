@@ -1,5 +1,5 @@
 """
-Domain Agent - Handles domain-specific analysis for Biotech, Chemistry, and Clinical data
+Domain Agent - Handles domain-specific analysis for Biotech, Chemistry, Public Health, and Clinical data
 """
 import pandas as pd
 import numpy as np
@@ -10,12 +10,71 @@ import re
 
 logger = logging.getLogger(__name__)
 
+
+# =============================================================================
+# EHR/HEALTH FIELD PATTERNS
+# =============================================================================
+
+EHR_COLUMN_PATTERNS = {
+    # Identifiers (PHI)
+    'mrn': re.compile(r'^(mrn|medical_record|patient_id|patientid|pt_id|subject_id|person_id)$', re.I),
+    'ssn': re.compile(r'^(ssn|social_security|ss_number)$', re.I),
+    'name': re.compile(r'^(name|patient_name|first_name|last_name|full_name)$', re.I),
+    'dob': re.compile(r'^(dob|birth_date|date_of_birth|birthdate)$', re.I),
+    'address': re.compile(r'^(address|street|home_address|city|state|zip|postal)$', re.I),
+    'contact': re.compile(r'^(phone|telephone|mobile|email|fax)$', re.I),
+    
+    # Demographics
+    'age': re.compile(r'^(age|patient_age|age_years|age_at_visit|age_group)$', re.I),
+    'gender': re.compile(r'^(sex|gender|biological_sex|patient_sex)$', re.I),
+    'race': re.compile(r'^(race|ethnicity|race_ethnicity)$', re.I),
+    
+    # Vital Signs
+    'vital_bp': re.compile(r'^(bp|blood_pressure|systolic|diastolic|sbp|dbp)$', re.I),
+    'vital_hr': re.compile(r'^(hr|heart_rate|pulse|bpm)$', re.I),
+    'vital_temp': re.compile(r'^(temp|temperature|body_temp)$', re.I),
+    'vital_weight': re.compile(r'^(wt|weight|body_weight|mass)$', re.I),
+    'vital_height': re.compile(r'^(ht|height|body_height|stature)$', re.I),
+    'vital_bmi': re.compile(r'^(bmi|body_mass_index)$', re.I),
+    'vital_rr': re.compile(r'^(rr|resp_rate|respiratory_rate)$', re.I),
+    'vital_spo2': re.compile(r'^(spo2|o2_sat|oxygen_sat|pulse_ox)$', re.I),
+    
+    # Clinical Codes
+    'icd10': re.compile(r'^(icd10|icd_10|diagnosis_code|dx_code|primary_diagnosis)$', re.I),
+    'cpt': re.compile(r'^(cpt|cpt_code|procedure_code|proc_code)$', re.I),
+    'loinc': re.compile(r'^(loinc|loinc_code|test_code|lab_code)$', re.I),
+    'medication': re.compile(r'^(medication|drug|rx|prescription|med_name|rxnorm|ndc)$', re.I),
+    
+    # Lab Results
+    'lab_glucose': re.compile(r'^(glucose|blood_sugar|fasting_glucose|hba1c|a1c)$', re.I),
+    'lab_lipids': re.compile(r'^(chol|cholesterol|ldl|hdl|triglycerides)$', re.I),
+    'lab_cbc': re.compile(r'^(hgb|hemoglobin|hematocrit|rbc|wbc|platelet)$', re.I),
+    'lab_renal': re.compile(r'^(creatinine|creat|bun|gfr|egfr)$', re.I),
+    'lab_liver': re.compile(r'^(alt|ast|alp|bilirubin|albumin)$', re.I),
+    
+    # Epidemiological
+    'case_status': re.compile(r'^(case_status|confirmed|probable|suspected|case_classification)$', re.I),
+    'disease': re.compile(r'^(disease|condition|illness|reportable_condition)$', re.I),
+    'outbreak': re.compile(r'^(outbreak|cluster|epidemic|event_id)$', re.I),
+}
+
+# Clinical code value patterns
+CLINICAL_CODE_PATTERNS = {
+    'ICD10': re.compile(r'^[A-TV-Z][0-9][0-9AB]\.?[0-9A-TV-Z]{0,4}$'),
+    'ICD9': re.compile(r'^[0-9]{3}\.?[0-9]{0,2}$|^[VE][0-9]{2}\.?[0-9]{0,2}$'),
+    'CPT': re.compile(r'^[0-9]{5}[A-Z]?$'),
+    'LOINC': re.compile(r'^[0-9]{4,5}-[0-9]$'),
+    'SNOMED': re.compile(r'^[0-9]{6,18}$'),
+    'NPI': re.compile(r'^[0-9]{10}$'),
+}
+
+
 class DomainAgent(BaseAgent):
     """Agent responsible for detecting and analyzing domain-specific data"""
     
     def __init__(self):
         super().__init__("domain_agent", "Domain Expert Agent 🧬")
-        self.supported_domains = ["biotech", "chemistry", "general"]
+        self.supported_domains = ["biotech", "chemistry", "public_health", "clinical", "general"]
         
     async def execute(self, data: Any, context: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -31,7 +90,10 @@ class DomainAgent(BaseAgent):
         results = {
             "domain_detected": domain,
             "confidence": confidence,
-            "analysis": {}
+            "analysis": {},
+            "phi_fields": [],
+            "clinical_codes": [],
+            "recommendations": []
         }
         
         # 2. Perform Domain-Specific Analysis
@@ -39,6 +101,12 @@ class DomainAgent(BaseAgent):
             results["analysis"] = self._analyze_biotech(df, domain_info["columns"])
         elif domain == "chemistry" and confidence > 0.6:
             results["analysis"] = self._analyze_chemistry(df, domain_info["columns"])
+        elif domain in ["public_health", "clinical"] and confidence > 0.6:
+            health_analysis = self._analyze_health_data(df, domain_info)
+            results["analysis"] = health_analysis.get("analysis", {})
+            results["phi_fields"] = health_analysis.get("phi_fields", [])
+            results["clinical_codes"] = health_analysis.get("clinical_codes", [])
+            results["recommendations"] = health_analysis.get("recommendations", [])
             
         return results
     
@@ -48,44 +116,191 @@ class DomainAgent(BaseAgent):
         """
         columns = df.columns.str.lower()
         
-        # Biotech Indicators (Sequences)
+        # === PUBLIC HEALTH / CLINICAL DETECTION ===
+        health_matches = {
+            'phi': [],
+            'demographics': [],
+            'vitals': [],
+            'clinical_codes': [],
+            'labs': [],
+            'epidemiological': []
+        }
+        
+        for col in df.columns:
+            col_lower = col.lower()
+            
+            # Check PHI patterns
+            for pattern_name, pattern in EHR_COLUMN_PATTERNS.items():
+                if pattern.match(col_lower):
+                    if pattern_name in ['mrn', 'ssn', 'name', 'dob', 'address', 'contact']:
+                        health_matches['phi'].append(col)
+                    elif pattern_name in ['age', 'gender', 'race']:
+                        health_matches['demographics'].append(col)
+                    elif pattern_name.startswith('vital_'):
+                        health_matches['vitals'].append(col)
+                    elif pattern_name in ['icd10', 'cpt', 'loinc', 'medication']:
+                        health_matches['clinical_codes'].append(col)
+                    elif pattern_name.startswith('lab_'):
+                        health_matches['labs'].append(col)
+                    elif pattern_name in ['case_status', 'disease', 'outbreak']:
+                        health_matches['epidemiological'].append(col)
+        
+        # Check for clinical code values in data
+        code_columns = []
+        for col in df.columns:
+            sample = df[col].dropna().head(20).astype(str)
+            if sample.empty:
+                continue
+            for code_type, pattern in CLINICAL_CODE_PATTERNS.items():
+                matches = sample.apply(lambda x: bool(pattern.match(x.strip().upper())))
+                if matches.sum() / len(sample) > 0.7:
+                    code_columns.append({'column': col, 'code_type': code_type})
+                    break
+        
+        total_health_matches = sum(len(v) for v in health_matches.values()) + len(code_columns)
+        
+        # Determine if this is health data
+        if total_health_matches >= 3 or len(health_matches['clinical_codes']) >= 1 or len(code_columns) >= 1:
+            # Determine sub-category
+            if len(health_matches['epidemiological']) > 0:
+                return {
+                    "domain": "public_health",
+                    "confidence": min(0.9, 0.5 + total_health_matches * 0.1),
+                    "columns": health_matches,
+                    "code_columns": code_columns
+                }
+            else:
+                return {
+                    "domain": "clinical",
+                    "confidence": min(0.9, 0.5 + total_health_matches * 0.1),
+                    "columns": health_matches,
+                    "code_columns": code_columns
+                }
+        
+        # === BIOTECH DETECTION ===
         bio_keywords = ['sequence', 'seq', 'dna', 'rna', 'protein', 'gene', 'amino_acid']
         bio_cols = [col for col in df.columns if any(k in col.lower() for k in bio_keywords)]
         
-        # Check content for DNA/Protein sequences
         bio_content_match = 0
         if bio_cols:
             for col in bio_cols:
-                # Check first few non-null rows
                 sample = df[col].dropna().head(5).astype(str)
                 if sample.empty: continue
-                
-                # DNA regex (ACTG only, allowing N)
                 is_dna = sample.apply(lambda x: bool(re.match(r'^[ACGTN]+$', x, re.IGNORECASE))).all()
                 if is_dna: bio_content_match += 1
                 
-        # Chemistry Indicators (SMILES, InChI)
+        if bio_content_match > 0 or (bio_cols and len(bio_cols) >= 1):
+            return {"domain": "biotech", "confidence": 0.8 if bio_content_match else 0.5, "columns": bio_cols}
+        
+        # === CHEMISTRY DETECTION ===
         chem_keywords = ['smiles', 'inchi', 'structure', 'mol', 'formula']
         chem_cols = [col for col in df.columns if any(k in col.lower() for k in chem_keywords)]
         
-        # Check content for SMILES
         chem_content_match = 0
         if chem_cols:
              for col in chem_cols:
                 sample = df[col].dropna().head(5).astype(str)
                 if sample.empty: continue
-                # Simple heuristic: contains typical SMILES chars but not just letters/numbers
                 is_smiles = sample.apply(lambda x: len(x) > 3 and any(c in x for c in '=#()[]')).all()
                 if is_smiles: chem_content_match += 1
 
-        # Decision Logic
-        if bio_content_match > 0 or (bio_cols and len(bio_cols) >= 1):
-            return {"domain": "biotech", "confidence": 0.8 if bio_content_match else 0.5, "columns": bio_cols}
-        
         if chem_content_match > 0 or (chem_cols and len(chem_cols) >= 1):
              return {"domain": "chemistry", "confidence": 0.8 if chem_content_match else 0.5, "columns": chem_cols}
              
         return {"domain": "general", "confidence": 1.0, "columns": []}
+
+    def _analyze_health_data(self, df: pd.DataFrame, domain_info: Dict) -> Dict[str, Any]:
+        """Analyze health/clinical data"""
+        health_cols = domain_info.get("columns", {})
+        code_columns = domain_info.get("code_columns", [])
+        
+        analysis = {
+            "row_count": len(df),
+            "column_count": len(df.columns),
+            "data_categories": {}
+        }
+        
+        # Categorize data
+        if health_cols.get('phi'):
+            analysis["data_categories"]["phi"] = {
+                "fields": health_cols['phi'],
+                "count": len(health_cols['phi']),
+                "warning": "Contains potential PHI - handle with care"
+            }
+        
+        if health_cols.get('demographics'):
+            analysis["data_categories"]["demographics"] = {
+                "fields": health_cols['demographics'],
+                "count": len(health_cols['demographics'])
+            }
+            
+        if health_cols.get('vitals'):
+            vitals_stats = {}
+            for col in health_cols['vitals']:
+                if col in df.columns:
+                    numeric_col = pd.to_numeric(df[col], errors='coerce')
+                    if not numeric_col.isna().all():
+                        vitals_stats[col] = {
+                            "mean": float(numeric_col.mean()),
+                            "std": float(numeric_col.std()),
+                            "min": float(numeric_col.min()),
+                            "max": float(numeric_col.max())
+                        }
+            analysis["data_categories"]["vitals"] = {
+                "fields": health_cols['vitals'],
+                "statistics": vitals_stats
+            }
+            
+        if health_cols.get('labs'):
+            lab_stats = {}
+            for col in health_cols['labs']:
+                if col in df.columns:
+                    numeric_col = pd.to_numeric(df[col], errors='coerce')
+                    if not numeric_col.isna().all():
+                        lab_stats[col] = {
+                            "mean": float(numeric_col.mean()),
+                            "std": float(numeric_col.std()),
+                            "non_null_count": int(numeric_col.notna().sum())
+                        }
+            analysis["data_categories"]["laboratory"] = {
+                "fields": health_cols['labs'],
+                "statistics": lab_stats
+            }
+        
+        # Clinical codes analysis
+        clinical_codes_info = []
+        for code_info in code_columns:
+            col = code_info['column']
+            code_type = code_info['code_type']
+            if col in df.columns:
+                unique_codes = df[col].dropna().unique()
+                clinical_codes_info.append({
+                    "column": col,
+                    "code_type": code_type,
+                    "unique_count": len(unique_codes),
+                    "sample_codes": list(unique_codes[:5])
+                })
+        
+        # Generate recommendations
+        recommendations = []
+        if health_cols.get('phi'):
+            recommendations.append(f"⚠️ {len(health_cols['phi'])} PHI field(s) detected. Consider de-identification before sharing.")
+        if code_columns:
+            code_types = list(set([c['code_type'] for c in code_columns]))
+            recommendations.append(f"📊 Clinical codes detected: {', '.join(code_types)}")
+        if health_cols.get('vitals'):
+            recommendations.append("💓 Vital signs detected. Data suitable for clinical trend analysis.")
+        if health_cols.get('labs'):
+            recommendations.append("🧪 Laboratory results detected. Consider reference range analysis.")
+        if domain_info.get("domain") == "public_health":
+            recommendations.append("📈 Epidemiological data detected. Suitable for outbreak analysis.")
+        
+        return {
+            "analysis": analysis,
+            "phi_fields": health_cols.get('phi', []),
+            "clinical_codes": clinical_codes_info,
+            "recommendations": recommendations
+        }
 
     def _analyze_biotech(self, df: pd.DataFrame, bio_cols: List[str]) -> Dict[str, Any]:
         """Analyze biological sequences"""
@@ -98,15 +313,11 @@ class DomainAgent(BaseAgent):
         analysis = {}
         
         for col in bio_cols:
-            # Analyze Sequence Column
             sequences = df[col].dropna().astype(str).tolist()
             if not sequences: continue
             
-            # 1. GC Content (for DNA/RNA)
             gc_contents = [GC(Seq(s)) for s in sequences if set(s.upper()).issubset(set('ACGTUN'))]
             avg_gc = np.mean(gc_contents) if gc_contents else 0
-            
-            # 2. Length Statistics
             lengths = [len(s) for s in sequences]
             
             analysis[col] = {
@@ -189,3 +400,4 @@ class DomainAgent(BaseAgent):
             (mol_df["hba"] <= 10)
         )
         return float(passes.mean() * 100)
+

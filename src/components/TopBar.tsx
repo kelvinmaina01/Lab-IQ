@@ -13,7 +13,7 @@ import {
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { FlaskConical } from "lucide-react";
-import { NotificationBell } from "@/components/NotificationBell";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
@@ -165,17 +165,6 @@ const TopBar = () => {
 
   return (
     <div className="h-16 border-b border-border bg-background/80 backdrop-blur-lg flex items-center justify-between px-4 md:px-6 sticky top-0 z-30">
-      {/* Logo (visible on all screen sizes) */}
-      <Link to="/dashboard" className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-          <FlaskConical className="w-6 h-6 text-white" />
-        </div>
-        <div className="hidden sm:block">
-          <div className="text-lg font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">LabIQ</div>
-          <div className="text-xs text-muted-foreground">AI-Powered Lab OS</div>
-        </div>
-      </Link>
-
       {/* Search Bar (Desktop) */}
       <div className="hidden md:flex flex-1 max-w-xl mx-6" ref={searchRef}>
         <div className="relative w-full">

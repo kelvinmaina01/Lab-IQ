@@ -33,7 +33,7 @@ const Analytics = () => {
         .select('*')
         .eq('user_id', user.id);
 
-      if (expError) throw expError;
+      if (expError) console.warn('Experiments table:', expError.message);
 
       // 2. Fetch Datasets
       const { data: datasets, error: dsError } = await supabase
@@ -41,43 +41,72 @@ const Analytics = () => {
         .select('*')
         .eq('user_id', user.id);
 
-      if (dsError) throw dsError;
+      if (dsError) console.warn('Datasets table:', dsError.message);
 
-      // --- Process Metrics ---
+      // 3. Fetch Reports (integrated)
+      const { data: reports, error: repError } = await supabase
+        .from('reports')
+        .select('*')
+        .eq('user_id', user.id);
+
+      if (repError) console.warn('Reports table:', repError.message);
+
+      // 4. Fetch Workflows
+      const { data: workflows, error: wfError } = await supabase
+        .from('workflows')
+        .select('*')
+        .eq('user_id', user.id);
+
+      if (wfError) console.warn('Workflows table:', wfError.message);
+
+      // 5. Fetch ML Models
+      const { data: models, error: mlError } = await supabase
+        .from('ml_models')
+        .select('*')
+        .eq('user_id', user.id);
+
+      if (mlError) console.warn('ML Models table:', mlError.message);
+
+      // --- Process Metrics (all connected systems) ---
       const totalExperiments = experiments?.length || 0;
       const successCount = experiments?.filter(e => e.status === 'completed').length || 0;
       const successRate = totalExperiments > 0 ? ((successCount / totalExperiments) * 100).toFixed(1) : "0";
+
+      // Calculate workflow success rate
+      const totalWorkflowRuns = workflows?.reduce((sum, w) => sum + (w.successful_runs || 0) + (w.failed_runs || 0), 0) || 0;
+      const successfulWorkflowRuns = workflows?.reduce((sum, w) => sum + (w.successful_runs || 0), 0) || 0;
+      const workflowSuccessRate = totalWorkflowRuns > 0 ? ((successfulWorkflowRuns / totalWorkflowRuns) * 100).toFixed(0) : "N/A";
 
       setMetrics([
         {
           title: "Total Experiments",
           value: totalExperiments.toString(),
-          change: "Live",
-          trend: "up",
+          change: `${successCount} completed`,
+          trend: successCount > 0 ? "up" : "neutral",
           icon: Activity,
           color: "text-blue-500"
         },
         {
           title: "Success Rate",
           value: `${successRate}%`,
-          change: "Live",
-          trend: "up",
+          change: `${successCount}/${totalExperiments}`,
+          trend: parseFloat(successRate) >= 50 ? "up" : "down",
           icon: Target,
           color: "text-green-500"
         },
         {
           title: "Active Datasets",
           value: (datasets?.length || 0).toString(),
-          change: "Live",
+          change: "Ready for analysis",
           trend: "up",
           icon: Users,
           color: "text-purple-500"
         },
         {
           title: "Reports Generated",
-          value: "0", // Placeholder until reports table is linked
-          change: "Coming Soon",
-          trend: "neutral",
+          value: (reports?.length || 0).toString(),
+          change: reports?.length ? "View all" : "Create first",
+          trend: reports?.length ? "up" : "neutral",
           icon: FileText,
           color: "text-orange-500"
         },
@@ -171,7 +200,7 @@ const Analytics = () => {
               </div>
 
               {/* Charts */}
-              <Tabs defaultValue="distribution" className="mb-8">
+              <Tabs defaultValue="distribution" className="mb-8" data-tour="analytics-charts">
                 <TabsList className="mb-4">
                   <TabsTrigger value="distribution">Distribution</TabsTrigger>
                   <TabsTrigger value="performance">Performance</TabsTrigger>

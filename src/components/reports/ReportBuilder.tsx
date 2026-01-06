@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,8 +9,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { FileText, Database, BarChart3, Clock, Mail, CheckCircle2, FlaskConical, Brain, AlertTriangle, FileCheck, Loader2 } from "lucide-react";
+import { FileText, Database, BarChart3, Clock, Mail, CheckCircle2, FlaskConical, Brain, AlertTriangle, FileCheck, Loader2, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { labIQAI } from "@/lib/ai/LabIQAI";
 
 interface ReportBuilderProps {
     open: boolean;
@@ -84,7 +85,7 @@ export const ReportBuilder = ({ open, onOpenChange, onComplete, initialConfig }:
         }));
     };
 
-    const generateDescription = async () => {
+    const generateDescription = useCallback(async () => {
         setIsGeneratingDescription(true);
         try {
             // Get active modules
@@ -92,25 +93,59 @@ export const ReportBuilder = ({ open, onOpenChange, onComplete, initialConfig }:
                 .filter(([_, enabled]) => enabled)
                 .map(([key]) => key);
 
-            const response = await fetch('http://localhost:8002/api/ml/generate-description', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    title: config.title || "Untitled Report",
-                    report_type: config.type,
-                    modules: activeModules
-                })
-            });
+            // Use LabIQAI service instead of local ML service
+            if (labIQAI.isAvailable()) {
+                const context = `Report type: ${config.type}. Modules: ${activeModules.join(', ')}`;
+                const generatedDesc = await labIQAI.generateDescription(
+                    'workflow',
+                    config.title || 'Untitled Report',
+                    context
+                );
 
-            const data = await response.json();
-            if (data.success && data.description) {
-                setConfig(prev => ({ ...prev, description: data.description }));
+                if (generatedDesc) {
+                    setConfig(prev => ({ ...prev, description: generatedDesc }));
+                } else {
+                    // Fallback description
+                    setConfig(prev => ({
+                        ...prev,
+                        description: generateFallbackDescription(config.type, activeModules)
+                    }));
+                }
+            } else {
+                // Fallback when AI not available
+                setConfig(prev => ({
+                    ...prev,
+                    description: generateFallbackDescription(config.type, activeModules)
+                }));
             }
         } catch (error) {
             console.error("Failed to generate description:", error);
+            // Set fallback description on error
+            const activeModules = Object.entries(config.modules)
+                .filter(([_, enabled]) => enabled)
+                .map(([key]) => key);
+            setConfig(prev => ({
+                ...prev,
+                description: generateFallbackDescription(config.type, activeModules)
+            }));
         } finally {
             setIsGeneratingDescription(false);
         }
+    }, [config.title, config.type, config.modules]);
+
+    // Fallback description generator
+    const generateFallbackDescription = (reportType: string, modules: string[]): string => {
+        const typeDescriptions: Record<string, string> = {
+            executive: 'This executive summary provides a high-level overview of key findings and metrics.',
+            technical: 'This technical analysis report contains detailed statistical analysis and methodology.',
+            compliance: 'This compliance audit report documents adherence to regulatory requirements and standards.',
+            performance: 'This performance review analyzes system efficiency and identifies optimization opportunities.'
+        };
+
+        const baseDesc = typeDescriptions[reportType] || 'This report provides comprehensive data analysis.';
+        const moduleCount = modules.length;
+
+        return `${baseDesc} The report includes ${moduleCount} analysis module${moduleCount > 1 ? 's' : ''}: ${modules.join(', ')}.`;
     };
 
     const handleNext = () => {
@@ -194,9 +229,9 @@ export const ReportBuilder = ({ open, onOpenChange, onComplete, initialConfig }:
                                         {isGeneratingDescription ? (
                                             <Loader2 className="w-3 h-3 animate-spin" />
                                         ) : (
-                                            <Brain className="w-3 h-3" />
+                                            <Sparkles className="w-3 h-3" />
                                         )}
-                                        {isGeneratingDescription ? "Generating..." : "Auto-Generate with AI"}
+                                        {isGeneratingDescription ? "Generating..." : "Auto-Generate"}
                                     </Button>
                                 </div>
                                 <Textarea

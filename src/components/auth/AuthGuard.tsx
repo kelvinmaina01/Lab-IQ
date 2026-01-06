@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { AuthForm } from './AuthForm';
+import { Navigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 
 interface AuthGuardProps {
@@ -35,11 +35,7 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
   }
 
   if (!session) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <AuthForm onSuccess={() => window.location.reload()} />
-      </div>
-    );
+    return <Navigate to="/login" replace />;
   }
 
   return <>{children}</>;

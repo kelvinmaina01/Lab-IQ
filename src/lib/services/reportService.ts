@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
+import { eventBus, EventTypes, ReportPayload } from '@/lib/events';
 
 export interface Report {
     id: string;
@@ -82,13 +83,70 @@ export const reportService = {
             throw error;
         }
 
-        // SIMULATION: Trigger a "process" that finishes in 5 seconds
-        setTimeout(async () => {
+
+        // Call Real ML Backend for Report Generation
+        try {
+            const mlResponse = await fetch('http://localhost:8002/api/ml/generate-report', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    template: config.type, // e.g., 'technical', 'executive'
+                    format: config.format,
+                    title: config.title,
+                    dataset_id: config.dataSourceId,
+                    data: {
+                        // Pass known metadata if available, otherwise backend handles it
+                        description: config.description,
+                        modules: config.modules
+                    }
+                })
+            });
+
+            if (!mlResponse.ok) {
+                console.error("ML Service report generation failed");
+                // Don't throw, just mark as failed in DB
+                await supabase
+                    .from('reports')
+                    .update({ status: 'failed' })
+                    .eq('id', data.id);
+            } else {
+                const result = await mlResponse.json();
+
+                // Update with success and file path
+                await supabase
+                    .from('reports')
+                    .update({
+                        status: 'published',
+                        // Store the file path or URL if we had a column for it. 
+                        // For now we assume the frontend can derive it or we store it in config/metadata
+                        config: { ...config, downloadUrl: result.url }
+                    })
+                    .eq('id', data.id);
+
+                // Emit event
+                eventBus.emit<ReportPayload>(
+                    EventTypes.REPORT_GENERATED,
+                    {
+                        reportId: data.id,
+                        title: config.title,
+                        reportType: config.type,
+                        format: config.format,
+                        status: 'published',
+                    },
+                    {
+                        source: 'reportService',
+                        userId: user.id,
+                        metadata: { datasetId: config.dataSourceId, downloadUrl: result.url },
+                    }
+                );
+            }
+        } catch (e) {
+            console.error("Failed to connect to ML report service", e);
             await supabase
                 .from('reports')
-                .update({ status: 'published' })
+                .update({ status: 'failed' })
                 .eq('id', data.id);
-        }, 5000);
+        }
 
         return data;
     },

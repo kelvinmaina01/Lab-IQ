@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Email Function</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        input, select, button {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            font-size: 16px;
+        }
+        button {
+            background: #4f46e5;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        button:hover {
+            background: #4338ca;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+        }
+        .success {
+            background: #d1fae5;
+            border: 1px solid #10b981;
+            color: #065f46;
+        }
+        .error {
+            background: #fee2e2;
+            border: 1px solid #ef4444;
+            color: #991b1b;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Email Function Directly</h1>
+    <p>This tests the Edge Function without going through the app</p>
+
+    <label>Your Email:</label>
+    <input type="email" id="email" placeholder="test@gmail.com" required>
+
+    <label>Your Name:</label>
+    <input type="text" id="name" placeholder="John Doe" value="Test User">
+
+    <label>Role:</label>
+    <select id="role">
+        <option value="researcher">Researcher</option>
+        <option value="admin">Admin</option>
+        <option value="member">Member</option>
+    </select>
+
+    <button onclick="testEmail()">Send Test Email</button>
+
+    <div id="result"></div>
+
+    <script>
+        async function testEmail() {
+            const email = document.getElementById('email').value;
+            const name = document.getElementById('name').value;
+            const role = document.getElementById('role').value;
+            const resultDiv = document.getElementById('result');
+
+            if (!email) {
+                alert('Please enter your email');
+                return;
+            }
+
+            resultDiv.innerHTML = 'Sending email... ⏳';
+            resultDiv.className = '';
+
+            try {
+                const response = await fetch('https://engqgzznccvoqeiiuchn.supabase.co/functions/v1/send-team-invitation', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVuZ3FnenpuY2N2b3FlaWl1Y2huIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzMxMjg5OTEsImV4cCI6MjA0ODcwNDk5MX0.qfuXaXW3E1dD50HmRsWGb-OZgKAOa8wLOiXtI6-QHUM'
+                    },
+                    body: JSON.stringify({
+                        email: email,
+                        inviterName: name,
+                        labId: 'test-lab-id',
+                        role: role,
+                        invitationToken: 'test-token-' + Date.now()
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    resultDiv.className = 'success';
+                    resultDiv.innerHTML = `✅ SUCCESS!\n\nEmail sent to: ${email}\n\nResponse:\n${JSON.stringify(data, null, 2)}\n\n📧 Check your email inbox (or spam folder)!\n\nEmail should arrive in 10-30 seconds.`;
+                } else {
+                    resultDiv.className = 'error';
+                    resultDiv.innerHTML = `❌ ERROR\n\nStatus: ${response.status}\n\nError:\n${JSON.stringify(data, null, 2)}\n\nCheck console for more details.`;
+                }
+
+                console.log('Response:', data);
+
+            } catch (error) {
+                resultDiv.className = 'error';
+                resultDiv.innerHTML = `❌ REQUEST FAILED\n\nError: ${error.message}\n\nCheck:\n1. Internet connection\n2. Edge Function is deployed\n3. API key is set\n\nFull error:\n${error}`;
+                console.error('Error:', error);
+            }
+        }
+    </script>
+</body>
+</html>

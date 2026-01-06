@@ -60,7 +60,7 @@ export const teamService = {
         role,
         lab_id: labId,
         invited_by: user.id,
-        token
+        invitation_token: token
       })
       .select()
       .single();
@@ -98,7 +98,7 @@ export const teamService = {
     const { data: invitation, error: invError } = await supabase
       .from('team_invitations')
       .select('*')
-      .eq('token', token)
+      .eq('invitation_token', token)
       .eq('status', 'pending')
       .single();
 

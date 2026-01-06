@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { MainLayout } from "@/components/layout/MainLayout";
-import { ChevronRight, User, Bell, Shield, Cloud, CreditCard, LogOut, Moon, HelpCircle } from "lucide-react";
+import { ChevronRight, User, Bell, Shield, Cloud, CreditCard, LogOut, Moon, HelpCircle, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
@@ -53,7 +53,9 @@ export default function Settings() {
             title: "Coming Soon",
             description: "This feature is currently under development.",
         });
-    }
+    };
+
+
 
     const settingsGroups = [
         {
@@ -67,9 +69,9 @@ export default function Settings() {
                 },
                 {
                     icon: Shield,
-                    label: "Security & Authentication",
-                    description: "Manage password and active sessions",
-                    action: handleComingSoon
+                    label: "Data Privacy & Compliance",
+                    description: "Manage anonymization and audit logs",
+                    path: "/data-anonymization"
                 }
             ]
         },

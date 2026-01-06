@@ -1,22 +1,36 @@
+import { useState, useEffect, useCallback } from "react";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, FlaskConical, Calendar, User, MoreVertical, Play, Pause, CheckCircle, AlertCircle, Brain } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Plus, Search, FlaskConical, Calendar, User, MoreVertical, Play, Pause, CheckCircle, AlertCircle, Brain, Sparkles, Loader2, MessageSquare, Pin } from "lucide-react";
+import { PinToDashboardButton } from "@/components/dashboard/PinToDashboardButton";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { CommentsSystem } from "@/components/collaboration/CommentsSystem";
+import { MainLayout } from "@/components/layout/MainLayout";
+import { AuthGuard } from "@/components/auth/AuthGuard";
+import { labIQAI } from "@/lib/ai/LabIQAI";
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { ExperimentTemplates } from "@/components/experiments/ExperimentTemplates";
-import { useSubscription } from "@/hooks/useSubscription";
-import { UpgradeDialog } from "@/components/UpgradeDialog";
+import { useSubscription } from "@/hooks/use-subscription";
 import { useActivityTracker } from "@/hooks/useActivityTracker";
+import { UpgradeDialog } from "@/components/UpgradeDialog";
+import { ExperimentTemplates } from "@/components/experiments/ExperimentTemplates";
+import { ExperimentStateFlow, ExperimentStatusBadge, ExperimentStatus } from "@/components/experiments/ExperimentStateFlow";
+import { experimentService } from "@/lib/services/experimentService";
 
 const Experiments = () => {
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [selectedExperiment, setSelectedExperiment] = useState<any | null>(null);
   const { toast } = useToast();
   const { subscription, loading } = useSubscription();
   const { trackActivity } = useActivityTracker();
@@ -30,6 +44,13 @@ const Experiments = () => {
   const [description, setDescription] = useState("");
   const [experimentType, setExperimentType] = useState("");
   const [selectedDatasetId, setSelectedDatasetId] = useState("");
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const [aiSuggestions, setAiSuggestions] = useState<{
+    name?: string;
+    description?: string;
+    hypothesis?: string;
+    methodology?: string;
+  } | null>(null);
 
   useEffect(() => {
     fetchExperiments();
@@ -58,7 +79,6 @@ const Experiments = () => {
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
       if (error) throw error;
 
       const formattedExperiments = (data || []).map(exp => ({
@@ -98,6 +118,57 @@ const Experiments = () => {
     }
   };
 
+  // AI-powered suggestion generation
+  const generateAISuggestions = useCallback(async () => {
+    if (!selectedDatasetId || !labIQAI.isAvailable()) return;
+
+    setIsGeneratingAI(true);
+    try {
+      const response = await labIQAI.experiment.process(selectedDatasetId, experimentType);
+
+      if (response.success && response.metadata) {
+        setAiSuggestions(response.metadata);
+
+        // Auto-fill if fields are empty
+        if (!title && response.metadata.name) {
+          setTitle(response.metadata.name);
+        }
+        if (!description && response.metadata.description) {
+          setDescription(response.metadata.description);
+        }
+
+        toast({
+          title: "Suggestions Generated",
+          description: "AI has generated experiment suggestions based on your dataset.",
+        });
+      }
+    } catch (error) {
+      console.error('Error generating AI suggestions:', error);
+    } finally {
+      setIsGeneratingAI(false);
+    }
+  }, [selectedDatasetId, experimentType, title, description, toast]);
+
+  // Generate AI description when title changes
+  const generateDescription = useCallback(async () => {
+    if (!title || description || !labIQAI.isAvailable()) return;
+
+    setIsGeneratingAI(true);
+    try {
+      const selectedDataset = datasets.find(d => d.id === selectedDatasetId);
+      const context = selectedDataset ? `Dataset: ${selectedDataset.name}` : '';
+      const generatedDesc = await labIQAI.generateDescription('experiment', title, context);
+
+      if (generatedDesc) {
+        setDescription(generatedDesc);
+      }
+    } catch (error) {
+      console.error('Error generating description:', error);
+    } finally {
+      setIsGeneratingAI(false);
+    }
+  }, [title, description, selectedDatasetId, datasets]);
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "running": return "bg-blue-500/10 text-blue-500 border-blue-500/20";
@@ -129,32 +200,17 @@ const Experiments = () => {
     }
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from('experiments')
-        .insert({
-          user_id: user.id,
-          title,
-          description,
-          type: experimentType,
-          dataset_id: selectedDatasetId || null,
-          auto_created: !!selectedDatasetId,
-          status: 'pending',
-          protocol: {
-            steps: [
-              'Prepare materials and equipment',
-              'Set up experimental conditions',
-              'Execute protocol',
-              'Collect and record data',
-              'Analyze results'
-            ]
-          }
-        })
-        .select();
-
-      if (error) throw error;
+      // Use ExperimentService
+      await experimentService.createExperiment(
+        selectedDatasetId,
+        title,
+        experimentType as any,
+        {
+          targetColumn: 'target', // Default, user should select
+          features: [],
+          modelType: 'auto'
+        }
+      );
 
       trackActivity("Experiment created", title, "FlaskConical");
       toast({
@@ -205,20 +261,74 @@ const Experiments = () => {
               </DialogTrigger>
               <DialogContent className="max-w-2xl">
                 <DialogHeader>
-                  <DialogTitle>Create New Experiment</DialogTitle>
+                  <DialogTitle className="flex items-center justify-between">
+                    <span>Create New Experiment</span>
+                    {selectedDatasetId && labIQAI.isAvailable() && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={generateAISuggestions}
+                        disabled={isGeneratingAI}
+                        className="gap-2"
+                      >
+                        {isGeneratingAI ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Sparkles className="w-4 h-4" />
+                        )}
+                        AI Suggest
+                      </Button>
+                    )}
+                  </DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
+                  {/* AI Suggestions Card */}
+                  {aiSuggestions && (
+                    <Card className="bg-primary/5 border-primary/20">
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Sparkles className="w-4 h-4 text-primary" />
+                          <span className="text-sm font-medium">AI Suggestions</span>
+                        </div>
+                        {aiSuggestions.hypothesis && (
+                          <div className="mb-2">
+                            <span className="text-xs text-muted-foreground">Hypothesis:</span>
+                            <p className="text-sm">{aiSuggestions.hypothesis}</p>
+                          </div>
+                        )}
+                        {aiSuggestions.methodology && (
+                          <div>
+                            <span className="text-xs text-muted-foreground">Methodology:</span>
+                            <p className="text-sm">{aiSuggestions.methodology}</p>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  )}
+
                   <div className="space-y-2">
                     <Label htmlFor="title">Experiment Title</Label>
-                    <Input
-                      id="title"
-                      placeholder="e.g., Protein Structure Analysis"
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                    />
+                    <div className="flex gap-2">
+                      <Input
+                        id="title"
+                        placeholder="e.g., Protein Structure Analysis"
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        onBlur={generateDescription}
+                        className="flex-1"
+                      />
+                    </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="description">Description</Label>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="description">Description</Label>
+                      {isGeneratingAI && (
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                          Generating...
+                        </span>
+                      )}
+                    </div>
                     <Textarea
                       id="description"
                       placeholder="Describe your experiment objectives..."
@@ -294,9 +404,9 @@ const Experiments = () => {
               <TabsTrigger value="templates">Templates Library</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="all" className="space-y-4 mt-6">
+            <TabsContent value="all" className="space-y-4 mt-6" data-tour="experiments-list">
               {filteredExperiments.map((exp) => (
-                <Card key={exp.id} className="p-6 hover:shadow-lg transition-shadow">
+                <Card key={exp.id} className="p-6 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => setSelectedExperiment(exp)}>
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-start gap-4 flex-1">
                       <div className="p-3 rounded-lg bg-primary/10">
@@ -324,9 +434,29 @@ const Experiments = () => {
                         </div>
                       </div>
                     </div>
-                    <Button variant="ghost" size="icon">
-                      <MoreVertical className="w-4 h-4" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      {exp.status === 'completed' && (
+                        <PinToDashboardButton
+                          title={exp.title}
+                          description={exp.description}
+                          type="insight"
+                          source="experiment"
+                          sourceId={exp.id}
+                          sourceTable="experiments"
+                          category="experiments"
+                          data={{
+                            summary: exp.description,
+                            keyPoints: exp.protocol?.steps || []
+                          }}
+                          variant="ghost"
+                          size="sm"
+                          showLabel={false}
+                        />
+                      )}
+                      <Button variant="ghost" size="icon">
+                        <MoreVertical className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
                   {exp.status === "running" && (
                     <div className="mt-4">
@@ -398,6 +528,76 @@ const Experiments = () => {
           </Tabs>
 
           <UpgradeDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} />
+          {/* Experiment Details Sheet */}
+          <Sheet open={!!selectedExperiment} onOpenChange={(open) => !open && setSelectedExperiment(null)}>
+            <SheetContent className="w-full sm:max-w-xl md:max-w-2xl overflow-y-auto p-0">
+              {selectedExperiment && (
+                <div className="flex flex-col h-full">
+                  <div className="p-6 border-b">
+                    <SheetHeader className="mb-4">
+                      <div className="flex items-center justify-between">
+                        <Badge className={getStatusColor(selectedExperiment.status)}>
+                          {getStatusIcon(selectedExperiment.status)}
+                          <span className="ml-1 capitalize">{selectedExperiment.status}</span>
+                        </Badge>
+                        <span className="text-sm text-muted-foreground">{selectedExperiment.created}</span>
+                      </div>
+                      <SheetTitle className="text-2xl mt-2">{selectedExperiment.title}</SheetTitle>
+                      <SheetDescription>{selectedExperiment.description}</SheetDescription>
+                    </SheetHeader>
+
+                    <div className="space-y-4">
+                      <div>
+                        <h4 className="text-sm font-medium mb-1">Type</h4>
+                        <Badge variant="outline">{selectedExperiment.type}</Badge>
+                      </div>
+                      {selectedExperiment.dataset_id && (
+                        <div>
+                          <h4 className="text-sm font-medium mb-1">Linked Dataset</h4>
+                          <div className="text-sm text-blue-500 hover:underline cursor-pointer">
+                            View Dataset {selectedExperiment.dataset_id}
+                          </div>
+                        </div>
+                      )}
+                      <div>
+                        <h4 className="text-sm font-medium mb-1">Protocol</h4>
+                        <ul className="list-disc list-inside text-sm text-muted-foreground">
+                          {selectedExperiment.protocol?.steps?.map((step: string, i: number) => (
+                            <li key={i}>{step}</li>
+                          )) || <li>No protocol defined</li>}
+                        </ul>
+                      </div>
+                    </div>
+
+                    {/* State Machine Visualization */}
+                    <div className="mt-6 p-4 bg-muted/30 rounded-lg">
+                      <h4 className="text-sm font-medium mb-3">Experiment Progress</h4>
+                      <ExperimentStateFlow
+                        currentStatus={(selectedExperiment.status === 'pending' ? 'planned' : selectedExperiment.status) as ExperimentStatus}
+                        startedAt={selectedExperiment.started_at}
+                        completedAt={selectedExperiment.completed_at}
+                        size="md"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex-1 bg-muted/5 p-6">
+                    <h3 className="font-semibold mb-4 flex items-center gap-2">
+                      <MessageSquare className="w-4 h-4" />
+                      Discussion & Feedback
+                    </h3>
+                    <div className="h-[500px]">
+                      <CommentsSystem
+                        entityId={selectedExperiment.id}
+                        entityType="experiment"
+                        entityName={selectedExperiment.title}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </SheetContent>
+          </Sheet>
         </main>
       </MainLayout>
     </AuthGuard>

@@ -20,10 +20,22 @@ import {
     Trash2,
     CheckCircle2,
     AlertCircle,
-    Clock
+    Clock,
+    Shield,
+    RefreshCw,
+    Info,
+    ChevronRight,
+    ArrowUpRight
 } from "lucide-react";
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { getBrandInfo } from "@/lib/utils/branding";
 
 interface Dataset {
     id: string;
@@ -34,6 +46,10 @@ interface Dataset {
     column_count: number;
     status: string;
     created_at: string;
+    quality_score?: number;
+    domain?: string;
+    is_anonymized?: boolean;
+    metadata?: any;
     dataset_quality?: Array<{
         overall_score: number;
     }>;
@@ -45,6 +61,8 @@ export default function Datasets() {
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
     const [sortBy, setSortBy] = useState<"newest" | "oldest" | "name" | "size">("newest");
+    const [domainFilter, setDomainFilter] = useState<string>("all");
+    const [availableDomains, setAvailableDomains] = useState<string[]>([]);
 
     useEffect(() => {
         fetchDatasets();
@@ -52,6 +70,7 @@ export default function Datasets() {
 
     const fetchDatasets = async () => {
         try {
+            setLoading(true);
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
 
@@ -65,7 +84,13 @@ export default function Datasets() {
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
-            setDatasets(data || []);
+
+            const fetchedDatasets = (data || []) as Dataset[];
+            setDatasets(fetchedDatasets);
+
+            // Extract unique domains for the filter
+            const domains = Array.from(new Set(fetchedDatasets.map(d => d.domain).filter(Boolean))) as string[];
+            setAvailableDomains(domains);
         } catch (error) {
             console.error('Error fetching datasets:', error);
             toast({
@@ -113,11 +138,19 @@ export default function Datasets() {
         });
     };
 
+    const isNew = (dateString: string) => {
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+        return diffInHours < 24;
+    };
+
     // Filter and sort datasets
     const filteredDatasets = datasets
         .filter(dataset =>
-            dataset.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            dataset.file_name.toLowerCase().includes(searchQuery.toLowerCase())
+            (dataset.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                dataset.file_name.toLowerCase().includes(searchQuery.toLowerCase())) &&
+            (domainFilter === 'all' || dataset.domain === domainFilter)
         )
         .sort((a, b) => {
             switch (sortBy) {
@@ -146,69 +179,96 @@ export default function Datasets() {
                                 Manage and explore all your uploaded datasets
                             </p>
                         </div>
-                        <Link to="/upload">
-                            <Button className="gap-2">
-                                <Upload className="w-4 h-4" />
-                                Upload New
+                        <div className="flex gap-3">
+                            <Button variant="outline" size="icon" onClick={fetchDatasets} disabled={loading} className={loading ? "animate-spin" : ""}>
+                                <RefreshCw className="w-4 h-4" />
                             </Button>
-                        </Link>
+                            <Link to="/upload">
+                                <Button className="gap-2 bg-primary hover:bg-primary/90">
+                                    <Upload className="w-4 h-4" />
+                                    Upload New
+                                </Button>
+                            </Link>
+                        </div>
                     </div>
 
                     {/* Stats Cards */}
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                        <Card>
-                            <CardContent className="p-4">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="text-sm text-muted-foreground">Total Datasets</p>
-                                        <p className="text-2xl font-bold">{datasets.length}</p>
-                                    </div>
-                                    <Database className="w-8 h-8 text-primary opacity-50" />
-                                </div>
-                            </CardContent>
-                        </Card>
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Card className="hover:border-primary/50 transition-colors cursor-help group">
+                                        <CardContent className="p-4">
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <p className="text-sm text-muted-foreground">Total Datasets</p>
+                                                    <p className="text-2xl font-bold group-hover:text-primary transition-colors">{datasets.length}</p>
+                                                </div>
+                                                <Database className="w-8 h-8 text-primary opacity-50" />
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                </TooltipTrigger>
+                                <TooltipContent>Total number of unique data sources uploaded</TooltipContent>
+                            </Tooltip>
 
-                        <Card>
-                            <CardContent className="p-4">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="text-sm text-muted-foreground">Total Rows</p>
-                                        <p className="text-2xl font-bold">
-                                            {datasets.reduce((sum, d) => sum + (d.row_count || 0), 0).toLocaleString()}
-                                        </p>
-                                    </div>
-                                    <BarChart3 className="w-8 h-8 text-primary opacity-50" />
-                                </div>
-                            </CardContent>
-                        </Card>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Card className="hover:border-primary/50 transition-colors cursor-help group">
+                                        <CardContent className="p-4">
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <p className="text-sm text-muted-foreground">Total Rows</p>
+                                                    <p className="text-2xl font-bold group-hover:text-primary transition-colors">
+                                                        {datasets.reduce((sum, d) => sum + (d.row_count || 0), 0).toLocaleString()}
+                                                    </p>
+                                                </div>
+                                                <BarChart3 className="w-8 h-8 text-primary opacity-50" />
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                </TooltipTrigger>
+                                <TooltipContent>Aggregate row count across all datasets</TooltipContent>
+                            </Tooltip>
 
-                        <Card>
-                            <CardContent className="p-4">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="text-sm text-muted-foreground">Total Storage</p>
-                                        <p className="text-2xl font-bold">
-                                            {formatFileSize(datasets.reduce((sum, d) => sum + (d.file_size || 0), 0))}
-                                        </p>
-                                    </div>
-                                    <FileText className="w-8 h-8 text-primary opacity-50" />
-                                </div>
-                            </CardContent>
-                        </Card>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Card className="hover:border-primary/50 transition-colors cursor-help group">
+                                        <CardContent className="p-4">
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <p className="text-sm text-muted-foreground">Total Storage</p>
+                                                    <p className="text-2xl font-bold group-hover:text-primary transition-colors">
+                                                        {formatFileSize(datasets.reduce((sum, d) => sum + (d.file_size || 0), 0))}
+                                                    </p>
+                                                </div>
+                                                <FileText className="w-8 h-8 text-primary opacity-50" />
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                </TooltipTrigger>
+                                <TooltipContent>Total storage fingerprint of your data library</TooltipContent>
+                            </Tooltip>
 
-                        <Card>
-                            <CardContent className="p-4">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="text-sm text-muted-foreground">Ready</p>
-                                        <p className="text-2xl font-bold">
-                                            {datasets.filter(d => d.status === 'ready').length}
-                                        </p>
-                                    </div>
-                                    <CheckCircle2 className="w-8 h-8 text-green-600 opacity-50" />
-                                </div>
-                            </CardContent>
-                        </Card>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Card className="hover:border-primary/50 transition-colors cursor-help group">
+                                        <CardContent className="p-4">
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <p className="text-sm text-muted-foreground">Health Verified</p>
+                                                    <p className="text-2xl font-bold group-hover:text-green-600 transition-colors">
+                                                        {datasets.filter(d => d.status === 'ready').length}
+                                                    </p>
+                                                </div>
+                                                <CheckCircle2 className="w-8 h-8 text-green-600 opacity-50" />
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                </TooltipTrigger>
+                                <TooltipContent>Datasets that have passed all quality and schema checks</TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
                     </div>
 
                     {/* Search and Filters */}
@@ -225,6 +285,16 @@ export default function Datasets() {
                                     />
                                 </div>
                                 <div className="flex gap-2">
+                                    <select
+                                        value={domainFilter}
+                                        onChange={(e) => setDomainFilter(e.target.value)}
+                                        className="px-4 py-2 border rounded-lg bg-background text-sm min-w-[140px]"
+                                    >
+                                        <option value="all">All Domains</option>
+                                        {availableDomains.map(domain => (
+                                            <option key={domain} value={domain}>{domain.charAt(0).toUpperCase() + domain.slice(1)}</option>
+                                        ))}
+                                    </select>
                                     <select
                                         value={sortBy}
                                         onChange={(e) => setSortBy(e.target.value as any)}
@@ -279,65 +349,118 @@ export default function Datasets() {
                             </CardContent>
                         </Card>
                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {filteredDatasets.map((dataset) => (
-                                <Link key={dataset.id} to={`/dashboard/datasets/${dataset.id}`}>
-                                    <Card className="h-full hover:shadow-lg transition-all hover:-translate-y-1 cursor-pointer">
-                                        <CardHeader>
-                                            <div className="flex items-start justify-between mb-2">
-                                                <Database className="w-8 h-8 text-primary" />
-                                                <Badge
-                                                    variant="outline"
-                                                    className={`gap-1 ${getStatusColor(dataset.status)}`}
-                                                >
-                                                    {getStatusIcon(dataset.status)}
-                                                    {dataset.status}
-                                                </Badge>
-                                            </div>
-                                            <CardTitle className="text-lg line-clamp-1">
-                                                {dataset.name}
-                                            </CardTitle>
-                                            <CardDescription className="line-clamp-1">
-                                                {dataset.file_name}
-                                            </CardDescription>
-                                        </CardHeader>
-                                        <CardContent>
-                                            <div className="space-y-2 text-sm">
-                                                <div className="flex items-center justify-between text-muted-foreground">
-                                                    <span>Rows:</span>
-                                                    <span className="font-medium text-foreground">
-                                                        {dataset.row_count?.toLocaleString() || 0}
-                                                    </span>
-                                                </div>
-                                                <div className="flex items-center justify-between text-muted-foreground">
-                                                    <span>Columns:</span>
-                                                    <span className="font-medium text-foreground">
-                                                        {dataset.column_count || 0}
-                                                    </span>
-                                                </div>
-                                                <div className="flex items-center justify-between text-muted-foreground">
-                                                    <span>Size:</span>
-                                                    <span className="font-medium text-foreground">
-                                                        {formatFileSize(dataset.file_size || 0)}
-                                                    </span>
-                                                </div>
-                                                {dataset.dataset_quality && dataset.dataset_quality[0] && (
-                                                    <div className="flex items-center justify-between text-muted-foreground">
-                                                        <span>Quality:</span>
-                                                        <span className="font-medium text-green-600">
-                                                            {Math.round(dataset.dataset_quality[0].overall_score)}%
-                                                        </span>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-tour="datasets-grid">
+                            <TooltipProvider>
+                                {filteredDatasets.map((dataset) => {
+                                    const qualityScore = dataset.quality_score || (dataset.dataset_quality && dataset.dataset_quality[0]?.overall_score);
+
+                                    return (
+                                        <Link key={dataset.id} to={`/dashboard/datasets/${dataset.id}`}>
+                                            <Card className="h-full hover:shadow-xl transition-all hover:-translate-y-1.5 cursor-pointer border-border/50 group overflow-hidden">
+                                                <div className="absolute top-0 left-0 w-1 h-full bg-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                <CardHeader className="pb-4">
+                                                    <div className="flex items-start justify-between mb-2">
+                                                        <div className="flex flex-col gap-1">
+                                                            <div className="p-2 w-fit bg-primary/10 rounded-lg group-hover:bg-primary/20 transition-colors">
+                                                                {dataset.metadata?.provider ? (
+                                                                    <img
+                                                                        src={getBrandInfo(dataset.metadata.provider)?.logoUrl || ""}
+                                                                        className="w-6 h-6 object-contain"
+                                                                        alt={dataset.metadata.provider}
+                                                                    />
+                                                                ) : (
+                                                                    <Database className="w-6 h-6 text-primary" />
+                                                                )}
+                                                            </div>
+                                                            {dataset.metadata?.provider && (
+                                                                <span className="text-[10px] font-bold text-primary uppercase tracking-tighter mt-1">
+                                                                    {getBrandInfo(dataset.metadata.provider)?.name || dataset.metadata.provider}
+                                                                </span>
+                                                            )}
+                                                            <div className="flex items-center gap-1.5 mt-2">
+                                                                {dataset.domain && (
+                                                                    <Badge variant="secondary" className="text-[10px] w-fit uppercase font-semibold">
+                                                                        {dataset.domain}
+                                                                    </Badge>
+                                                                )}
+                                                                {dataset.is_anonymized && (
+                                                                    <Tooltip>
+                                                                        <TooltipTrigger>
+                                                                            <Badge variant="outline" className="text-[10px] bg-blue-50/50 text-blue-600 border-blue-200">
+                                                                                <Shield className="w-3 h-3" />
+                                                                            </Badge>
+                                                                        </TooltipTrigger>
+                                                                        <TooltipContent>PHI-Safe / Anonymized</TooltipContent>
+                                                                    </Tooltip>
+                                                                )}
+                                                                {isNew(dataset.created_at) && (
+                                                                    <Badge className="text-[10px] bg-amber-500 text-white border-transparent">
+                                                                        NEW
+                                                                    </Badge>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex flex-col items-end gap-1">
+                                                            <Tooltip>
+                                                                <TooltipTrigger>
+                                                                    <Badge
+                                                                        variant="outline"
+                                                                        className={`gap-1 pr-2 ${getStatusColor(dataset.status)}`}
+                                                                    >
+                                                                        {getStatusIcon(dataset.status)}
+                                                                        {dataset.status}
+                                                                    </Badge>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent>Dataset processing status</TooltipContent>
+                                                            </Tooltip>
+                                                        </div>
                                                     </div>
-                                                )}
-                                                <div className="flex items-center gap-2 text-xs text-muted-foreground pt-2 border-t">
-                                                    <Calendar className="w-3 h-3" />
-                                                    {formatDate(dataset.created_at)}
-                                                </div>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                </Link>
-                            ))}
+                                                    <div className="flex items-center justify-between gap-2">
+                                                        <CardTitle className="text-xl line-clamp-1 group-hover:text-primary transition-colors">
+                                                            {dataset.name}
+                                                        </CardTitle>
+                                                        <ArrowUpRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-all" />
+                                                    </div>
+                                                    <CardDescription className="line-clamp-1 flex items-center gap-1">
+                                                        <FileText className="w-3 h-3" />
+                                                        {dataset.file_name}
+                                                    </CardDescription>
+                                                </CardHeader>
+                                                <CardContent>
+                                                    <div className="space-y-3 text-sm">
+                                                        <div className="grid grid-cols-2 gap-4">
+                                                            <div className="space-y-1">
+                                                                <span className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Rows</span>
+                                                                <p className="font-bold text-base">{dataset.row_count?.toLocaleString() || 0}</p>
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                <span className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Cols</span>
+                                                                <p className="font-bold text-base">{dataset.column_count || 0}</p>
+                                                            </div>
+                                                            <div className="space-y-1 text-right col-span-2 md:col-span-1">
+                                                                <span className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Quality</span>
+                                                                <p className={`font-bold text-base ${qualityScore !== undefined ? (qualityScore > 80 ? 'text-green-600' : 'text-yellow-600') : 'text-muted-foreground'}`}>
+                                                                    {qualityScore !== undefined ? `${Math.round(qualityScore)}%` : 'N/A'}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="pt-3 border-t flex items-center justify-between text-muted-foreground">
+                                                            <div className="flex items-center gap-2 text-xs">
+                                                                <Calendar className="w-3 h-3" />
+                                                                {formatDate(dataset.created_at)}
+                                                            </div>
+                                                            <span className="text-xs font-medium bg-muted px-2 py-0.5 rounded italic">
+                                                                {formatFileSize(dataset.file_size || 0)}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
+                                        </Link>
+                                    );
+                                })}
+                            </TooltipProvider>
                         </div>
                     )}
                 </main>
