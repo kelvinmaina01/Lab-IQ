@@ -25,56 +25,50 @@ interface Dataset {
 interface DatasetSelectorProps {
   selectedDataset: string | null;
   onSelectDataset: (datasetId: string | null) => void;
+  minimal?: boolean;
 }
 
 export const DatasetSelector = ({
   selectedDataset,
   onSelectDataset,
+  minimal = false,
 }: DatasetSelectorProps) => {
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   const fetchDatasets = async () => {
+    // ... (fetch logic remains same)
     try {
       setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Fetch REAL datasets only - exclude samples
       const { data: datasetsData, error: datasetsError } = await supabase
         .from('datasets')
         .select('id, name, row_count, created_at')
         .eq('user_id', user.id)
-        .not('name', 'ilike', '%Sample%') // Exclude any dataset with "Sample" in the name
+        .not('name', 'ilike', '%Sample%')
         .order('created_at', { ascending: false });
 
-      if (datasetsError) {
-        console.error('Error fetching datasets:', datasetsError);
-        throw datasetsError;
-      }
-
-      console.log('Loaded real datasets:', datasetsData);
+      if (datasetsError) throw datasetsError;
 
       if (!datasetsData || datasetsData.length === 0) {
         setDatasets([]);
         return;
       }
 
-      // Fetch column counts
       const datasetIds = datasetsData.map(d => d.id);
       const { data: columnsData } = await supabase
         .from('dataset_columns')
         .select('dataset_id')
         .in('dataset_id', datasetIds);
 
-      // Count columns per dataset
       const columnCounts = columnsData?.reduce((acc: Record<string, number>, col) => {
         acc[col.dataset_id] = (acc[col.dataset_id] || 0) + 1;
         return acc;
       }, {}) || {};
 
-      // Transform data
       const transformedData = datasetsData.map(d => ({
         id: d.id,
         name: d.name,
@@ -87,11 +81,6 @@ export const DatasetSelector = ({
       setDatasets(transformedData);
     } catch (error: any) {
       console.error('Fetch error:', error);
-      toast({
-        title: 'Error loading datasets',
-        description: error.message,
-        variant: 'destructive',
-      });
     } finally {
       setLoading(false);
     }
@@ -99,22 +88,31 @@ export const DatasetSelector = ({
 
   useEffect(() => {
     fetchDatasets();
-
-    // Real-time updates
-    const channel = supabase
-      .channel('datasets-changes')
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'datasets' },
-        () => fetchDatasets()
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    const channel = supabase.channel('datasets-changes').on('postgres_changes', { event: '*', schema: 'public', table: 'datasets' }, () => fetchDatasets()).subscribe();
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
   const selectedDatasetInfo = datasets.find((d) => d.id === selectedDataset);
+
+  if (minimal) {
+    return (
+      <div className="space-y-1">
+        <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Datasets</h4>
+        <Select value={selectedDataset || ''} onValueChange={onSelectDataset}>
+          <SelectTrigger className="h-8 text-xs">
+            <SelectValue placeholder="Select dataset..." />
+          </SelectTrigger>
+          <SelectContent>
+            {datasets.map((dataset) => (
+              <SelectItem key={dataset.id} value={dataset.id} className="text-xs">
+                {dataset.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    );
+  }
 
   return (
     <Card className="p-4 mb-4 bg-muted/30 border-border/40">

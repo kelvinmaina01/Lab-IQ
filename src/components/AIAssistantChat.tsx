@@ -36,11 +36,13 @@ import {
   Zap,
   Lightbulb,
   RefreshCw,
-  PanelRight
+  PanelRight,
+  ThumbsUp,
+  ThumbsDown
 } from 'lucide-react';
 import { AIResponseRenderer } from './assistant/AIResponseRenderer';
 import { UserQuery } from './assistant/UserQuery';
-import { DatasetSelector } from './assistant/DatasetSelector';
+import { DataExplorerPanel } from './assistant/DataExplorerPanel';
 import { AssistantPanel } from './assistant/AssistantPanel';
 import {
   DropdownMenu,
@@ -77,7 +79,15 @@ interface AIAssistantChatProps {
   onImmersiveChange?: (isImmersive: boolean) => void;
   initialDatasetId?: string;
   onDatasetChange?: (datasetId: string | null) => void;
+  userId: string;
+  datasetId?: string;
+  userAvatar?: string | null;
 }
+
+// ... (existing code)
+
+
+
 
 // =============================================================================
 // MODE CONFIGURATIONS
@@ -109,10 +119,14 @@ const MODE_CONFIG = {
 // =============================================================================
 
 export function AIAssistantChat({
-  mode = 'analysis',
+  mode = 'analyst',
   onModeChange,
   onImmersiveChange,
-  initialDatasetId
+  initialDatasetId,
+  onDatasetChange,
+  userId,
+  datasetId,
+  userAvatar
 }: AIAssistantChatProps) {
   // State
   const [messages, setMessages] = useState<Message[]>([]);
@@ -121,12 +135,13 @@ export function AIAssistantChat({
   const [processingStep, setProcessingStep] = useState('');
   const [selectedDataset, setSelectedDataset] = useState<string | null>(initialDatasetId || null);
   const [isImmersive, setIsImmersive] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
+  // userId is passed as prop
   const [pinnedMessageIds, setPinnedMessageIds] = useState<Set<number>>(new Set());
   const [reasoningEnabled, setReasoningEnabled] = useState(false);
 
   // Sidebar State
   const [showAssistantPanel, setShowAssistantPanel] = useState(true);
+  const [showRightSidebar, setShowRightSidebar] = useState(true);
 
   // Refs
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -151,12 +166,7 @@ export function AIAssistantChat({
   // EFFECTS
   // =============================================================================
 
-  // Get user ID on mount
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (data.user) setUserId(data.user.id);
-    });
-  }, []);
+  // Update selected dataset if prop changes
 
   // Update selected dataset if prop changes
   useEffect(() => {
@@ -165,12 +175,46 @@ export function AIAssistantChat({
     }
   }, [initialDatasetId]);
 
+  // Load chat history or inject mock for dev
+  useEffect(() => {
+    // Only inject mock if messages are empty initially
+    if (messages.length === 0) {
+      const mockMessage: Message = {
+        role: 'assistant',
+        content: 'Here is the analysis with the code monitor you requested.',
+        timestamp: new Date().toISOString(),
+        thoughtProcess: ['Analyzing dataset structure', 'Checking for outliers', 'Generating visualization code'],
+        challenges: ['Large dataset size detected', 'Missing values in column "age"'],
+        sections: [
+          {
+            type: 'thought_process',
+            items: ['Analyzing dataset structure', 'Checking for outliers', 'Generating visualization code']
+          },
+          {
+            type: 'code',
+            title: 'Outlier Detection',
+            language: 'python',
+            code: `import pandas as pd\nimport numpy as np\n\ndf = pd.read_csv("data.csv")\nz_scores = np.abs(stats.zscore(df['value']))\noutliers = df[z_scores > 3]`,
+            codeExplanation: 'We use Z-score to identify outliers in the dataset.'
+          },
+          {
+            type: 'insight',
+            title: 'Outliers Found',
+            content: 'We detected 3 key outliers in the upper quartile.'
+          }
+        ]
+      };
+      setMessages([mockMessage]);
+    }
+  }, []);
+
   // Load chat history and dataframes when dataset or mode changes
   useEffect(() => {
     if (selectedDataset && userId) {
       loadChatHistory();
     } else {
-      setMessages([]);
+      // Disabled clearing for debugging visibility
+      // setMessages([]); 
     }
   }, [selectedDataset, mode, userId]);
 
@@ -228,16 +272,27 @@ export function AIAssistantChat({
     onDatasetChange?.(id);
   };
 
+  // Helper to map frontend mode to backend/DB mode
+  const mapModeToBackend = (mode: AssistantMode): 'analysis' | 'automl' | 'educator' => {
+    switch (mode) {
+      case 'analyst': return 'analysis';
+      case 'ml': return 'automl';
+      case 'learn': return 'educator';
+      default: return 'analysis';
+    }
+  };
+
   const loadChatHistory = useCallback(async () => {
     if (!selectedDataset || !userId) return;
 
     try {
+      const dbMode = mapModeToBackend(mode);
       const { data, error } = await supabase
         .from('chat_history' as any)
         .select('*')
         .eq('user_id', userId)
         .eq('dataset_id', selectedDataset)
-        .eq('mode', mode)
+        .eq('mode', dbMode)
         .order('timestamp', { ascending: true });
 
       if (error) throw error;
@@ -251,11 +306,13 @@ export function AIAssistantChat({
         }));
         setMessages(loadedMessages);
       } else {
-        setMessages([]);
+        // For debugging: Don't clear messages if history is empty, so mock data stays
+        // setMessages([]); 
+        console.log("No history found, keeping current messages");
       }
     } catch (error) {
       console.error('Error loading chat history:', error);
-      setMessages([]);
+      // setMessages([]);
     }
   }, [selectedDataset, userId, mode]);
 
@@ -269,7 +326,7 @@ export function AIAssistantChat({
         role: message.role,
         content: message.content,
         sections: message.sections,
-        mode: mode,
+        mode: mapModeToBackend(mode),
         timestamp: message.timestamp
       });
     } catch (error) {
@@ -299,7 +356,7 @@ export function AIAssistantChat({
       const response = await labIQAI.dataAnalysis.process(
         selectedDataset,
         messageText,
-        mode,
+        mapModeToBackend(mode),
         messages.map(m => ({ role: m.role, content: m.content })),
         reasoningEnabled
       );
@@ -394,9 +451,17 @@ export function AIAssistantChat({
 
   return (
     <div className="flex h-full overflow-hidden bg-background">
+
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col min-w-0 h-full relative">
-        {/* Header - Only visible when starting a new chat (empty state) */}
+        {/* Toggle Button for Right Sidebar if Hidden */}
+        {!showRightSidebar && (
+          <div className="absolute top-4 right-4 z-50">
+            <Button variant="outline" size="icon" onClick={() => setShowRightSidebar(true)} className="bg-background shadow-sm hover:shadow-md transition-all">
+              <PanelRightOpen className="w-4 h-4" />
+            </Button>
+          </div>
+        )}        {/* Header - Only visible when starting a new chat (empty state) */}
         {!isLoading && messages.length === 0 && (
           <header className="flex items-center justify-between px-4 py-3 border-b bg-background animate-in slide-in-from-top-2 duration-300">
             <div className="flex items-center gap-4">
@@ -430,11 +495,15 @@ export function AIAssistantChat({
 
         {/* Dataset Selector */}
         {!selectedDataset && !isImmersive && (
-          <div className="p-4 animate-fade-in border-b bg-muted/20">
-            <DatasetSelector
-              selectedDataset={selectedDataset}
-              onSelectDataset={handleDatasetChange}
-            />
+          <div className="mb-4">
+            <h3 className="text-sm font-semibold text-muted-foreground mb-2">Active Dataset</h3>
+            {selectedDataset ? (
+              <div className="text-sm p-2 rounded-md bg-muted/50">
+                Selected dataset active
+              </div>
+            ) : (
+              <div className="text-sm text-muted-foreground">No dataset selected</div>
+            )}
           </div>
         )}
 
@@ -452,11 +521,20 @@ export function AIAssistantChat({
               {messages.map((message, i) => (
                 <div key={i} className="flex gap-4 group animate-fade-in text-left">
                   <div className="shrink-0 mt-1">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center border shadow-sm ${message.role === 'assistant' ? 'bg-primary/10 border-primary/20' : 'bg-muted border-border'}`}>
+                    <div className={cn(
+                      "w-8 h-8 rounded-lg flex items-center justify-center border shadow-sm overflow-hidden",
+                      message.role === 'assistant' ? 'bg-primary/10 border-primary/20' : 'bg-muted border-border'
+                    )}>
                       {message.role === 'assistant' ? (
                         <ModeIcon className="w-5 h-5 text-primary" />
                       ) : (
-                        <div className="w-5 h-5 rounded-full bg-slate-400/30" />
+                        userAvatar ? (
+                          <img src={userAvatar} alt="User" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-5 h-5 rounded-full bg-slate-400/30 flex items-center justify-center">
+                            <span className="text-[10px] font-bold text-slate-600">U</span>
+                          </div>
+                        )
                       )}
                     </div>
                   </div>
@@ -485,62 +563,62 @@ export function AIAssistantChat({
                           ) : (
                             <p className="text-foreground/80">{message.content}</p>
                           )}
-                          <div className="flex items-center gap-2 pt-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 text-xs gap-1.5 px-2 text-muted-foreground hover:text-primary"
-                              onClick={() => {
-                                const lastUserMsg = messages.slice(0, i).reverse().find(m => m.role === 'user');
-                                if (lastUserMsg) {
-                                  handleSend(lastUserMsg.content);
-                                }
-                              }}
-                              disabled={isLoading}
-                            >
-                              <RefreshCw className="h-3.5 w-3.5" />
-                              Regenerate
-                            </Button>
-                            {(message.thoughtProcess || message.role === 'assistant') && (
-                              <div className="pt-2">
-                                <ExplainabilityPanel
-                                  thoughtProcess={message.thoughtProcess?.map((t, i) => ({
-                                    step: i + 1,
-                                    thought: t,
-                                    reasoning: 'Analysis step',
-                                    confidence: 0.9
-                                  }))}
-                                  findings={message.sections?.filter(s => s.type === 'insight').map(s => ({
-                                    title: s.title || 'Insight',
-                                    description: s.content || '',
-                                    type: 'insight',
-                                    confidence: 0.85
-                                  }))}
-                                  compact={true}
-                                  confidence={0.88}
-                                />
+
+                          {/* Footer: Date, Feedback, Actions */}
+                          <div className="flex items-center justify-between pt-3 mt-3 border-t border-border/40">
+                            {/* Left: Actions */}
+                            <div className="flex items-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-muted-foreground hover:text-primary rounded-full"
+                                title="Export Chat"
+                              >
+                                <Share2 className="h-3.5 w-3.5" />
+                              </Button>
+
+                              {/* Feedback Buttons */}
+                              <div className="flex items-center gap-0.5 px-2 border-l border-r border-border/40 mx-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 text-muted-foreground hover:text-green-600 hover:bg-green-50 rounded-full"
+                                  title="Good response"
+                                >
+                                  <ThumbsUp className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded-full"
+                                  title="Bad response"
+                                >
+                                  <ThumbsDown className="h-3.5 w-3.5" />
+                                </Button>
                               </div>
-                            )}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className={`h-8 text-xs gap-1.5 px-2 ${pinnedMessageIds.has(i) ? 'text-green-600 bg-green-50' : 'text-muted-foreground hover:text-primary'}`}
-                              onClick={() => pinToDashboard(i, message)}
-                              disabled={pinnedMessageIds.has(i)}
-                            >
-                              {pinnedMessageIds.has(i) ? (
-                                <>
-                                  <Check className="h-3.5 w-3.5" />
-                                  Pinned to Dashboard
-                                </>
-                              ) : (
-                                <>
-                                  <Pin className="h-3.5 w-3.5" />
-                                  Pin to Dashboard
-                                </>
-                              )}
-                            </Button>
+
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-muted-foreground hover:text-primary rounded-full"
+                                onClick={() => {
+                                  const lastUserMsg = messages.slice(0, i).reverse().find(m => m.role === 'user');
+                                  if (lastUserMsg) handleSend(lastUserMsg.content);
+                                }}
+                                disabled={isLoading}
+                                title="Regenerate"
+                              >
+                                <RefreshCw className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+
+                            {/* Right: Timestamp */}
+                            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/70">
+                              {new Date(message.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' })}, {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </div>
                           </div>
+
+                          {/* Suggested follow-ups */}
                           {message.suggestions && message.suggestions.length > 0 && (
                             <div className="mt-4 pt-3 border-t border-border/40">
                               <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
@@ -569,21 +647,21 @@ export function AIAssistantChat({
             </div>
 
             {isLoading && (
-              <div className="flex items-center gap-3 px-6 py-4 animate-fade-in bg-muted/30 rounded-lg">
+              <div className="flex items-center gap-3 px-6 py-4 animate-fade-in bg-muted/30 rounded-lg max-w-fit mx-auto my-4 border border-border/40">
                 <div className="flex gap-1.5">
                   <div className="w-2 h-2 rounded-full bg-primary/60 animate-pulse" style={{ animationDelay: '0ms' }} />
                   <div className="w-2 h-2 rounded-full bg-primary/60 animate-pulse" style={{ animationDelay: '150ms' }} />
                   <div className="w-2 h-2 rounded-full bg-primary/60 animate-pulse" style={{ animationDelay: '300ms' }} />
                 </div>
-                <span className="text-sm text-muted-foreground">{processingStep}</span>
+                <span className="text-sm text-muted-foreground font-medium">AI Analyst Working...</span>
               </div>
             )}
             <div ref={messagesEndRef} />
           </div>
-        </main>
+        </main >
 
         {/* Floating Input Area */}
-        <div className="absolute bottom-0 left-0 right-0 p-2 border-t bg-background/95 backdrop-blur-sm z-50">
+        < div className="absolute bottom-0 left-0 right-0 p-2 border-t bg-background/95 backdrop-blur-sm z-50" >
           <div className="max-w-4xl mx-auto">
             <div className="relative flex items-center gap-2 bg-background border border-border/40 rounded-xl shadow-sm p-2 ring-1 ring-black/5 dark:ring-white/5">
               <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full text-muted-foreground hover:bg-muted/50 hover:text-foreground shrink-0">
@@ -651,21 +729,49 @@ export function AIAssistantChat({
               </div>
             </div>
           </div>
-        </div>
-      </div>
+        </div >
+      </div >
 
-      {/* Advanced Assistant Panel */}
-      {selectedDataset && userId && (
-        <AssistantPanel
-          isOpen={showAssistantPanel}
-          onToggle={() => setShowAssistantPanel(!showAssistantPanel)}
-          notebook={null}
-          datasetId={selectedDataset}
-          userId={userId}
-          currentThoughtProcess={currentThoughtProcess}
-          onDatasetSelect={handleDatasetChange}
-        />
-      )}
+      {/* RIGHT SIDEBAR - AssistantPanel (same as notebook mode) */}
+      <AssistantPanel
+        isOpen={showRightSidebar}
+        onToggle={() => setShowRightSidebar(!showRightSidebar)}
+        notebook={null}
+        datasetId={selectedDataset}
+        userId={userId}
+        currentThoughtProcess={currentThoughtProcess}
+        onDatasetSelect={handleDatasetChange}
+        currentMode="chat"
+      />
+    </div >
+  );
+  // Helper for Processing Steps
+  // End of AIAssistantChat
+};
+
+// Helper for Processing Steps
+function ProcessingStepItem({ label, status, icon }: { label: string, status: 'pending' | 'active' | 'completed', icon: React.ReactNode }) {
+  return (
+    <div className={cn(
+      "flex items-center gap-3 transition-all duration-500",
+      status === 'pending' ? "opacity-40" : "opacity-100"
+    )}>
+      <div className={cn(
+        "w-6 h-6 rounded-full flex items-center justify-center shrink-0 border transition-colors",
+        status === 'completed' ? "bg-green-500 border-green-500 text-white" :
+          status === 'active' ? "bg-primary border-primary text-white animate-pulse" :
+            "bg-background border-border text-muted-foreground"
+      )}>
+        {status === 'completed' ? <Check className="w-3 h-3" /> : icon}
+      </div>
+      <span className={cn(
+        "text-sm font-medium",
+        status === 'active' ? "text-primary" : "text-muted-foreground"
+      )}>
+        {label}
+      </span>
     </div>
   );
-};
+}
+
+export default AIAssistantChat;

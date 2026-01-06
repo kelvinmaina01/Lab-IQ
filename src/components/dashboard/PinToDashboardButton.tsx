@@ -5,7 +5,19 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Pin, Check, Loader2 } from 'lucide-react';
+import { Pin, Check, Loader2, Sparkles } from 'lucide-react';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
     dashboardService,
     DashboardType,
@@ -52,8 +64,8 @@ interface PinToDashboardButtonProps {
 }
 
 export function PinToDashboardButton({
-    title,
-    description,
+    title: initialTitle,
+    description: initialDescription,
     type,
     source,
     data,
@@ -73,17 +85,13 @@ export function PinToDashboardButton({
     const [isPinned, setIsPinned] = useState(externalIsPinned ?? false);
     const { toast } = useToast();
 
-    const handlePin = async (e: React.MouseEvent) => {
-        e.stopPropagation();
+    // Dialog State
+    const [isOpen, setIsOpen] = useState(false);
+    const [title, setTitle] = useState(initialTitle);
+    const [description, setDescription] = useState(initialDescription || '');
+    const [suggestedTags, setSuggestedTags] = useState(tags);
 
-        if (isPinned) {
-            toast({
-                title: "Already Pinned",
-                description: "This item is already on your dashboard",
-            });
-            return;
-        }
-
+    const handlePin = async () => {
         setIsPinning(true);
 
         try {
@@ -97,11 +105,12 @@ export function PinToDashboardButton({
                 source_id: sourceId,
                 source_table: sourceTable,
                 category,
-                tags: [...tags, `source:${source}`]
+                tags: [...suggestedTags, `source:${source}`]
             });
 
             if (result) {
                 setIsPinned(true);
+                setIsOpen(false);
                 toast({
                     title: "Pinned to Dashboard",
                     description: "View it in your Dashboards page",
@@ -122,31 +131,97 @@ export function PinToDashboardButton({
         }
     };
 
-    return (
-        <Button
-            variant={variant}
-            size={size}
-            className={cn(
-                "gap-1.5 transition-colors",
-                isPinned ? "text-green-600 hover:text-green-700" : "text-muted-foreground hover:text-primary",
-                className
-            )}
-            onClick={handlePin}
-            disabled={isPinning || isPinned}
-        >
-            {isPinning ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : isPinned ? (
+    const handleAISuggest = () => {
+        // Placeholder for AI suggestion
+        // In a real implementation this would call an AI service to summarize
+        const suggestions = ["Analysis", "Insight", "Key Finding"];
+        setTitle(`${title} (${suggestions[Math.floor(Math.random() * suggestions.length)]})`);
+        toast({
+            title: "AI Suggestion",
+            description: "Title updated with suggestion",
+        });
+    };
+
+    // If already pinned, just show the pinned state button
+    if (isPinned) {
+        return (
+            <Button
+                variant={variant}
+                size={size}
+                className={cn(
+                    "gap-1.5 text-green-600 hover:text-green-700",
+                    className
+                )}
+                disabled={true}
+            >
                 <Check className="h-3.5 w-3.5" />
-            ) : (
-                <Pin className="h-3.5 w-3.5" />
-            )}
-            {showLabel && (
-                <span className="text-xs">
-                    {isPinned ? 'Pinned' : isPinning ? 'Pinning...' : 'Pin to Dashboard'}
-                </span>
-            )}
-        </Button>
+                {showLabel && <span className="text-xs">Pinned</span>}
+            </Button>
+        );
+    }
+
+    return (
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogTrigger asChild>
+                <Button
+                    variant={variant}
+                    size={size}
+                    className={cn(
+                        "gap-1.5 transition-colors text-muted-foreground hover:text-primary",
+                        className
+                    )}
+                >
+                    <Pin className="h-3.5 w-3.5" />
+                    {showLabel && <span className="text-xs">Pin to Dashboard</span>}
+                </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                    <DialogTitle>Pin to Dashboard</DialogTitle>
+                    <DialogDescription>
+                        Customize how this item appears on your dashboard.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                    <div className="grid gap-2">
+                        <Label htmlFor="title">Title</Label>
+                        <div className="flex gap-2">
+                            <Input
+                                id="title"
+                                value={title}
+                                onChange={(e) => setTitle(e.target.value)}
+                                className="col-span-3"
+                            />
+                            <Button variant="outline" size="icon" onClick={handleAISuggest} title="AI Suggest">
+                                <Sparkles className="h-4 w-4 text-purple-500" />
+                            </Button>
+                        </div>
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="description">Description (Optional)</Label>
+                        <Textarea
+                            id="description"
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                            placeholder="Add context or notes..."
+                        />
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
+                    <Button onClick={handlePin} disabled={isPinning}>
+                        {isPinning ? (
+                            <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Pinning...
+                            </>
+                        ) : (
+                            'Pin to Dashboard'
+                        )}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     );
 }
 

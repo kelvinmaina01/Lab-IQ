@@ -36,6 +36,7 @@ import { InteractiveChartCard } from '@/components/dashboard/InteractiveChartCar
 import { InteractiveDataTable } from '@/components/dashboard/InteractiveDataTable';
 import { ThoughtProcess, Challenges, CodeExplanation, InsightBlock } from '@/components/dashboard/AIThoughtProcess';
 
+
 // =============================================================================
 // TYPES
 // =============================================================================
@@ -61,7 +62,7 @@ export interface Section {
   content?: string;
   title?: string;
   items?: string[];
-  chartType?: 'bar' | 'line' | 'pie' | 'heatmap';
+  chartType?: 'bar' | 'line' | 'pie' | 'scatter' | 'area' | 'heatmap' | 'histogram' | 'race-bar' | 'multi-line-race';
   data?: ChartData;
   tableData?: TableData;
   code?: string;
@@ -107,6 +108,8 @@ export const AIResponseRenderer = ({ sections, meta }: AIResponseRendererProps) 
       {meta?.challenges && meta.challenges.length > 0 && (
         <Challenges challenges={meta.challenges} />
       )}
+
+
 
       {/* Main Content Sections */}
       {sections.map((section, i) => {

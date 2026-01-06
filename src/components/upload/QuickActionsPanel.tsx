@@ -10,7 +10,7 @@ import {
     Rocket
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { ModeSelectionDialog } from '@/components/notebook/ModeSelectionDialog';
+
 
 interface QuickActionsPanelProps {
     datasetId: string;
@@ -105,21 +105,14 @@ export const QuickActionsPanel: React.FC<QuickActionsPanelProps> = ({
         });
     };
 
-    const [showModeDialog, setShowModeDialog] = useState(false);
+
 
     const handleAnalyzeWithAI = () => {
-        // Show mode selection dialog
-        setShowModeDialog(true);
-    };
-
-    const handleModeSelect = (mode: 'chat' | 'notebook') => {
-        setShowModeDialog(false);
-
-        // Navigate to insights with selected mode
+        // Navigate directly to insights in notebook mode
         navigate('/insights', {
             state: {
                 datasetId,
-                insightsMode: mode
+                insightsMode: 'notebook'
             }
         });
     };
@@ -187,13 +180,6 @@ export const QuickActionsPanel: React.FC<QuickActionsPanelProps> = ({
                     </div>
                 </CardContent>
             </Card>
-
-            {/* Mode Selection Dialog */}
-            <ModeSelectionDialog
-                open={showModeDialog}
-                onClose={() => setShowModeDialog(false)}
-                onSelectMode={handleModeSelect}
-            />
         </>
     );
 };

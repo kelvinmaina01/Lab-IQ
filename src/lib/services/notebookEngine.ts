@@ -6,7 +6,14 @@
  * conforming to the JSON schema contract.
  */
 
-import { NotebookOutput, NotebookCell, validateNotebookOutput } from '@/lib/types/notebook';
+import {
+    NotebookOutput,
+    NotebookCell,
+    validateNotebookOutput,
+    PromptCellContent,
+    InsightCellContent,
+    isInsightCell
+} from '@/lib/types/notebook';
 import { supabase } from '@/integrations/supabase/client';
 
 export class NotebookEngine {
@@ -27,13 +34,22 @@ export class NotebookEngine {
         // 1. Fetch dataset schema
         const datasetSchema = await this.getDatasetSchema(datasetId);
 
-        // 2. Call NotebookAgent to generate JSON output
-        const notebookAgent = await import('@/lib/ai/NotebookAgent');
-        const notebookOutput = await notebookAgent.generateNotebook(
-            userPrompt,
-            datasetId,
-            datasetSchema
-        );
+        // 2. Call Backend API to generate JSON output (LangGraph Agent)
+        const response = await fetch('/api/v1/generate-notebook', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                user_prompt: userPrompt,
+                dataset_context: datasetSchema
+            })
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`AI generation failed (${response.status}): ${errorText}`);
+        }
+
+        const notebookOutput = await response.json();
 
         // 3. Validate output
         const validation = validateNotebookOutput(notebookOutput);
@@ -59,25 +75,63 @@ export class NotebookEngine {
     /**
      * Fetch dataset schema for AI context
      */
-    private async getDatasetSchema(datasetId: string): Promise<any> {
+    /**
+     * Fetch dataset schema and preview for AI context and UI
+     */
+    async getDatasetSchema(datasetId: string): Promise<any> {
         const { data, error } = await supabase
             .from('datasets')
-            .select('name, schema, row_count')
+            .select('name, schema, row_count, preview_data')
             .eq('id', datasetId)
             .single();
 
         if (error) throw new Error(`Failed to fetch dataset: ${error.message}`);
 
         // Parse schema JSON
-        const schema = typeof data.schema === 'string'
+        const rawSchema = typeof data.schema === 'string'
             ? JSON.parse(data.schema)
             : data.schema;
+
+        // Handle { columns: [...] } wrapper vs raw [...] array
+        const columns = Array.isArray(rawSchema) ? rawSchema : (rawSchema?.columns || []);
 
         return {
             dataset_name: data.name,
             row_count: data.row_count,
-            columns: schema
+            columns: columns,
+            preview: data.preview_data || []
         };
+    }
+
+    /**
+     * Get dataset preview rows for Explorer
+     */
+    async getDatasetPreview(datasetId: string): Promise<any[]> {
+        // Try fetching optimized preview from metadata first
+        const { data, error } = await supabase
+            .from('datasets')
+            .select('preview_data')
+            .eq('id', datasetId)
+            .single();
+
+        if (!error && data?.preview_data && data.preview_data.length > 0) {
+            return data.preview_data;
+        }
+
+        // Fallback to fetching raw rows
+        const { data: rows, error: rowsError } = await supabase
+            .from('dataset_rows')
+            .select('data')
+            .eq('dataset_id', datasetId)
+            .order('row_index', { ascending: true })
+            .limit(100);
+
+        if (rowsError) {
+            console.error("Failed to fetch preview rows:", rowsError);
+            return [];
+        }
+
+        return rows.map(r => r.data);
     }
 
     /**
@@ -111,10 +165,10 @@ export class NotebookEngine {
             notebook_id: notebook.notebook_id,
             cell_id: cell.cell_id,
             cell_type: cell.cell_type,
-            title: cell.title,
-            content: cell.content,
-            dependencies: cell.dependencies,
-            ui_hints: cell.ui_hints,
+            title: cell.title || 'Untitled Cell',
+            content: cell.content || {},
+            dependencies: cell.dependencies || [],
+            ui_hints: cell.ui_hints || {},
             execution_order: index
         }));
 
@@ -133,10 +187,13 @@ export class NotebookEngine {
      */
     private extractTitle(notebook: NotebookOutput): string {
         const promptCell = notebook.cells.find(c => c.cell_type === 'prompt');
-        if (promptCell && 'user_question' in promptCell.content) {
-            const question = promptCell.content.user_question;
-            // Truncate to reasonable length
-            return question.length > 100 ? question.substring(0, 97) + '...' : question;
+        if (promptCell) {
+            const content = promptCell.content as PromptCellContent;
+            if (content.user_question) {
+                const question = content.user_question;
+                // Truncate to reasonable length
+                return question.length > 100 ? question.substring(0, 97) + '...' : question;
+            }
         }
         return `Analysis ${new Date().toISOString().split('T')[0]}`;
     }
@@ -145,6 +202,19 @@ export class NotebookEngine {
      * Load existing notebook with all cells
      */
     async loadNotebook(notebookId: string): Promise<NotebookOutput> {
+        // MOCK INTERCEPTION
+        if (notebookId === 'mock-julius-poc') {
+            console.warn("Intercepting mock notebook ID");
+            return {
+                notebook_id: 'mock-julius-poc',
+                analysis_metadata: {
+                    domain: 'Healthcare',
+                    analysis_type: 'Exploratory'
+                },
+                cells: []
+            };
+        }
+
         // Fetch notebook
         const { data: notebook, error: notebookError } = await supabase
             .from('notebooks')
@@ -171,9 +241,9 @@ export class NotebookEngine {
                 cell_id: cell.cell_id,
                 cell_type: cell.cell_type as any,
                 title: cell.title,
-                content: cell.content,
+                content: cell.content as any, // Cast JSON from DB to CellContent
                 dependencies: cell.dependencies || [],
-                ui_hints: cell.ui_hints
+                ui_hints: cell.ui_hints as any
             }))
         };
     }
@@ -218,17 +288,18 @@ export class NotebookEngine {
      * Compliance: Section 9.2 Auto-Pin Prompt (Default = ON)
      */
     private async autoPinInsights(notebook: NotebookOutput, userId: string): Promise<void> {
-        const eligibleInsights = notebook.cells.filter(cell =>
-            cell.cell_type === 'insight' &&
-            (cell.content as any).pin_metadata?.pin_eligible
-        );
+        // Filter for insight cells that are eligible for pinning
+        const eligibleInsights = notebook.cells.filter((cell): cell is NotebookCell & { content: InsightCellContent } => {
+            return isInsightCell(cell) && (cell.content as InsightCellContent).pin_metadata?.pin_eligible;
+        });
 
         if (eligibleInsights.length === 0) return;
 
         console.log(`Auto-pinning ${eligibleInsights.length} insights...`);
 
         const insightsToInsert = eligibleInsights.map(cell => {
-            const content = cell.content as any;
+            // Content is already narrowed to InsightCellContent by the filter predicate above
+            const content = cell.content;
             const meta = content.pin_metadata;
 
             return {
@@ -252,6 +323,100 @@ export class NotebookEngine {
             console.error('Failed to auto-pin insights:', error);
             // Non-blocking error, just log warning
         }
+    }
+    /**
+     * Generate notebook using Real-time WebSocket Stream
+     */
+    async generateNotebookStream(
+        userPrompt: string,
+        datasetId: string,
+        userId: string,
+        callbacks: {
+            onThought?: (thought: any) => void;
+            onCode?: (code: any) => void;
+            onExecution?: (log: string) => void;
+            onComplete?: (notebook: NotebookOutput) => void;
+            onError?: (error: string) => void;
+        }
+    ): Promise<void> {
+        // 1. Fetch Schema
+        const datasetSchema = await this.getDatasetSchema(datasetId);
+
+        // 2. Open WebSocket
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const host = window.location.host; // Uses current host (proxy handles /ws)
+        // Adjust port if running in dev mode where backend might be on different port if not proxied
+        // Assuming standard Vite proxy setup:
+        const wsUrl = `${protocol}//${host}/ws/generate-notebook`;
+
+        const ws = new WebSocket(wsUrl);
+
+        ws.onopen = () => {
+            // 3. Send Request
+            ws.send(JSON.stringify({
+                user_prompt: userPrompt,
+                dataset_context: datasetSchema,
+                data_rows: [] // In a real app, we might pass sample rows or ID for backend to fetch
+            }));
+        };
+
+        ws.onmessage = async (event) => {
+            try {
+                const msg = JSON.parse(event.data);
+
+                switch (msg.type) {
+                    case 'token':
+                        if (msg.target === 'thought') callbacks.onThought?.(msg.chunk);
+                        if (msg.target === 'code') callbacks.onCode?.(msg.chunk);
+                        break;
+                    case 'status':
+                        // Optional: phase change handler
+                        break;
+                    case 'thought':
+                        callbacks.onThought?.(msg);
+                        break;
+                    case 'code':
+                        callbacks.onCode?.(msg);
+                        break;
+                    case 'execution':
+                        callbacks.onExecution?.(msg.logs);
+                        break;
+                    case 'complete':
+                        // Final notebook received
+                        const notebook = msg.payload;
+
+                        // Validate & Persist
+                        const validation = validateNotebookOutput(notebook);
+                        if (!validation.valid) {
+                            throw new Error(`Invalid notebook structure: ${validation.errors.join(', ')}`);
+                        }
+
+                        await this.saveNotebook(notebook, datasetId, userId);
+                        await this.autoPinInsights(notebook, userId);
+
+                        callbacks.onComplete?.(notebook);
+                        ws.close();
+                        break;
+                    case 'error':
+                        callbacks.onError?.(msg.error);
+                        ws.close();
+                        break;
+                }
+            } catch (e) {
+                console.error("Stream processing error:", e);
+                callbacks.onError?.(e instanceof Error ? e.message : "Unknown stream error");
+                ws.close();
+            }
+        };
+
+        ws.onerror = (e) => {
+            console.error("WebSocket error:", e);
+            callbacks.onError?.("Connection failed");
+        };
+
+        ws.onclose = () => {
+            console.log("Stream closed");
+        };
     }
 }
 

@@ -116,7 +116,693 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
+      },
+      team_members: {
+        Row: {
+          id: string
+          user_id: string
+          lab_id: string | null
+          role: string
+          display_name: string | null
+          status: string | null
+          avatar_url: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          lab_id?: string | null
+          role: string
+          display_name?: string | null
+          status?: string | null
+          avatar_url?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          lab_id?: string | null
+          role?: string
+          display_name?: string | null
+          status?: string | null
+          avatar_url?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      },
+      chat_channels: {
+        Row: {
+          id: string
+          lab_id: string
+          name: string
+          display_name: string
+          type: string
+          description: string | null
+          created_by: string | null
+          is_private: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          lab_id: string
+          name: string
+          display_name: string
+          type: string
+          description?: string | null
+          created_by?: string | null
+          is_private?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          lab_id?: string
+          name?: string
+          display_name?: string
+          type?: string
+          description?: string | null
+          created_by?: string | null
+          is_private?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      },
+      ml_models: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          model_type: string
+          status: string
+          metrics: Json | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          model_type: string
+          status?: string
+          metrics?: Json | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          model_type?: string
+          status?: string
+          metrics?: Json | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      },
+      shared_files: {
+        Row: {
+          id: string
+          lab_id: string
+          channel_id: string | null
+          message_id: string | null
+          uploaded_by: string | null
+          file_name: string
+          file_type: string
+          file_size: number
+          file_category: string | null
+          storage_path: string
+          thumbnail_path: string | null
+          download_url: string | null
+          experiment_id: string | null
+          dataset_id: string | null
+          is_result_file: boolean | null
+          metadata: Json | null
+          download_count: number | null
+          version: number | null
+          parent_file_id: string | null
+          is_deleted: boolean | null
+          deleted_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          lab_id: string
+          channel_id?: string | null
+          message_id?: string | null
+          uploaded_by?: string | null
+          file_name: string
+          file_type: string
+          file_size: number
+          file_category?: string | null
+          storage_path: string
+          thumbnail_path?: string | null
+          download_url?: string | null
+          experiment_id?: string | null
+          dataset_id?: string | null
+          is_result_file?: boolean | null
+          metadata?: Json | null
+          download_count?: number | null
+          version?: number | null
+          parent_file_id?: string | null
+          is_deleted?: boolean | null
+          deleted_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          lab_id?: string
+          channel_id?: string | null
+          message_id?: string | null
+          uploaded_by?: string | null
+          file_name?: string
+          file_type?: string
+          file_size?: number
+          file_category?: string | null
+          storage_path?: string
+          thumbnail_path?: string | null
+          download_url?: string | null
+          experiment_id?: string | null
+          dataset_id?: string | null
+          is_result_file?: boolean | null
+          metadata?: Json | null
+          download_count?: number | null
+          version?: number | null
+          parent_file_id?: string | null
+          is_deleted?: boolean | null
+          deleted_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      },,
+      team_invitations: {
+        Row: {
+          id: string
+          email: string
+          lab_id: string
+          role: string
+          invited_by: string | null
+          invitation_token: string
+          status: string | null
+          message: string | null
+          expires_at: string | null
+          accepted_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          email: string
+          lab_id: string
+          role: string
+          invited_by?: string | null
+          invitation_token: string
+          status?: string | null
+          message?: string | null
+          expires_at?: string | null
+          accepted_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          email?: string
+          lab_id?: string
+          role?: string
+          invited_by?: string | null
+          invitation_token?: string
+          status?: string | null
+          message?: string | null
+          expires_at?: string | null
+          accepted_at?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      },,
+      channel_members: {
+        Row: {
+          channel_id: string
+          user_id: string
+          role: string | null
+          notification_level: string | null
+          is_muted: boolean | null
+          is_starred: boolean | null
+          last_read_at: string | null
+          last_read_message_id: string | null
+          unread_count: number | null
+          joined_at: string | null
+        }
+        Insert: {
+          channel_id: string
+          user_id: string
+          role?: string | null
+          notification_level?: string | null
+          is_muted?: boolean | null
+          is_starred?: boolean | null
+          last_read_at?: string | null
+          last_read_message_id?: string | null
+          unread_count?: number | null
+          joined_at?: string | null
+        }
+        Update: {
+          channel_id?: string
+          user_id?: string
+          role?: string | null
+          notification_level?: string | null
+          is_muted?: boolean | null
+          is_starred?: boolean | null
+          last_read_at?: string | null
+          last_read_message_id?: string | null
+          unread_count?: number | null
+          joined_at?: string | null
+        }
+        Relationships: [
+           {
+            foreignKeyName: "channel_members_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "chat_channels"
+            referencedColumns: ["id"]
+          }
+        ]
+      },,
+      chat_messages: {
+        Row: {
+          id: string
+          channel_id: string
+          user_id: string | null
+          parent_id: string | null
+          thread_id: string | null
+          content: string
+          content_type: string | null
+          formatted_content: Json | null
+          mentions: string[] | null
+          mentioned_channels: string[] | null
+          attachments: Json | null
+          metadata: Json | null
+          is_edited: boolean | null
+          is_deleted: boolean | null
+          is_pinned: boolean | null
+          is_system_message: boolean | null
+          reply_count: number | null
+          reply_users: string[] | null
+          last_reply_at: string | null
+          reactions: Json | null
+          reaction_count: number | null
+          edited_at: string | null
+          deleted_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          channel_id: string
+          user_id?: string | null
+          parent_id?: string | null
+          thread_id?: string | null
+          content: string
+          content_type?: string | null
+          formatted_content?: Json | null
+          mentions?: string[] | null
+          mentioned_channels?: string[] | null
+          attachments?: Json | null
+          metadata?: Json | null
+          is_edited?: boolean | null
+          is_deleted?: boolean | null
+          is_pinned?: boolean | null
+          is_system_message?: boolean | null
+          reply_count?: number | null
+          reply_users?: string[] | null
+          last_reply_at?: string | null
+          reactions?: Json | null
+          reaction_count?: number | null
+          edited_at?: string | null
+          deleted_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          channel_id?: string
+          user_id?: string | null
+          parent_id?: string | null
+          thread_id?: string | null
+          content?: string
+          content_type?: string | null
+          formatted_content?: Json | null
+          mentions?: string[] | null
+          mentioned_channels?: string[] | null
+          attachments?: Json | null
+          metadata?: Json | null
+          is_edited?: boolean | null
+          is_deleted?: boolean | null
+          is_pinned?: boolean | null
+          is_system_message?: boolean | null
+          reply_count?: number | null
+          reply_users?: string[] | null
+          last_reply_at?: string | null
+          reactions?: Json | null
+          reaction_count?: number | null
+          edited_at?: string | null
+          deleted_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+           {
+            foreignKeyName: "chat_messages_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "chat_channels"
+            referencedColumns: ["id"]
+          }
+        ]
+      },,
+      direct_messages: {
+        Row: {
+          id: string
+          sender_id: string
+          recipient_id: string
+          content: string
+          formatted_content: Json | null
+          attachments: Json | null
+          is_read: boolean | null
+          is_edited: boolean | null
+          is_deleted: boolean | null
+          reactions: Json | null
+          edited_at: string | null
+          read_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          sender_id: string
+          recipient_id: string
+          content: string
+          formatted_content?: Json | null
+          attachments?: Json | null
+          is_read?: boolean | null
+          is_edited?: boolean | null
+          is_deleted?: boolean | null
+          reactions?: Json | null
+          edited_at?: string | null
+          read_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          sender_id?: string
+          recipient_id?: string
+          content?: string
+          formatted_content?: Json | null
+          attachments?: Json | null
+          is_read?: boolean | null
+          is_edited?: boolean | null
+          is_deleted?: boolean | null
+          reactions?: Json | null
+          edited_at?: string | null
+          read_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      },,
+      activity_feed: {
+        Row: {
+          id: string
+          lab_id: string
+          actor_id: string | null
+          action: string
+          entity_type: string
+          entity_id: string | null
+          channel_id: string | null
+          project_id: string | null
+          description: string
+          metadata: Json | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          lab_id: string
+          actor_id?: string | null
+          action: string
+          entity_type: string
+          entity_id?: string | null
+          channel_id?: string | null
+          project_id?: string | null
+          description: string
+          metadata?: Json | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          lab_id?: string
+          actor_id?: string | null
+          action?: string
+          entity_type?: string
+          entity_id?: string | null
+          channel_id?: string | null
+          project_id?: string | null
+          description?: string
+          metadata?: Json | null
+          created_at?: string
+        }
+         Relationships: []
+      },,
+      shared_projects: {
+        Row: {
+          id: string
+          lab_id: string
+          name: string
+          description: string | null
+          owner_id: string | null
+          status: string | null
+          visibility: string | null
+          experiment_ids: string[] | null
+          dataset_ids: string[] | null
+          protocol_ids: string[] | null
+          tags: string[] | null
+          priority: string | null
+          due_date: string | null
+          completion_percentage: number | null
+          member_count: number | null
+          message_count: number | null
+          file_count: number | null
+          default_channel_id: string | null
+          archived_at: string | null
+          completed_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          lab_id: string
+          name: string
+          description?: string | null
+          owner_id?: string | null
+          status?: string | null
+          visibility?: string | null
+          experiment_ids?: string[] | null
+          dataset_ids?: string[] | null
+          protocol_ids?: string[] | null
+          tags?: string[] | null
+          priority?: string | null
+          due_date?: string | null
+          completion_percentage?: number | null
+          member_count?: number | null
+          message_count?: number | null
+          file_count?: number | null
+          default_channel_id?: string | null
+          archived_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          lab_id?: string
+          name?: string
+          description?: string | null
+          owner_id?: string | null
+          status?: string | null
+          visibility?: string | null
+          experiment_ids?: string[] | null
+          dataset_ids?: string[] | null
+          protocol_ids?: string[] | null
+          tags?: string[] | null
+          priority?: string | null
+          due_date?: string | null
+          completion_percentage?: number | null
+          member_count?: number | null
+          message_count?: number | null
+          file_count?: number | null
+          default_channel_id?: string | null
+          archived_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shared_projects_default_channel_id_fkey"
+            columns: ["default_channel_id"]
+            isOneToOne: false
+            referencedRelation: "chat_channels"
+            referencedColumns: ["id"]
+          }
+        ]
+      },,
+      project_members: {
+        Row: {
+          project_id: string
+          user_id: string
+          role: string | null
+          can_edit: boolean | null
+          can_invite: boolean | null
+          notification_level: string | null
+          is_starred: boolean | null
+          joined_at: string | null
+        }
+        Insert: {
+          project_id: string
+          user_id: string
+          role?: string | null
+          can_edit?: boolean | null
+          can_invite?: boolean | null
+          notification_level?: string | null
+          is_starred?: boolean | null
+          joined_at?: string | null
+        }
+        Update: {
+          project_id?: string
+          user_id?: string
+          role?: string | null
+          can_edit?: boolean | null
+          can_invite?: boolean | null
+          notification_level?: string | null
+          is_starred?: boolean | null
+          joined_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_members_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "shared_projects"
+            referencedColumns: ["id"]
+          }
+        ]
+      },,
+      typing_indicators: {
+        Row: {
+          id: string
+          channel_id: string | null
+          user_id: string | null
+          is_typing: boolean | null
+          expires_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          channel_id?: string | null
+          user_id?: string | null
+          is_typing?: boolean | null
+          expires_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          channel_id?: string | null
+          user_id?: string | null
+          is_typing?: boolean | null
+          expires_at?: string | null
+          created_at?: string
+        }
+        Relationships: [
+           {
+            foreignKeyName: "typing_indicators_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "chat_channels"
+            referencedColumns: ["id"]
+          }
+        ]
+      },,
+      user_presence: {
+        Row: {
+          user_id: string
+          status: string | null
+          last_seen: string | null
+          active_channel_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          status?: string | null
+          last_seen?: string | null
+          active_channel_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          status?: string | null
+          last_seen?: string | null
+          active_channel_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+           {
+            foreignKeyName: "user_presence_active_channel_id_fkey"
+            columns: ["active_channel_id"]
+            isOneToOne: false
+            referencedRelation: "chat_channels"
+            referencedColumns: ["id"]
+          }
+        ]
+      },,
+      bookmarks: {
+        Row: {
+          id: string
+          user_id: string
+          item_type: string
+          item_id: string
+          note: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          item_type: string
+          item_id: string
+          note?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          item_type?: string
+          item_id?: string
+          note?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      },,
       bottleneck_comments: {
         Row: {
           bottleneck_id: string

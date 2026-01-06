@@ -14,17 +14,16 @@ import {
     Table2,
     FileSpreadsheet,
     ChevronDown,
-    Play,
     BarChart3,
     ArrowRight,
-    Layers,
     Clock,
-    CheckCircle2,
     Sparkles,
     Pin,
-    Eye,
     AlertCircle,
-    GripVertical
+    ChevronDown,
+    Play,
+    Eye,
+    MessageCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -50,8 +49,9 @@ interface AssistantPanelProps {
     userId: string;
     isOpen: boolean;
     onToggle: () => void;
-    currentThoughtProcess?: string[];
+    currentThoughtProcess?: any[];
     onDatasetSelect?: (datasetId: string) => void;
+    onRestoreConversation?: (datasetId: string) => void;
 }
 
 type Tab = 'planning' | 'data' | 'insights';
@@ -74,19 +74,21 @@ function DatasetExplorerContent({
 
     const hasTable = !!dataset.table_name;
 
-    const loadPreview = async () => {
+    const loadPreview = useCallback(async () => {
         if (previewData.length > 0) return; // Already loaded
+        if (!hasTable) return;
+
         setIsLoadingPreview(true);
         setPreviewError(null);
         try {
             const tableName = dataset.table_name;
             if (!tableName) throw new Error("No linked table found for this dataset");
 
-            // Safe query - limit 5
+            // Safe query - limit 10
             const { data, error } = await supabase
                 .from(tableName as any)
                 .select('*')
-                .limit(5);
+                .limit(10);
 
             if (error) {
                 console.warn("Direct table fetch failed", error);
@@ -99,13 +101,13 @@ function DatasetExplorerContent({
         } finally {
             setIsLoadingPreview(false);
         }
-    };
+    }, [dataset.table_name, hasTable, previewData.length]);
 
     // Filter columns based on search
     const filteredColumns = useMemo(() => {
         if (!dataset.dataset_columns) return [];
         return dataset.dataset_columns.filter((col: any) =>
-            (col.name || '').toLowerCase().includes(searchQuery.toLowerCase())
+            (col.column_name || col.name || '').toLowerCase().includes(searchQuery.toLowerCase())
         );
     }, [dataset, searchQuery]);
 
@@ -141,7 +143,7 @@ function DatasetExplorerContent({
                         !hasTable && "opacity-50 cursor-not-allowed text-muted-foreground/70"
                     )}
                     disabled={!hasTable}
-                    title={!hasTable ? "No table connected for preview" : "View first 5 rows"}
+                    title={!hasTable ? "No table connected for preview" : "View first 10 rows"}
                     onClick={() => { if (hasTable) { setViewMode('preview'); loadPreview(); } }}
                 >
                     Preview Rows
@@ -157,7 +159,7 @@ function DatasetExplorerContent({
                                     <div className="flex items-center gap-2">
                                         <Table2 className="w-3.5 h-3.5 text-muted-foreground group-hover:text-primary" />
                                         <span className="font-medium text-foreground/80 group-hover:text-foreground">
-                                            {col.name}
+                                            {col.column_name || col.name}
                                         </span>
                                     </div>
                                     <Badge variant="secondary" className="text-[10px] h-5 opacity-70 group-hover:opacity-100">
@@ -206,7 +208,7 @@ function DatasetExplorerContent({
                                     </tbody>
                                 </table>
                                 <div className="p-2 text-[10px] text-center text-muted-foreground border-t mt-2">
-                                    Showing first 5 rows
+                                    Showing first 10 rows
                                 </div>
                             </div>
                         ) : (
@@ -228,7 +230,8 @@ export function AssistantPanel({
     isOpen,
     onToggle,
     currentThoughtProcess = [],
-    onDatasetSelect
+    onDatasetSelect,
+    onRestoreConversation
 }: AssistantPanelProps) {
     const [activeTab, setActiveTab] = useState<Tab>('planning');
     const [isHovered, setIsHovered] = useState(false);
@@ -244,7 +247,7 @@ export function AssistantPanel({
     const [searchQuery, setSearchQuery] = useState('');
 
     // Computed Interaction State
-    const isExpanded = isOpen || isHovered || isDragging; // Keep expanded while dragging
+    const isExpanded = isOpen || isDragging; // Removed isHovered constraint
 
     useEffect(() => {
         loadDatasets();
@@ -324,6 +327,25 @@ export function AssistantPanel({
         }
     };
 
+    // Filter Insights by Active Dataset (Context Aware)
+    // If datasetId is active, only show insights from that dataset.
+    // If no dataset active, show all? Or show grouped?
+    const visibleInsights = useMemo(() => {
+        let filtered = pinnedInsights;
+
+        if (datasetId) {
+            filtered = pinnedInsights.filter(p => {
+                const notebook = p.notebooks as any;
+                return notebook?.dataset_id === datasetId;
+            });
+        }
+
+        // Sort by created_at descending (newest first)
+        return filtered.sort((a, b) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+    }, [pinnedInsights, datasetId]);
+
     // Filtered Datasets List
     const visibleDatasets = useMemo(() => {
         if (!searchQuery) return datasets;
@@ -347,24 +369,29 @@ export function AssistantPanel({
 
             {currentThoughtProcess.length > 0 ? (
                 <div className="relative border-l-2 border-purple-200 dark:border-purple-900 ml-3 space-y-8 pb-4">
-                    {currentThoughtProcess.map((step, idx) => (
-                        <div key={idx} className="relative pl-6 group">
-                            <span className={cn(
-                                "absolute -left-[9px] top-0 w-4 h-4 rounded-full border-2 transition-colors duration-300",
-                                idx === currentThoughtProcess.length - 1
-                                    ? "bg-purple-500 border-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.5)]"
-                                    : "bg-background border-purple-300 dark:border-purple-700"
-                            )} />
-                            <div className="flex flex-col gap-1">
-                                <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">
-                                    Step {idx + 1}
-                                </span>
-                                <p className="text-sm text-foreground/90 leading-relaxed font-medium">
-                                    {step}
-                                </p>
+                    {currentThoughtProcess.map((step, idx) => {
+                        const content = typeof step === 'string' ? step : step.content;
+                        const section = typeof step === 'string' ? null : step.section;
+
+                        return (
+                            <div key={idx} className="relative pl-6 group">
+                                <span className={cn(
+                                    "absolute -left-[9px] top-0 w-4 h-4 rounded-full border-2 transition-colors duration-300",
+                                    idx === currentThoughtProcess.length - 1
+                                        ? "bg-purple-500 border-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.5)]"
+                                        : "bg-background border-purple-300 dark:border-purple-700"
+                                )} />
+                                <div className="flex flex-col gap-1">
+                                    <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">
+                                        Step {idx + 1} {section && `• ${section}`}
+                                    </span>
+                                    <p className="text-sm text-foreground/90 leading-relaxed font-medium">
+                                        {content}
+                                    </p>
+                                </div>
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             ) : (
                 <div className="text-center py-10 text-muted-foreground px-4">
@@ -398,7 +425,7 @@ export function AssistantPanel({
             </div>
 
             <ScrollArea className="h-[calc(100vh-280px)] pr-2">
-                <Accordion type="single" collapsible className="w-full">
+                <Accordion type="single" collapsible className="w-full" defaultValue={datasetId}>
                     {visibleDatasets.map((dataset) => (
                         <AccordionItem key={dataset.id} value={dataset.id} className="border-b-0 mb-2">
                             <Card className="border shadow-sm overflow-hidden">
@@ -411,11 +438,29 @@ export function AssistantPanel({
                                             <div className="text-left flex-1 overflow-hidden">
                                                 <div className="flex items-center justify-between">
                                                     <p className="font-medium text-sm leading-none mb-1 truncate" title={dataset.name}>{dataset.name}</p>
-                                                    {dataset.id === datasetId && (
-                                                        <Badge variant="secondary" className="text-[9px] h-4 ml-1 px-1 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 shrink-0">
-                                                            Active
-                                                        </Badge>
-                                                    )}
+                                                    <div className="flex items-center gap-1">
+                                                        {onRestoreConversation && (
+                                                            <div
+                                                                role="button"
+                                                                tabIndex={0}
+                                                                className="group/resume flex items-center gap-1.5 px-2 py-1 rounded-full bg-red-50 hover:bg-red-100 text-red-600 border border-red-200/50 transition-all cursor-pointer mr-2"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    onRestoreConversation(dataset.id);
+                                                                }}
+                                                            >
+                                                                <MessageCircle className="w-3.5 h-3.5 animate-pulse" />
+                                                                <span className="text-[10px] font-medium max-w-0 overflow-hidden group-hover/resume:max-w-[100px] transition-[max-width] duration-300 ease-in-out whitespace-nowrap">
+                                                                    Resume Chat
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                        {dataset.id === datasetId && (
+                                                            <Badge variant="secondary" className="text-[9px] h-4 px-1 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 shrink-0">
+                                                                Active
+                                                            </Badge>
+                                                        )}
+                                                    </div>
                                                 </div>
                                                 <p className="text-[10px] text-muted-foreground truncate">
                                                     {dataset.row_count?.toLocaleString()} rows • {dataset.dataset_columns?.length} cols
@@ -449,11 +494,13 @@ export function AssistantPanel({
         <div className="space-y-4 animate-in slide-in-from-right-4 duration-300">
             <div className="flex items-center gap-2 mb-4">
                 <Lightbulb className="w-5 h-5 text-amber-500" />
-                <h3 className="font-semibold text-lg">Pinned Insights</h3>
+                <h3 className="font-semibold text-lg">
+                    {datasetId ? 'Context Insights' : 'Pinned Insights'}
+                </h3>
             </div>
 
             <div className="space-y-3">
-                {pinnedInsights.map((insight) => (
+                {visibleInsights.map((insight) => (
                     <div
                         key={insight.id}
                         className={cn(
@@ -479,7 +526,7 @@ export function AssistantPanel({
                                 </div>
                                 <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
                                     <Clock className="w-3 h-3" />
-                                    <span>{new Date(insight.created_at).toLocaleDateString()}</span>
+                                    <span>{new Date(insight.created_at).toLocaleString()}</span>
                                 </div>
                             </div>
 
@@ -506,7 +553,12 @@ export function AssistantPanel({
                                         </div>
                                     )}
 
-                                    <Button size="sm" variant="secondary" className="w-full mt-3 text-xs h-7">
+                                    <Button
+                                        size="sm"
+                                        variant="secondary"
+                                        className="w-full mt-3 text-xs h-7"
+                                        onClick={() => onRestoreConversation?.(insight.dataset_id || datasetId || '')}
+                                    >
                                         Open in Notebook <ArrowRight className="w-3 h-3 ml-1" />
                                     </Button>
                                 </div>
@@ -515,10 +567,14 @@ export function AssistantPanel({
                     </div>
                 ))}
 
-                {pinnedInsights.length === 0 && (
+                {visibleInsights.length === 0 && (
                     <div className="text-center py-10 px-4 border-2 border-dashed rounded-xl">
                         <Pin className="w-8 h-8 mx-auto mb-2 text-muted-foreground/30" />
-                        <p className="text-sm text-muted-foreground">Pin interesting insights from the chat to save them here.</p>
+                        <p className="text-sm text-muted-foreground">
+                            {datasetId
+                                ? "No specific insights found for this dataset."
+                                : "Pin interesting insights from the chat to save them here."}
+                        </p>
                     </div>
                 )}
             </div>
@@ -535,8 +591,8 @@ export function AssistantPanel({
                 !isExpanded && "w-14 items-center"
             )}
             style={{ width: isExpanded ? width : undefined }}
-            onMouseEnter={() => !isDragging && setIsHovered(true)}
-            onMouseLeave={() => !isDragging && setIsHovered(false)}
+            onMouseEnter={() => { }} // Disabled hover expansion
+            onMouseLeave={() => { }}
         >
             {/* Resize Handle - Only visible when expanded */}
             {isExpanded && (
@@ -553,14 +609,18 @@ export function AssistantPanel({
                 "flex flex-col gap-4 py-4 shrink-0 transition-opacity",
                 isExpanded ? "hidden" : "flex w-full items-center"
             )}>
-                <Button variant={activeTab === 'planning' ? 'default' : 'ghost'} size="icon" className="h-9 w-9 rounded-full" onClick={() => { setActiveTab('planning'); setIsHovered(true); }}>
+                <Button variant={activeTab === 'planning' ? 'default' : 'ghost'} size="icon" className="h-9 w-9 rounded-full" onClick={() => { setActiveTab('planning'); if (!isOpen) onToggle(); }}>
                     <Brain className="h-4 w-4" />
                 </Button>
-                <Button variant={activeTab === 'data' ? 'default' : 'ghost'} size="icon" className="h-9 w-9 rounded-full" onClick={() => { setActiveTab('data'); setIsHovered(true); }}>
+                <Button variant={activeTab === 'data' ? 'default' : 'ghost'} size="icon" className="h-9 w-9 rounded-full" onClick={() => { setActiveTab('data'); if (!isOpen) onToggle(); }}>
                     <Database className="h-4 w-4" />
                 </Button>
-                <Button variant={activeTab === 'insights' ? 'default' : 'ghost'} size="icon" className="h-9 w-9 rounded-full" onClick={() => { setActiveTab('insights'); setIsHovered(true); }}>
+                <Button variant={activeTab === 'insights' ? 'default' : 'ghost'} size="icon" className="h-9 w-9 rounded-full" onClick={() => { setActiveTab('insights'); if (!isOpen) onToggle(); }}>
                     <Lightbulb className="h-4 w-4" />
+                </Button>
+                <div className="flex-1" />
+                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full" onClick={onToggle}>
+                    <ChevronLeft className="h-4 w-4" />
                 </Button>
             </div>
 
