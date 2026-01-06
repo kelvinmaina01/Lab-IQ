@@ -456,32 +456,34 @@ class ChatRequest(BaseModel):
     datasetId: Optional[str] = None
     mode: str = "analysis"
 
-@app.post("/api/ml/chat")
-async def chat_interaction(request: ChatRequest):
+@app.post("/api/agent/run")
+async def run_agent_endpoint(request: ChatRequest):
     """
-    Handle chat interactions using ContentAgent
+    Run the LangGraph Expert Agent
     """
     try:
-        from agents.content_agent import ContentAgent
+        from agent_graph import run_agent
         
-        agent = ContentAgent()
+        # Extract user message
+        user_msg = request.messages[-1].get('content', '') if request.messages else ""
         
-        # In a real scenario, we would fetch dataset metadata/sample here using datasetId
-        # For now, we'll pass the ID to the context
-        context = {"dataset_id": request.datasetId}
+        # Run agent
+        response_text = await run_agent(user_msg, dataset_context=f"Dataset ID: {request.datasetId}")
         
-        # If datasetId is provided, we could fetch a snippet.
-        # Check if we have active orchestrators or cached data for this dataset
-        if request.datasetId and request.datasetId in active_orchestrators:
-             # Basic context from orchestration
-             context["dataset_context"] = "Pipeline is running/active for this dataset."
-             
-        result = await agent.generate_chat_response(request.messages, context)
-        return result
-        
+        return {
+            "sections": [
+                {"type": "paragraph", "content": response_text}
+            ]
+        }
     except Exception as e:
-        logger.error(f"Chat failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Agent run failed: {e}")
+        # Fallback to simple response if graph fails (e.g. key error)
+        return {
+             "sections": [
+                {"type": "paragraph", "content": f"Agent Error: {str(e)}. Please check API Keys."}
+            ]
+        }
+
 
 if __name__ == "__main__":
     import uvicorn

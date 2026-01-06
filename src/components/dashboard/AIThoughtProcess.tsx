@@ -7,10 +7,12 @@
  */
 
 import React, { useState } from 'react';
-import { ChevronDown, ChevronUp, Settings2, AlertTriangle, Code2, Lightbulb, Copy, RefreshCcw, Pencil, Check } from 'lucide-react';
+import { ChevronDown, ChevronUp, Settings2, AlertTriangle, Code2, Lightbulb, Copy, RefreshCcw, Pencil, Check, Activity } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Highlight, themes } from "prism-react-renderer";
 import { Button } from "@/components/ui/button";
+import { CodeSandboxStatus } from '@/components/assistant/CodeSandboxStatus';
+
 
 interface CollapsibleSectionProps {
     title: string;
@@ -142,108 +144,103 @@ export function CodeExplanation({
     };
 
     return (
-        <div className="border rounded-xl overflow-hidden bg-card shadow-sm mb-4">
-            {/* Pro Header */}
-            <div className="flex items-center justify-between px-4 py-2.5 bg-muted/40 border-b">
-                <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                        {/* Language Icon (Generic for now, or text based) */}
-                        <Code2 className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                    </div>
-                    <div>
-                        <div className="text-sm font-semibold text-foreground flex items-center gap-2">
-                            {title || 'Analysis Code'}
-                            <span className="px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
-                                {language}
+        <div className="mb-4 group">
+            <CodeSandboxStatus />
+
+            <div className="border border-[#2b2b2b] rounded-xl overflow-hidden bg-[#1e1e1e] shadow-lg">
+                {/* VS Code Style Header */}
+                <div className="flex items-center justify-between px-4 py-2 bg-[#252526] border-b border-[#1e1e1e]">
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
+                            {/* VS Code Python Icon color */}
+                            <Code2 className="h-4 w-4 text-[#3776ab]" />
+                            <span className="text-sm font-medium text-[#cccccc] font-mono">
+                                {title || 'script.py'}
                             </span>
                         </div>
+                        <span className="px-1.5 py-0.5 rounded text-[10px] bg-[#37373d] text-[#cccccc] boarder border-[#454545] font-mono">
+                            {language}
+                        </span>
                     </div>
-                </div>
 
-                <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" title="Regenerate Code">
-                        <RefreshCcw className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" title="Edit Code">
-                        <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                    <div className="w-px h-4 bg-border mx-1" />
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
-                        onClick={handleCopy}
-                    >
-                        {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
-                        {copied ? 'Copied' : 'Copy Code'}
-                    </Button>
-                </div>
-            </div>
-
-            {/* Code Block */}
-            {code && (
-                <div className="relative group">
-                    <div className="text-sm overflow-x-auto bg-[#1e1e1e]">
-                        <Highlight
-                            theme={themes.vsDark}
-                            code={code}
-                            language={language}
-                        >
-                            {({ className, style, tokens, getLineProps, getTokenProps }) => (
-                                <pre style={{ ...style, margin: 0 }} className="p-4 min-w-full font-mono text-[13px] leading-relaxed">
-                                    {tokens.map((line, i) => (
-                                        <div key={i} {...getLineProps({ line })} className="table-row">
-                                            <span className="table-cell select-none text-gray-600 text-right pr-4 w-8 border-r border-gray-800/50 mr-4 block">{i + 1}</span>
-                                            <span className="table-cell pl-4">
-                                                {line.map((token, key) => (
-                                                    <span key={key} {...getTokenProps({ token })} />
-                                                ))}
-                                            </span>
-                                        </div>
-                                    ))}
-                                </pre>
-                            )}
-                        </Highlight>
-                    </div>
-                </div>
-            )}
-
-            {/* Explanation Footer */}
-            <div className="p-5 bg-background border-t border-border/50">
-                <div className="flex items-start gap-3">
-                    <div className="mt-1">
-                        <Lightbulb className="h-4 w-4 text-amber-500" />
-                    </div>
-                    <div className="space-y-3 flex-1">
-                        <div>
-                            <h4 className="font-medium text-sm text-foreground mb-1">Code Explanation</h4>
-                            <p className="text-sm text-muted-foreground leading-relaxed">{explanation}</p>
+                    <div className="flex items-center gap-2">
+                        {/* VS Code Action Buttons */}
+                        <div className="flex items-center bg-[#2d2d2d] rounded-md border border-[#3e3e42] p-0.5">
+                            <Button variant="ghost" size="icon" className="h-6 w-6 text-[#858585] hover:text-white hover:bg-[#3e3e42] rounded-sm" title="Run Code">
+                                <Activity className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-6 w-6 text-[#858585] hover:text-white hover:bg-[#3e3e42] rounded-sm" title="Copy">
+                                <Copy className="h-3.5 w-3.5" onClick={handleCopy} />
+                            </Button>
                         </div>
+                    </div>
+                </div>
 
-                        {steps && steps.length > 0 && (
-                            <div className="pt-2 border-t border-border/40">
-                                <ul className={`space-y-2 text-sm text-muted-foreground ${!showMore && steps.length > 3 ? 'max-h-[80px] overflow-hidden' : ''}`}>
-                                    {steps.map((step, i) => (
-                                        <li key={i} className="flex items-start gap-2.5">
-                                            <span className="h-1.5 w-1.5 rounded-full bg-primary/60 mt-2 shrink-0" />
-                                            <span>{step}</span>
-                                        </li>
-                                    ))}
-                                </ul>
-                                {steps.length > 3 && (
-                                    <button
-                                        onClick={() => setShowMore(!showMore)}
-                                        className="mt-2 text-xs font-medium text-primary hover:underline flex items-center gap-1"
-                                    >
-                                        {showMore ? (
-                                            <>Show Less <ChevronUp className="h-3 w-3" /></>
-                                        ) : (
-                                            <>Show More Steps <ChevronDown className="h-3 w-3" /></>
-                                        )}
-                                    </button>
+                {/* Code Block */}
+                {code && (
+                    <div className="relative group bg-[#1e1e1e] border-l border-r border-[#2b2b2b] pb-2">
+                        <div className="text-sm overflow-x-auto">
+                            <Highlight
+                                theme={themes.vsDark}
+                                code={code}
+                                language={language}
+                            >
+                                {({ className, style, tokens, getLineProps, getTokenProps }) => (
+                                    <pre style={{ ...style, margin: 0, backgroundColor: '#1e1e1e', color: '#e1e1e1' }} className="p-4 min-w-full font-mono text-[13px] leading-relaxed">
+                                        {tokens.map((line, i) => (
+                                            <div key={i} {...getLineProps({ line })} className="table-row">
+                                                <span className="table-cell select-none text-[#6e7681] text-right pr-4 w-8 mr-4 block border-r border-[#404040]">{i + 1}</span>
+                                                <span className="table-cell pl-4 text-[#e1e1e1]">
+                                                    {line.map((token, key) => (
+                                                        <span key={key} {...getTokenProps({ token })} style={{ color: getTokenProps({ token }).style?.color || '#e1e1e1' }} />
+                                                    ))}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </pre>
                                 )}
+                            </Highlight>
+                        </div>
+                    </div>
+                )}
+
+                {/* Explanation Footer - Dark Mode */}
+                <div className="px-5 py-4 bg-[#1e1e1e] border-t border-[#2b2b2b]">
+                    <div className="flex items-start gap-3">
+                        <div className="mt-1">
+                            <Lightbulb className="h-4 w-4 text-amber-500" />
+                        </div>
+                        <div className="space-y-3 flex-1">
+                            <div>
+                                <h4 className="font-medium text-sm text-[#e1e4e8] mb-1">Code Explanation</h4>
+                                <p className="text-sm text-[#abb2bf] leading-relaxed">{explanation}</p>
                             </div>
-                        )}
+
+                            {steps && steps.length > 0 && (
+                                <div className="pt-3 border-t border-[#2b2b2b]">
+                                    <ul className={`space-y-2 text-sm text-[#abb2bf] ${!showMore && steps.length > 3 ? 'max-h-[80px] overflow-hidden' : ''}`}>
+                                        {steps.map((step, i) => (
+                                            <li key={i} className="flex items-start gap-2.5">
+                                                <span className="h-1.5 w-1.5 rounded-full bg-blue-500/60 mt-2 shrink-0" />
+                                                <span>{step}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                    {steps.length > 3 && (
+                                        <button
+                                            onClick={() => setShowMore(!showMore)}
+                                            className="mt-2 text-xs font-medium text-blue-400 hover:text-blue-300 flex items-center gap-1 transition-colors"
+                                        >
+                                            {showMore ? (
+                                                <>Show Less <ChevronUp className="h-3 w-3" /></>
+                                            ) : (
+                                                <>Show More Steps <ChevronDown className="h-3 w-3" /></>
+                                            )}
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>

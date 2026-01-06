@@ -1,71 +1,143 @@
+
 /**
  * Metric Cell Renderer
- * Displays KPIs and quantitative values
+ * Displays KPIs in cards matching the user's "Glass Box" / Dashboard design
+ * Styling: Title Top-Left, Value Bottom-Left (Big), Icon Top-Right (Arrow)
  */
 
-import React from 'react';
-import { NotebookCell, MetricCellContent } from '@/lib/types/notebook';
-import { Card } from '@/components/ui/card';
-import { TrendingUp } from 'lucide-react';
+import React, { useState } from 'react';
+import { NotebookCell, MetricCellContent, Metric } from '@/lib/types/notebook';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Pin, Info, ArrowUpRight, ArrowDownRight, Minus } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { PinToDashboardDialog } from '../PinToDashboardDialog';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface MetricCellProps {
     cell: NotebookCell;
     isHighlighted?: boolean;
+    userId: string;
+    notebookId: string;
 }
 
 export const MetricCell = React.forwardRef<HTMLDivElement, MetricCellProps>(
-    ({ cell, isHighlighted }, ref) => {
+    ({ cell, isHighlighted, userId, notebookId }, ref) => {
         const content = cell.content as MetricCellContent;
-        const emphasis = cell.ui_hints.emphasis;
+        const { toast } = useToast();
+        const [isPinning, setIsPinning] = useState(false);
+        const [showPinDialog, setShowPinDialog] = useState(false);
+
+        // Track which metric is being pinned if we want granular pinning
+        // For now, the implementation supports pinning the *entire cell* (all metrics) as one Insight Unit
+        // But the user's screenshot suggests individual cards might be pinnable? 
+        // "Screenshot 0" shows individual cards on dashboard.
+        // If we pin the cell, we should probably pin ALL data, and the Dashboard can choose how to render it.
+
+        const handlePinConfirm = async (title: string, description: string, dashboardId: string | null, newDashboardName?: string) => {
+            if (!content.pin_metadata) return;
+            setIsPinning(true);
+            try {
+                // In a real app, we'd handle 'dashboardId' or create 'newDashboardName' logic here or in backend
+                // For MVP, we insert into standard pinned_insights table
+
+                const { error } = await supabase.from('pinned_insights').insert({
+                    user_id: userId,
+                    notebook_id: notebookId,
+                    cell_id: cell.cell_id,
+                    title: title,
+                    description: description,
+                    insight_data: content,
+                    tags: content.pin_metadata.pin_tags
+                });
+
+                if (error) throw error;
+                toast({ title: 'Metrics Pinned', description: `Added to ${newDashboardName || 'Dashboard'}` });
+            } catch (error) {
+                toast({ title: 'Pin Failed', description: 'Could not pin metrics', variant: 'destructive' });
+            } finally {
+                setIsPinning(false);
+            }
+        };
 
         return (
-            <Card
-                ref={ref}
-                className={cn(
-                    'p-6 border-l-4 border-l-green-500',
-                    emphasis === 'highlighted' && 'bg-green-50/30 dark:bg-green-950/10',
-                    emphasis === 'critical' && 'bg-green-50/50 dark:bg-green-950/20 ring-1 ring-green-500/20',
-                    isHighlighted && 'ring-2 ring-green-500'
-                )}
-            >
-                <div className="flex items-start gap-3">
-                    <TrendingUp className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
-                    <div className="flex-1">
-                        <h3 className="font-semibold text-lg mb-4">{cell.title}</h3>
+            <div ref={ref} className={cn("space-y-4", isHighlighted && "ring-2 ring-primary ring-offset-2 rounded-lg p-2")}>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {content.metrics.map((metric, idx) => (
-                                <div
-                                    key={idx}
-                                    className="p-4 rounded-lg bg-background border"
-                                >
-                                    <div className="text-xs text-muted-foreground mb-1">
-                                        {metric.label}
-                                    </div>
-                                    <div className="flex items-baseline gap-2">
-                                        <div className="text-2xl font-bold text-foreground">
-                                            {typeof metric.value === 'number'
-                                                ? metric.value.toLocaleString()
-                                                : metric.value}
-                                        </div>
-                                        {metric.unit && (
-                                            <div className="text-sm text-muted-foreground">{metric.unit}</div>
-                                        )}
-                                    </div>
-                                    {metric.interpretation && (
-                                        <div className="text-xs text-muted-foreground mt-2">
-                                            {metric.interpretation}
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
+                <div className="flex items-center justify-between">
+                    {/* Header Hidden/Minimal for clean look as per request, just showing cards primarily? 
+                        Actually user screenshot shows "Average file... 4.1" as card.
+                        We need a container header to allow Pinning the group.
+                     */}
+                    {/* We can put the Pin button on the container for now */}
+                    <div className="flex w-full justify-end mb-2">
+                        {content.pin_metadata?.pin_eligible && (
+                            <Button variant="ghost" size="sm" onClick={() => setShowPinDialog(true)} className="h-8 gap-2 text-muted-foreground hover:text-primary">
+                                <Pin className="h-4 w-4" /> Pin All
+                            </Button>
+                        )}
                     </div>
                 </div>
-            </Card>
+
+                {/* Grid of Cards matching Screenshot 0 Style */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {content.metrics.map((metric, idx) => (
+                        <Card
+                            key={idx}
+                            className="bg-card text-card-foreground shadow-sm hover:shadow-md transition-shadow border border-border/60 relative overflow-hidden"
+                        >
+                            <CardContent className="p-5 flex flex-col justify-between h-[140px]">
+                                {/* Top Row: Title + Icon */}
+                                <div className="flex justify-between items-start">
+                                    <span className="text-sm font-medium text-muted-foreground line-clamp-2 leading-tight pr-4">
+                                        {metric.label}
+                                    </span>
+                                    {/* Trend Icon - Mocked based on value or random for style if not provided */}
+                                    <ArrowUpRight className="h-4 w-4 text-muted-foreground/50" />
+                                </div>
+
+                                {/* Bottom Row: Value */}
+                                <div className="mt-auto">
+                                    <span className="text-4xl font-bold tracking-tight text-foreground">
+                                        {metric.value}
+                                    </span>
+                                </div>
+
+                                {/* Context/Interpretation Tooltip */}
+                                {metric.interpretation && (
+                                    <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <TooltipProvider>
+                                            <Tooltip>
+                                                <TooltipTrigger>
+                                                    <Info className="h-4 w-4 text-muted-foreground" />
+                                                </TooltipTrigger>
+                                                <TooltipContent className="max-w-xs text-xs">
+                                                    {metric.interpretation}
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        </TooltipProvider>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+
+                <PinToDashboardDialog
+                    open={showPinDialog}
+                    onOpenChange={setShowPinDialog}
+                    defaultTitle={content.pin_metadata?.suggested_title}
+                    defaultDescription={content.pin_metadata?.suggested_description}
+                    onConfirm={handlePinConfirm}
+                    isPinning={isPinning}
+                />
+            </div>
         );
     }
 );
-
-MetricCell.displayName = 'MetricCell';

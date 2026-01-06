@@ -34,7 +34,6 @@ interface NotebookHistoryItem {
 interface NotebookHistorySidebarProps {
     datasetId: string;
     currentNotebookId?: string;
-    currentMode: 'chat' | 'notebook';
     onSelectNotebook: (notebookId: string) => void;
     onNewAnalysis: () => void;
 }
@@ -42,7 +41,6 @@ interface NotebookHistorySidebarProps {
 export const NotebookHistorySidebar: React.FC<NotebookHistorySidebarProps> = ({
     datasetId,
     currentNotebookId,
-    currentMode,
     onSelectNotebook,
     onNewAnalysis
 }) => {

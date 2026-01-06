@@ -14,6 +14,7 @@ import {
     CollapsibleContent,
     CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import { ThoughtProcessCard } from '@/components/notebook/ThoughtProcessCard';
 
 interface ReasoningCellProps {
     cell: NotebookCell;
@@ -53,6 +54,13 @@ export const ReasoningCell = React.forwardRef<HTMLDivElement, ReasoningCellProps
                             </div>
 
                             <CollapsibleContent className="mt-4 space-y-4">
+                                {/* Thought Process (New) */}
+                                {content.thought_process && content.thought_process.length > 0 && (
+                                    <div className="mb-6">
+                                        <ThoughtProcessCard steps={content.thought_process} />
+                                    </div>
+                                )}
+
                                 {/* Methodology */}
                                 <div>
                                     <Badge variant="secondary" className="mb-2">Methodology</Badge>
@@ -62,7 +70,7 @@ export const ReasoningCell = React.forwardRef<HTMLDivElement, ReasoningCellProps
                                 </div>
 
                                 {/* Assumptions */}
-                                {content.assumptions.length > 0 && (
+                                {content.assumptions && content.assumptions.length > 0 && (
                                     <div>
                                         <Badge variant="secondary" className="mb-2">Assumptions</Badge>
                                         <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
@@ -74,7 +82,7 @@ export const ReasoningCell = React.forwardRef<HTMLDivElement, ReasoningCellProps
                                 )}
 
                                 {/* Challenges */}
-                                {content.challenges.length > 0 && (
+                                {content.challenges && content.challenges.length > 0 && (
                                     <div>
                                         <Badge variant="secondary" className="mb-2">Challenges</Badge>
                                         <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
@@ -86,7 +94,7 @@ export const ReasoningCell = React.forwardRef<HTMLDivElement, ReasoningCellProps
                                 )}
 
                                 {/* Observations */}
-                                {content.observations.length > 0 && (
+                                {content.observations && content.observations.length > 0 && (
                                     <div>
                                         <Badge variant="secondary" className="mb-2">Observations</Badge>
                                         <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">

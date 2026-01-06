@@ -102,6 +102,7 @@ import { OverviewGenerationLoading } from "@/components/overview/OverviewGenerat
 import { cn } from "@/lib/utils";
 import { promptBIService, ChartConfig } from "@/lib/services/promptBIService";
 import { ChartRenderer } from "@/components/ai/ChartRenderer";
+import { DrillDownPanel } from "@/components/dashboard/DrillDownPanel";
 
 // =============================================================================
 // CHART COLORS
@@ -744,6 +745,15 @@ export default function Dashboards() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [selectedDatasetFilter, setSelectedDatasetFilter] = useState<string | null>(null);
 
+  // Drill Down State
+  const [drillDownDashboard, setDrillDownDashboard] = useState<PinnedDashboard | null>(null);
+  const [isDrillDownOpen, setIsDrillDownOpen] = useState(false);
+
+  const handleDrillDown = (dashboard: PinnedDashboard) => {
+    setDrillDownDashboard(dashboard);
+    setIsDrillDownOpen(true);
+  };
+
   // AI Analysis State
   const [isAIAnalysisOpen, setIsAIAnalysisOpen] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
@@ -987,20 +997,7 @@ export default function Dashboards() {
     toast.success('Dashboards refreshed');
   };
 
-  const handleDrillDown = (item: PinnedDashboard) => {
-    // Deep link to Notebook for AI insights
-    if (item.source === 'ai_assistant' && item.data.context?.notebookId) {
-      const datasetId = item.data.context.datasetId || 'default';
-      const notebookId = item.data.context.notebookId;
-      const cellId = item.data.context.cellId;
 
-      navigate(`/assistant/${datasetId}?notebookId=${notebookId}${cellId ? `&cellId=${cellId}` : ''}`);
-      return;
-    }
-
-    // Fallback for demo/manual dashboards
-    navigate('/insights', { state: { pinnedInsight: item } });
-  };
 
   const handleCreateDashboard = async () => {
     if (!newDashboard.title.trim()) {
@@ -1593,6 +1590,12 @@ export default function Dashboards() {
           />
         </div>
       )}
+      {/* Drill Down Panel */}
+      <DrillDownPanel
+        isOpen={isDrillDownOpen}
+        onClose={() => setIsDrillDownOpen(false)}
+        dashboardItem={drillDownDashboard}
+      />
     </MainLayout>
   );
 }

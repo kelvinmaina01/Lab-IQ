@@ -50,9 +50,21 @@ export interface DashboardData {
   summary?: string;
   keyPoints?: string[];
   recommendations?: string[];
+  // For drill-down analysis
+  thoughtProcess?: string[]; // Array of strings representing the AI's reasoning steps
   // For custom
   content?: string;
   html?: string;
+  // Context for Drill-Down & AI Memory
+  context?: {
+    messageId?: string;       // Link back to original chat message
+    datasetId?: string;       // The dataset being analyzed
+    datasetName?: string;
+    analysisType?: string;   // e.g., 'correlation', 'distribution', 'outlier'
+    query?: string;          // The user's question that triggered this
+    fullContent?: string;
+    aiSections?: any[];
+  };
 }
 
 export interface PinnedDashboard {

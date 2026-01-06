@@ -1,7 +1,6 @@
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { NotebookView } from "@/components/notebook/NotebookView";
-import { AIAssistantChat } from "@/components/AIAssistantChat";
 import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
@@ -14,15 +13,14 @@ type InsightsMode = 'chat' | 'notebook';
 const Insights = () => {
   const location = useLocation();
   const { user } = useAuth();
-  const [selectedDatasetId, setSelectedDatasetId] = useState<string | null>(null);
 
-  // Get mode from localStorage or default to chat
-  const [insightsMode, setInsightsMode] = useState<InsightsMode>(() => {
-    const saved = localStorage.getItem('insights-mode');
-    return (saved as InsightsMode) || 'chat';
+  // Initialize from localStorage
+  const [selectedDatasetId, setSelectedDatasetId] = useState<string | null>(() => {
+    return localStorage.getItem('last-dataset-id');
   });
 
-  const [aiMode, setAiMode] = useState<'analyst' | 'ml' | 'learn'>('analyst');
+  // Force notebook mode
+  const insightsMode = 'notebook';
 
   useEffect(() => {
     // Check if coming from QuickActions or Dashboard drill-down
@@ -30,23 +28,13 @@ const Insights = () => {
       datasetId?: string;
       notebookId?: string;
       highlightCellId?: string;
-      insightsMode?: InsightsMode;
-    };
+    } | null;
 
     if (state?.datasetId) {
       setSelectedDatasetId(state.datasetId);
-    }
-
-    // Override mode if specified in navigation
-    if (state?.insightsMode) {
-      setInsightsMode(state.insightsMode);
+      localStorage.setItem('last-dataset-id', state.datasetId);
     }
   }, [location.state]);
-
-  const handleModeChange = (mode: InsightsMode) => {
-    setInsightsMode(mode);
-    localStorage.setItem('insights-mode', mode);
-  };
 
   const locationState = location.state as {
     datasetId?: string;
@@ -61,8 +49,9 @@ const Insights = () => {
   const handleDatasetSelect = (id: string | null) => {
     setSelectedDatasetId(id);
     if (id) {
-      // User requested "take me to the chats", so switch to chat mode
-      setInsightsMode('chat');
+      localStorage.setItem('last-dataset-id', id);
+    } else {
+      localStorage.removeItem('last-dataset-id');
     }
   };
 
@@ -70,62 +59,17 @@ const Insights = () => {
     <AuthGuard>
       <MainLayout>
         <main className="h-[calc(100vh-64px)] flex flex-col">
-          {/* Mode Toggle */}
-          <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <div className="max-w-4xl mx-auto px-6 py-3 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Button
-                  variant={insightsMode === 'chat' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => handleModeChange('chat')}
-                  className={cn(
-                    "gap-2",
-                    insightsMode === 'chat' && "bg-primary text-primary-foreground"
-                  )}
-                >
-                  <MessageSquare className="w-4 h-4" />
-                  Chat Mode
-                </Button>
-                <Button
-                  variant={insightsMode === 'notebook' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => handleModeChange('notebook')}
-                  className={cn(
-                    "gap-2",
-                    insightsMode === 'notebook' && "bg-primary text-primary-foreground"
-                  )}
-                >
-                  <BookOpen className="w-4 h-4" />
-                  Notebook Mode
-                </Button>
-              </div>
-
-              <div className="text-xs text-muted-foreground">
-                {insightsMode === 'chat'
-                  ? 'Conversational AI assistant'
-                  : 'Structured analytical notebook'}
-              </div>
-            </div>
-          </div>
-
           <div className="flex-1 overflow-auto" data-tour="insights-feed">
             {!user || !datasetId ? (
-              <div className="p-8 text-center">
-                <p className="text-muted-foreground">
-                  Please select a dataset to begin analysis
+              <div className="p-8 text-center flex flex-col items-center justify-center h-full">
+                <BookOpen className="w-12 h-12 text-muted-foreground mb-4 opacity-20" />
+                <h3 className="text-lg font-semibold text-foreground">No Dataset Selected</h3>
+                <p className="text-muted-foreground max-w-sm mt-2">
+                  Please select a dataset to begin your analysis. The AI analyst is ready to help.
                 </p>
               </div>
-            ) : insightsMode === 'chat' ? (
-              // Original Chat Interface
-              <AIAssistantChat
-                mode={aiMode}
-                onModeChange={setAiMode}
-                onImmersiveChange={() => { }}
-                initialDatasetId={datasetId}
-                onDatasetChange={handleDatasetSelect}
-              />
             ) : (
-              // New Notebook Interface
+              // Notebook Interface Only
               <NotebookView
                 datasetId={datasetId}
                 notebookId={notebookId}

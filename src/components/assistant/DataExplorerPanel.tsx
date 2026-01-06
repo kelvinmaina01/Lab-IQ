@@ -3,87 +3,89 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
     Database,
     Search,
     Table2,
-    ArrowRight,
+    FileText,
     ChevronRight,
-    ChevronLeft
+    Lightbulb,
+    Target
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 
 interface DataExplorerPanelProps {
-    datasetId: string | null;
+    datasetId?: string | null;
     className?: string;
     onClose?: () => void;
+    onDatasetSelect?: (datasetId: string) => void;
 }
 
-export function DataExplorerPanel({ datasetId, className, onClose }: DataExplorerPanelProps) {
-    const [dataset, setDataset] = useState<any>(null);
-    const [columns, setColumns] = useState<any[]>([]);
+export function DataExplorerPanel({ datasetId, className, onClose, onDatasetSelect }: DataExplorerPanelProps) {
+    const [datasets, setDatasets] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const [activeTab, setActiveTab] = useState('data');
 
     useEffect(() => {
-        if (datasetId) {
-            loadDataset();
-        }
-    }, [datasetId]);
+        loadAllDatasets();
+    }, []);
 
-    const loadDataset = async () => {
-        if (!datasetId) return;
+    const loadAllDatasets = async () => {
         setLoading(true);
         try {
-            // Load dataset info
-            const { data: datasetData } = await supabase
+            const { data, error } = await supabase
                 .from('datasets')
-                .select('*')
-                .eq('id', datasetId)
-                .single();
+                .select('id, name, row_count, column_count')
+                .order('created_at', { ascending: false });
 
-            if (datasetData) setDataset(datasetData);
-
-            // Load columns
-            const { data: colsData } = await supabase
-                .from('dataset_columns')
-                .select('*')
-                .eq('dataset_id', datasetId);
-
-            if (colsData) setColumns(colsData);
+            if (error) throw error;
+            if (data) setDatasets(data);
         } catch (error) {
-            console.error('Error loading dataset:', error);
+            console.error('Error loading datasets:', error);
         } finally {
             setLoading(false);
         }
     };
 
-    const filteredColumns = columns.filter(col =>
-        col.name.toLowerCase().includes(searchTerm.toLowerCase())
+    const filteredDatasets = datasets.filter(ds =>
+        ds.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
-
-    if (!datasetId) return null;
 
     return (
         <div className={cn("flex flex-col h-full border-l bg-background w-80", className)}>
-            <div className="p-4 border-b flex items-center justify-between">
-                <div className="flex items-center gap-2 font-semibold">
-                    <Database className="w-4 h-4" />
-                    Data Explorer
-                </div>
-                {onClose && (
-                    <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
-                        <ChevronRight className="w-4 h-4" />
-                    </Button>
-                )}
+            {/* Header with Tabs */}
+            <div className="p-4 border-b">
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                    <TabsList className="grid w-full grid-cols-3">
+                        <TabsTrigger value="planning" className="text-xs">
+                            <Target className="w-3 h-3 mr-1" />
+                            Planning
+                        </TabsTrigger>
+                        <TabsTrigger value="data" className="text-xs">
+                            <Database className="w-3 h-3 mr-1" />
+                            Data
+                        </TabsTrigger>
+                        <TabsTrigger value="insights" className="text-xs">
+                            <Lightbulb className="w-3 h-3 mr-1" />
+                            Insights
+                        </TabsTrigger>
+                    </TabsList>
+                </Tabs>
             </div>
 
+            {/* Active Data Section */}
             <div className="p-4 border-b">
+                <div className="flex items-center gap-2 mb-3">
+                    <Database className="w-4 h-4 text-primary" />
+                    <h3 className="font-semibold">Active Data</h3>
+                </div>
                 <div className="relative">
                     <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
-                        placeholder="Search columns..."
+                        placeholder="Search columns, files..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="pl-8"
@@ -91,37 +93,49 @@ export function DataExplorerPanel({ datasetId, className, onClose }: DataExplore
                 </div>
             </div>
 
+            {/* Dataset List */}
             <ScrollArea className="flex-1 p-4">
                 {loading ? (
                     <div className="text-center py-4 text-muted-foreground text-sm">Loading data...</div>
                 ) : (
-                    <div className="space-y-4">
-                        {dataset && (
-                            <div className="mb-4">
-                                <h3 className="font-medium text-sm mb-1">{dataset.name}</h3>
-                                <p className="text-xs text-muted-foreground">{dataset.row_count?.toLocaleString()} rows</p>
+                    <div className="space-y-2">
+                        {filteredDatasets.map((ds) => (
+                            <button
+                                key={ds.id}
+                                onClick={() => onDatasetSelect?.(ds.id)}
+                                className={cn(
+                                    "w-full p-3 rounded-lg border text-left transition-all hover:bg-muted/50",
+                                    datasetId === ds.id ? "bg-muted border-primary" : "bg-card/50"
+                                )}
+                            >
+                                <div className="flex items-start gap-3">
+                                    <FileText className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                                    <div className="flex-1 min-w-0">
+                                        <div className="font-medium text-sm truncate">{ds.name}</div>
+                                        <div className="text-xs text-muted-foreground mt-0.5">
+                                            {ds.row_count?.toLocaleString() || 0} rows • {ds.column_count || 0} cols
+                                        </div>
+                                    </div>
+                                </div>
+                            </button>
+                        ))}
+                        {filteredDatasets.length === 0 && !loading && (
+                            <div className="text-center py-8 text-muted-foreground text-sm">
+                                No datasets found
                             </div>
                         )}
-
-                        <div className="space-y-2">
-                            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Columns ({filteredColumns.length})</h4>
-                            {filteredColumns.map((col) => (
-                                <div key={col.id} className="p-2 border rounded-md bg-card/50 hover:bg-muted/50 transition-colors text-sm group">
-                                    <div className="flex items-center justify-between mb-1">
-                                        <span className="font-medium">{col.name}</span>
-                                        <Badge variant="secondary" className="text-[10px] h-5">{col.data_type}</Badge>
-                                    </div>
-                                    {col.sample_values && (
-                                        <div className="text-xs text-muted-foreground truncate">
-                                            Sample: {Array.isArray(col.sample_values) ? col.sample_values.join(', ') : col.sample_values}
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
                     </div>
                 )}
             </ScrollArea>
+
+            {onClose && (
+                <div className="p-2 border-t">
+                    <Button variant="ghost" size="sm" onClick={onClose} className="w-full">
+                        <ChevronRight className="w-4 h-4 mr-2" />
+                        Close Panel
+                    </Button>
+                </div>
+            )}
         </div>
     );
 }

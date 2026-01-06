@@ -10,6 +10,10 @@ import asyncio
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 from contextlib import asynccontextmanager
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
@@ -17,6 +21,9 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 import pandas as pd
 import numpy as np
+
+# Import LangGraph Agents
+# from .agent import run_notebook_generation
 
 # Configure logging
 logging.basicConfig(
@@ -56,11 +63,7 @@ class InsightsRequest(BaseModel):
     data: List[Dict[str, Any]]
     columns: Optional[List[Dict[str, Any]]] = None
 
-class ChatRequest(BaseModel):
-    """Request for chat interaction"""
-    messages: List[Dict[str, Any]]
-    datasetId: Optional[str] = None
-    mode: str = "analysis"
+
 
 class GenerateDescriptionRequest(BaseModel):
     """Request for generating report descriptions"""
@@ -747,7 +750,7 @@ async def generate_ai_content(prompt: str, system_instruction: str = "") -> Dict
     # FALLBACK: Try Gemini if Groq fails
     if GEMINI_API_KEY:
         try:
-            api_url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
+            api_url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-001:generateContent"
             full_prompt = f"{system_instruction}\n\n{prompt}" if system_instruction else prompt
 
             payload = {
@@ -796,10 +799,10 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS configuration
+# Configure CORS for WebSocket and API
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure appropriately for production
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -960,40 +963,7 @@ async def generate_description(request: GenerateDescriptionRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/api/ml/chat")
-async def chat_interaction(request: ChatRequest):
-    """Handle chat interactions with AI"""
-    try:
-        # Build conversation context
-        conversation = "\n".join([
-            f"{'User' if m.get('role') == 'user' else 'Assistant'}: {m.get('content', '')}"
-            for m in request.messages
-        ])
-
-        system_prompt = """You are Lab-IQ's AI Data Assistant, specializing in biotech and health research.
-        You help scientists analyze data, understand patterns, and make data-driven decisions.
-        Be concise, accurate, and scientifically rigorous in your responses."""
-
-        if request.datasetId:
-            system_prompt += f"\n\nContext: The user is working with dataset ID: {request.datasetId}"
-
-        result = await generate_ai_content(
-            f"Continue this conversation:\n{conversation}\n\nAssistant:",
-            system_prompt
-        )
-
-        if result["success"]:
-            return {
-                "sections": [
-                    {"type": "paragraph", "content": result["text"]}
-                ]
-            }
-        else:
-            return {
-                "sections": [
-                    {"type": "paragraph", "content": "I'm having trouble generating a response. Please try again."}
-                ]
-            }
+# Legacy chat endpoint removed
 
     except Exception as e:
         logger.error(f"Chat failed: {e}")
@@ -1088,6 +1058,92 @@ async def websocket_automl(websocket: WebSocket, dataset_id: str):
             pass
 
 
+from pydantic import BaseModel
+
+class GenerateNotebookRequest(BaseModel):
+    user_prompt: str
+    dataset_context: dict
+
+from .agent import stream_notebook_generation
+
+@app.websocket("/ws/generate-notebook")
+async def websocket_generate_notebook(websocket: WebSocket):
+    """
+    Real-time Streaming Notebook Generation
+    Protocol:
+    1. Client sends JSON: { "user_prompt": "...", "dataset_context": {...}, "data_rows": [...] }
+    2. Server streams JSON events:
+       - { "type": "thought", "content": "..." }
+       - { "type": "code", "content": "..." }
+       - { "type": "execution", "logs": "..." }
+       - { "type": "complete", "payload": NotebookJSON }
+       - { "type": "error", "error": "..." }
+    """
+    await websocket.accept()
+    
+    try:
+        # Receive Initial Request
+        data = await websocket.receive_json()
+        user_prompt = data.get("user_prompt")
+        dataset_context = data.get("dataset_context", {})
+        data_rows = data.get("data_rows", [])
+        
+        if not user_prompt:
+            await websocket.send_json({"type": "error", "error": "Missing user_prompt"})
+            return
+
+        logger.info(f"Starting Streaming Notebook Generation for: {user_prompt[:50]}")
+
+        # Stream Events from Agent
+        async for event in stream_notebook_generation(user_prompt, dataset_context, data_rows):
+            await websocket.send_json(event)
+            
+    except WebSocketDisconnect:
+        logger.info("Client disconnected from notebook stream")
+    except Exception as e:
+        logger.error(f"Streaming failed: {e}")
+        try:
+            await websocket.send_json({"type": "error", "error": str(e)})
+        except:
+            pass
+
+@app.post("/api/v1/generate-notebook")
+async def generate_notebook_endpoint(request: Dict[str, Any]):
+    """
+    Legacy/Sync Endpoint - Wraps the streaming agent but returns only final result.
+    Useful for non-streaming clients.
+    """
+    try:
+        user_prompt = request.get("user_prompt")
+        dataset_context = request.get("dataset_context", {})
+        data_rows = request.get("data_rows", [])
+        
+        if not user_prompt:
+            raise HTTPException(status_code=400, detail="Missing user_prompt")
+            
+        logger.info(f"Synchronous generation for: {user_prompt[:50]}")
+        
+        final_result = None
+        
+        # Consume the stream until completion
+        async for event in stream_notebook_generation(user_prompt, dataset_context, data_rows):
+            if event["type"] == "complete":
+                final_result = event["payload"]
+            elif event["type"] == "error":
+                raise Exception(event["error"])
+                
+        if not final_result:
+            raise Exception("Agent completed without producing a notebook.")
+            
+        return final_result
+
+    except Exception as e:
+        logger.error(f"Notebook generation failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
+
 # =============================================================================
 # MAIN ENTRY POINT
 # =============================================================================
@@ -1104,9 +1160,9 @@ if __name__ == "__main__":
     print("=" * 70)
 
     uvicorn.run(
-        "app:app",
+        app,
         host="0.0.0.0",
-        port=7860,
+        port=5001,
         reload=False,
         workers=1
     )

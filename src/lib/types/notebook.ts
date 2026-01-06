@@ -77,11 +77,18 @@ export interface PromptCellContent {
 // ----------------------------------------------------------------------------
 // 2. Reasoning Cell (methodology, assumptions, challenges, observations)
 // ----------------------------------------------------------------------------
+export interface ThoughtStep {
+    step_number: number;
+    section: string;
+    content: string;
+}
+
 export interface ReasoningCellContent {
-    methodology: string;
-    assumptions: string[];
-    challenges: string[];
-    observations: string[];
+    thought_process: ThoughtStep[]; // AI's step-by-step thinking
+    methodology?: string;
+    assumptions?: string[];
+    challenges?: string[];
+    observations?: string[];
 }
 
 // ----------------------------------------------------------------------------
@@ -90,6 +97,13 @@ export interface ReasoningCellContent {
 export interface CodeCellContent {
     language: 'python' | 'sql';
     code: string;
+    explanation?: string;
+    display_formats?: {
+        text?: string;
+        table?: TableCellContent;
+        image_url?: string;
+        chart?: VisualizationCellContent;
+    };
 }
 
 // ----------------------------------------------------------------------------
@@ -105,6 +119,7 @@ export interface ExplanationCellContent {
 // ----------------------------------------------------------------------------
 export interface MetricCellContent {
     metrics: Metric[];
+    pin_metadata?: PinMetadata;
 }
 
 export interface Metric {
@@ -122,6 +137,7 @@ export interface VisualizationCellContent {
     config: any; // Recharts configuration object
     description: string; // Plain language explanation
     data_source_cell_ids: string[];
+    pin_metadata?: PinMetadata;
 }
 
 // ----------------------------------------------------------------------------

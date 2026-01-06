@@ -59,6 +59,7 @@ interface DashboardCardProps {
   onDelete: (id: string) => void;
   onExport: (dashboard: PinnedDashboard) => void;
   onClick?: (dashboard: PinnedDashboard) => void;
+  onDrillDown?: (dashboard: PinnedDashboard) => void;
 }
 
 const CHART_COLORS = [
@@ -79,7 +80,9 @@ export const DashboardCard = ({
   onDelete,
   onExport,
   onClick,
-}: DashboardCardProps) => {
+  onDrillDown,
+  className
+}: DashboardCardProps & { className?: string }) => {
   const [isHovered, setIsHovered] = useState(false);
 
   const getSourceIcon = (source: DashboardSource) => {
@@ -309,8 +312,9 @@ export const DashboardCard = ({
 
     return (
       <div className="space-y-3 h-full overflow-hidden">
+        {/* Only show brief summary on the card */}
         {data.summary && (
-          <p className="text-sm text-muted-foreground line-clamp-3">{data.summary}</p>
+          <p className="text-sm text-foreground line-clamp-3">{data.summary}</p>
         )}
         {data.keyPoints && data.keyPoints.length > 0 && (
           <ul className="space-y-1">
@@ -320,13 +324,10 @@ export const DashboardCard = ({
                 <span className="line-clamp-1">{point}</span>
               </li>
             ))}
+            {data.keyPoints.length > 3 && (
+              <li className="text-xs text-muted-foreground pl-3">+ {data.keyPoints.length - 3} more points</li>
+            )}
           </ul>
-        )}
-        {data.recommendations && data.recommendations.length > 0 && (
-          <div className="pt-2 border-t">
-            <p className="text-xs font-medium text-muted-foreground mb-1">Recommendations:</p>
-            <p className="text-xs text-primary line-clamp-2">{data.recommendations[0]}</p>
-          </div>
         )}
       </div>
     );
@@ -400,7 +401,8 @@ export const DashboardCard = ({
         "relative overflow-hidden transition-all duration-200 cursor-pointer group",
         colSpan,
         minHeight,
-        isHovered && "shadow-lg ring-1 ring-primary/20"
+        isHovered && "shadow-lg ring-1 ring-primary/20",
+        className // Allow overriding classes
       )}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -430,49 +432,79 @@ export const DashboardCard = ({
         </div>
 
         {/* Actions dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
+        <div className="flex items-center gap-1">
+          {/* Drill Down Button - Show on hover or always if relevant */}
+          {onDrillDown && (
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-              onClick={(e) => e.stopPropagation()}
+              className={cn(
+                "h-8 w-8 transition-opacity",
+                isHovered ? "opacity-100" : "opacity-0"
+              )}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDrillDown(dashboard);
+              }}
+              title="Drill Down"
             >
-              <MoreVertical className="h-4 w-4" />
+              <ArrowUpRight className="h-4 w-4" />
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-            <DropdownMenuItem onClick={() => onToggleFavorite(dashboard.id)}>
-              {dashboard.is_favorite ? (
+          )}
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+              <DropdownMenuItem onClick={() => onToggleFavorite(dashboard.id)}>
+                {dashboard.is_favorite ? (
+                  <>
+                    <StarOff className="mr-2 h-4 w-4" />
+                    Remove from favorites
+                  </>
+                ) : (
+                  <>
+                    <Star className="mr-2 h-4 w-4" />
+                    Add to favorites
+                  </>
+                )}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onDuplicate(dashboard.id)}>
+                <Copy className="mr-2 h-4 w-4" />
+                Duplicate
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onExport(dashboard)}>
+                <Download className="mr-2 h-4 w-4" />
+                Export JSON
+              </DropdownMenuItem>
+              {onDrillDown && (
                 <>
-                  <StarOff className="mr-2 h-4 w-4" />
-                  Remove from favorites
-                </>
-              ) : (
-                <>
-                  <Star className="mr-2 h-4 w-4" />
-                  Add to favorites
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => onDrillDown(dashboard)}>
+                    <ArrowUpRight className="mr-2 h-4 w-4" />
+                    Drill Down
+                  </DropdownMenuItem>
                 </>
               )}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onDuplicate(dashboard.id)}>
-              <Copy className="mr-2 h-4 w-4" />
-              Duplicate
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onExport(dashboard)}>
-              <Download className="mr-2 h-4 w-4" />
-              Export JSON
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              className="text-destructive"
-              onClick={() => onDelete(dashboard.id)}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive"
+                onClick={() => onDelete(dashboard.id)}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       {/* Content area */}
@@ -485,3 +517,4 @@ export const DashboardCard = ({
     </Card>
   );
 };
+

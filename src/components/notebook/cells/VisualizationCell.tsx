@@ -1,12 +1,18 @@
-/**
- * Visualization Cell Renderer
- * Displays charts using Recharts library
- */
-
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { BarChart3, TrendingUp } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+    BarChart3,
+    TrendingUp,
+    Pin,
+    DownloadCloud,
+    Share2,
+    LineChart as LineChartIcon,
+    PieChart,
+    MoreHorizontal,
+    Maximize2
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { NotebookCell, VisualizationCellContent } from '@/lib/types/notebook';
 import {
@@ -16,240 +22,200 @@ import {
     Bar,
     LineChart,
     Line,
+    AreaChart,
+    Area,
     XAxis,
     YAxis,
     CartesianGrid,
     Tooltip,
     Legend,
-    ResponsiveContainer,
-    Cell
+    ResponsiveContainer
 } from 'recharts';
 
 interface VisualizationCellProps {
     cell: NotebookCell;
     isHighlighted?: boolean;
-    datasetId?: string; // For fetching real data
+    datasetId?: string;
+    onPin?: (cell: NotebookCell) => void;
 }
 
-/**
- * Parse visualization config to extract chart data
- * Supports both pre-computed data and data fetching instructions
- */
 const parseChartData = (config: any, chartType: string): any[] => {
-    // If data is already provided in config
     if (config.data && Array.isArray(config.data)) {
         return config.data;
     }
-
-    // Generate mock data for demo (fallback)
     return generateMockData(chartType);
 };
 
-// Mock data generator for demo purposes (fallback)
 const generateMockData = (chartType: string) => {
-    if (chartType === 'scatter') {
-        return [
-            { bmi: 22, diabetic: 0, nonDiabetic: 12 },
-            { bmi: 25, diabetic: 5, nonDiabetic: 28 },
-            { bmi: 28, diabetic: 15, nonDiabetic: 45 },
-            { bmi: 31, diabetic: 35, nonDiabetic: 38 },
-            { bmi: 34, diabetic: 55, nonDiabetic: 25 },
-            { bmi: 37, diabetic: 72, nonDiabetic: 15 },
-            { bmi: 40, diabetic: 88, nonDiabetic: 8 }
-        ];
-    }
-    return [];
+    // Generic mock data suitable for multiple types
+    return [
+        { name: 'Small', value: 45, count: 120, engagement: 6.91 },
+        { name: 'Medium', value: 68, count: 250, engagement: 7.2 },
+        { name: 'Large', value: 89, count: 180, engagement: 7.68 },
+        { name: 'Unknown', value: 55, count: 80, engagement: 7.68 },
+    ];
 };
 
 export const VisualizationCell = React.forwardRef<HTMLDivElement, VisualizationCellProps>(
-    ({ cell, isHighlighted, datasetId }, ref) => {
+    ({ cell, isHighlighted, datasetId, onPin }, ref) => {
         const content = cell.content as VisualizationCellContent;
-        const chartData = parseChartData(content.config, content.chart_type);
+        // State for interactivity
+        const [activeChartType, setActiveChartType] = useState<string>(content.chart_type || 'bar');
+        const chartData = parseChartData(content.config, activeChartType);
 
         const renderChart = () => {
-            switch (content.chart_type) {
-                case 'scatter':
-                    return (
-                        <ResponsiveContainer width="100%" height={400}>
-                            <ScatterChart margin={{ top: 20, right: 30, bottom: 40, left: 40 }}>
-                                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                                <XAxis
-                                    dataKey="bmi"
-                                    type="number"
-                                    name="BMI"
-                                    label={{ value: 'BMI (kg/m²)', position: 'insideBottom', offset: -10 }}
-                                    className="text-sm"
-                                />
-                                <YAxis
-                                    type="number"
-                                    name="Count"
-                                    label={{ value: 'Patient Count', angle: -90, position: 'insideLeft' }}
-                                    className="text-sm"
-                                />
-                                <Tooltip
-                                    cursor={{ strokeDasharray: '3 3' }}
-                                    contentStyle={{
-                                        backgroundColor: 'hsl(var(--background))',
-                                        border: '1px solid hsl(var(--border))',
-                                        borderRadius: '6px'
-                                    }}
-                                />
-                                <Legend />
-                                <Scatter
-                                    name="Diabetic"
-                                    data={chartData}
-                                    dataKey="diabetic"
-                                    fill="hsl(var(--destructive))"
-                                    opacity={0.8}
-                                />
-                                <Scatter
-                                    name="Non-Diabetic"
-                                    data={chartData}
-                                    dataKey="nonDiabetic"
-                                    fill="hsl(var(--primary))"
-                                    opacity={0.8}
-                                />
-                            </ScatterChart>
-                        </ResponsiveContainer>
-                    );
+            const CommonAxis = () => (
+                <>
+                    <CartesianGrid strokeDasharray="3 3" className="opacity-10 stroke-muted-foreground" vertical={false} />
+                    <XAxis
+                        dataKey="name"
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                        className="mt-4"
+                        dy={10}
+                    />
+                    <YAxis
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                    />
+                    <Tooltip
+                        cursor={{ fill: 'hsl(var(--muted)/0.2)' }}
+                        contentStyle={{
+                            backgroundColor: 'hsl(var(--popover))',
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: '8px',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                        }}
+                        labelStyle={{ color: 'hsl(var(--foreground))', fontWeight: 600, marginBottom: '4px' }}
+                    />
+                    <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
+                </>
+            );
 
-                case 'bar':
-                case 'histogram':
-                    return (
-                        <ResponsiveContainer width="100%" height={400}>
-                            <BarChart data={chartData} margin={{ top: 20, right: 30, bottom: 40, left: 40 }}>
-                                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                                <XAxis
-                                    dataKey={content.chart_type === 'histogram' ? 'bin' : 'bmi'}
-                                    label={{
-                                        value: content.chart_type === 'histogram' ? 'Range' : 'Category',
-                                        position: 'insideBottom',
-                                        offset: -10
-                                    }}
-                                />
-                                <YAxis
-                                    label={{ value: 'Count', angle: -90, position: 'insideLeft' }}
-                                />
-                                <Tooltip
-                                    contentStyle={{
-                                        backgroundColor: 'hsl(var(--background))',
-                                        border: '1px solid hsl(var(--border))',
-                                        borderRadius: '6px'
-                                    }}
-                                />
-                                <Legend />
-                                <Bar
-                                    dataKey={content.chart_type === 'histogram' ? 'count' : 'diabetic'}
-                                    fill="hsl(var(--primary))"
-                                    name={content.chart_type === 'histogram' ? 'Frequency' : 'Diabetic'}
-                                />
-                                {content.chart_type === 'bar' && (
-                                    <Bar dataKey="nonDiabetic" fill="hsl(var(--muted))" name="Non-Diabetic" />
-                                )}
-                            </BarChart>
-                        </ResponsiveContainer>
-                    );
-
+            // Dynamic Chart Rendering
+            switch (activeChartType) {
                 case 'line':
                     return (
-                        <ResponsiveContainer width="100%" height={400}>
-                            <LineChart data={chartData} margin={{ top: 20, right: 30, bottom: 40, left: 40 }}>
-                                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                                <XAxis
-                                    dataKey="bmi"
-                                    label={{ value: 'BMI', position: 'insideBottom', offset: -10 }}
-                                />
-                                <YAxis
-                                    label={{ value: 'Prevalence', angle: -90, position: 'insideLeft' }}
-                                />
-                                <Tooltip
-                                    contentStyle={{
-                                        backgroundColor: 'hsl(var(--background))',
-                                        border: '1px solid hsl(var(--border))',
-                                        borderRadius: '6px'
-                                    }}
-                                />
-                                <Legend />
-                                <Line
-                                    type="monotone"
-                                    dataKey="diabetic"
-                                    stroke="hsl(var(--destructive))"
-                                    strokeWidth={2}
-                                    name="Diabetic"
-                                    dot={{ fill: 'hsl(var(--destructive))' }}
-                                />
-                                <Line
-                                    type="monotone"
-                                    dataKey="nonDiabetic"
-                                    stroke="hsl(var(--primary))"
-                                    strokeWidth={2}
-                                    name="Non-Diabetic"
-                                    dot={{ fill: 'hsl(var(--primary))' }}
-                                />
+                        <ResponsiveContainer width="100%" height={350}>
+                            <LineChart data={chartData} margin={{ top: 20, right: 30, bottom: 20, left: 0 }}>
+                                <CommonAxis />
+                                <Line type="monotone" dataKey="value" stroke="hsl(var(--primary))" strokeWidth={3} dot={{ r: 4, fill: 'hsl(var(--background))', strokeWidth: 2 }} activeDot={{ r: 6 }} name="Metric A" />
+                                <Line type="monotone" dataKey="engagement" stroke="hsl(var(--secondary))" strokeWidth={3} dot={{ r: 4, fill: 'hsl(var(--background))', strokeWidth: 2 }} name="Metric B" />
                             </LineChart>
                         </ResponsiveContainer>
                     );
-
+                case 'area':
+                    return (
+                        <ResponsiveContainer width="100%" height={350}>
+                            <AreaChart data={chartData} margin={{ top: 20, right: 30, bottom: 20, left: 0 }}>
+                                <defs>
+                                    <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                                    </linearGradient>
+                                </defs>
+                                <CommonAxis />
+                                <Area type="monotone" dataKey="value" stroke="hsl(var(--primary))" fillOpacity={1} fill="url(#colorValue)" name="Value" />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    );
+                case 'bar':
                 default:
                     return (
-                        <div className="flex items-center justify-center h-64 text-muted-foreground">
-                            <p>Chart type "{content.chart_type}" not yet implemented</p>
-                        </div>
+                        <ResponsiveContainer width="100%" height={350}>
+                            <BarChart data={chartData} margin={{ top: 20, right: 30, bottom: 20, left: 0 }} barSize={40}>
+                                <CommonAxis />
+                                <Bar dataKey="value" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} name="Value" />
+                                <Bar dataKey="count" fill="hsl(var(--muted))" radius={[4, 4, 0, 0]} name="Count" />
+                            </BarChart>
+                        </ResponsiveContainer>
                     );
             }
         };
 
         return (
-            <div ref={ref}>
-                <Card
-                    className={cn(
-                        'border-l-4 transition-all',
-                        isHighlighted
-                            ? 'border-l-primary bg-primary/5 shadow-lg'
-                            : 'border-l-purple-500 dark:border-l-purple-400'
-                    )}
-                >
-                    <CardHeader className="pb-3">
+            <div ref={ref} className="group">
+                <Card className={cn(
+                    "overflow-hidden border-0 shadow-sm ring-1 ring-border/50 bg-card transition-all duration-300",
+                    isHighlighted && "ring-2 ring-primary shadow-lg"
+                )}>
+                    {/* Header with Controls */}
+                    <CardHeader className="pb-2 border-b bg-muted/30">
                         <div className="flex items-start justify-between gap-4">
-                            <div className="flex items-start gap-3 flex-1">
-                                <div className="p-2 bg-purple-100 dark:bg-purple-950 rounded-lg">
-                                    <BarChart3 className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-primary/10 rounded-lg">
+                                    {activeChartType === 'line' ? <TrendingUp className="w-5 h-5 text-primary" /> : <BarChart3 className="w-5 h-5 text-primary" />}
                                 </div>
-                                <div className="flex-1">
+                                <div>
                                     <div className="flex items-center gap-2 mb-1">
-                                        <Badge variant="outline" className="text-xs font-mono">
+                                        <Badge variant="outline" className="text-[10px] font-mono uppercase tracking-wider bg-background/50">
                                             visualization
                                         </Badge>
-                                        <Badge variant="secondary" className="text-xs capitalize">
-                                            {content.chart_type}
+                                        <Badge variant="secondary" className="text-[10px] uppercase tracking-wider font-bold">
+                                            {activeChartType}
                                         </Badge>
                                     </div>
-                                    <CardTitle className="text-lg">{cell.title}</CardTitle>
+                                    <CardTitle className="text-base font-semibold text-foreground/90">{cell.title}</CardTitle>
                                 </div>
+                            </div>
+
+                            {/* Toolbar */}
+                            <div className="flex items-center gap-1 opacity-100 transition-opacity">
+                                <div className="flex bg-background border rounded-lg p-0.5 mr-2">
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className={cn("h-7 w-7 rounded-sm", activeChartType === 'bar' && "bg-muted shadow-sm")}
+                                        onClick={() => setActiveChartType('bar')}
+                                        title="Bar Chart"
+                                    >
+                                        <BarChart3 className="w-4 h-4" />
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className={cn("h-7 w-7 rounded-sm", activeChartType === 'line' && "bg-muted shadow-sm")}
+                                        onClick={() => setActiveChartType('line')}
+                                        title="Line Chart"
+                                    >
+                                        <LineChartIcon className="w-4 h-4" />
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className={cn("h-7 w-7 rounded-sm", activeChartType === 'area' && "bg-muted shadow-sm")}
+                                        onClick={() => setActiveChartType('area')}
+                                        title="Area Chart"
+                                    >
+                                        <TrendingUp className="w-4 h-4" />
+                                    </Button>
+                                </div>
+
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+                                    <DownloadCloud className="w-4 h-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+                                    <Share2 className="w-4 h-4" />
+                                </Button>
+                                {onPin && (
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => onPin(cell)}>
+                                        <Pin className="w-4 h-4" />
+                                    </Button>
+                                )}
                             </div>
                         </div>
                     </CardHeader>
 
-                    <CardContent className="space-y-4">
-                        {/* Chart Description */}
-                        <p className="text-sm text-muted-foreground leading-relaxed">
+                    <CardContent className="space-y-6 p-6">
+                        <p className="text-sm text-muted-foreground leading-relaxed max-w-4xl">
                             {content.description}
                         </p>
 
-                        {/* Chart Rendering */}
-                        <div className="bg-muted/30 rounded-lg p-4">
+                        <div className="w-full min-h-[350px] animate-in fade-in zoom-in-95 duration-500">
                             {renderChart()}
                         </div>
-
-                        {/* Data Source References */}
-                        {content.data_source_cell_ids && content.data_source_cell_ids.length > 0 && (
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground pt-2 border-t">
-                                <TrendingUp className="w-3 h-3" />
-                                <span>
-                                    Data from: {content.data_source_cell_ids.map(id => `#${id}`).join(', ')}
-                                </span>
-                            </div>
-                        )}
                     </CardContent>
                 </Card>
             </div>
