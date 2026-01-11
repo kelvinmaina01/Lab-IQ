@@ -454,35 +454,89 @@ async def generate_report_endpoint(request: Dict[str, Any]):
 class ChatRequest(BaseModel):
     messages: List[Dict[str, Any]]
     datasetId: Optional[str] = None
+    data: Optional[List[Dict[str, Any]]] = None # New: Accept data directly
     mode: str = "analysis"
 
 @app.post("/api/agent/run")
 async def run_agent_endpoint(request: ChatRequest):
     """
-    Run the LangGraph Expert Agent
+    Run the LangGraph Expert Agent with Generative UI support
     """
+    import pandas as pd
+    import tempfile
+    
+    temp_file_path = None
+    
     try:
         from agent_graph import run_agent
         
         # Extract user message
         user_msg = request.messages[-1].get('content', '') if request.messages else ""
         
-        # Run agent
-        response_text = await run_agent(user_msg, dataset_context=f"Dataset ID: {request.datasetId}")
+        sample_str = "No specific data loaded."
         
-        return {
-            "sections": [
-                {"type": "paragraph", "content": response_text}
-            ]
-        }
+        # Handle Data: If provided, save to temp CSV for the agent to load
+        if request.data and len(request.data) > 0:
+            df = pd.DataFrame(request.data)
+            
+            # Create rich context for the agent
+            import io
+            buffer = io.StringIO()
+            df.info(buf=buffer)
+            info_str = buffer.getvalue()
+            
+            sample_str = (
+                f"Shape: {df.shape}\n"
+                f"Columns: {list(df.columns)}\n\n"
+                f"Data Types & Info:\n{info_str}\n\n"
+                f"First 3 Rows:\n{df.head(3).to_markdown(index=False)}"
+            )
+            
+            # Create temp file
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False, encoding='utf-8') as tmp:
+                df.to_csv(tmp.name, index=False)
+                temp_file_path = tmp.name
+                
+            logger.info(f"Created temp data file: {temp_file_path} with {len(df)} rows")
+        
+        # Run agent
+        # Returns Dict: {"answer": str, "ui_components": List[Dict], "code": str}
+        # We pass the temp_file_path so the agent can load `df`
+        result = await run_agent(
+            user_msg, 
+            dataset_context=f"Dataset ID: {request.datasetId}",
+            file_path=temp_file_path,
+            data_sample=sample_str
+        )
+        
+        return result
+        
     except Exception as e:
         logger.error(f"Agent run failed: {e}")
-        # Fallback to simple response if graph fails (e.g. key error)
+        import traceback
+        traceback.print_exc()
+        # Fallback structured response
         return {
-             "sections": [
-                {"type": "paragraph", "content": f"Agent Error: {str(e)}. Please check API Keys."}
+            "answer": f"Agent Error: {str(e)}. Please check backend logs.",
+            "ui_components": [
+                {
+                    "component": "InsightCard", 
+                    "props": {
+                        "title": "System Error", 
+                        "content": str(e), 
+                        "severity": "error"
+                    }
+                }
             ]
         }
+    finally:
+        # Cleanup temp file
+        if temp_file_path and os.path.exists(temp_file_path):
+            try:
+                os.unlink(temp_file_path)
+                logger.info(f"Cleaned up temp file: {temp_file_path}")
+            except Exception as cleanup_err:
+                logger.warning(f"Failed to delete temp file: {cleanup_err}")
 
 
 if __name__ == "__main__":

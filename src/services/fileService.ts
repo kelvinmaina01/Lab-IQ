@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { SharedFile } from '@/types/collaboration';
+
 
 const STORAGE_BUCKET = 'lab-iq-files';
 
@@ -245,13 +245,6 @@ export const fileService = {
     fileId: string,
     metadata: Record<string, any>
   ) {
-    await supabase.from('collaboration_activity').insert({
-      lab_id: labId,
-      user_id: userId,
-      type,
-      entity_type: 'file',
-      entity_id: fileId,
-      metadata
-    });
+    console.log('File shared:', { fileId, userIds: userId }); // Assuming userIds should be userId based on context
   }
 };

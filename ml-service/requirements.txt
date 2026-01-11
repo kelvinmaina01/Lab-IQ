@@ -14,7 +14,6 @@ tabulate
 langgraph
 langchain
 langchain-groq
-langchain-google-genai
 langchain-community
 langchain-core
 langchain-openai
@@ -22,3 +21,7 @@ langchain-openai
 # Utilities
 requests==2.32.3
 tqdm==4.67.1
+langchain-groq
+langchain-google-genai
+jsonpointer
+jsonpatch3

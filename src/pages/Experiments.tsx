@@ -10,9 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Search, FlaskConical, Calendar, User, MoreVertical, Play, Pause, CheckCircle, AlertCircle, Brain, Sparkles, Loader2, MessageSquare, Pin } from "lucide-react";
-import { PinToDashboardButton } from "@/components/dashboard/PinToDashboardButton";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
-import { CommentsSystem } from "@/components/collaboration/CommentsSystem";
+
 import { MainLayout } from "@/components/layout/MainLayout";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { labIQAI } from "@/lib/ai/LabIQAI";
@@ -435,24 +434,7 @@ const Experiments = () => {
                       </div>
                     </div>
                     <div className="flex items-center gap-1">
-                      {exp.status === 'completed' && (
-                        <PinToDashboardButton
-                          title={exp.title}
-                          description={exp.description}
-                          type="insight"
-                          source="experiment"
-                          sourceId={exp.id}
-                          sourceTable="experiments"
-                          category="experiments"
-                          data={{
-                            summary: exp.description,
-                            keyPoints: exp.protocol?.steps || []
-                          }}
-                          variant="ghost"
-                          size="sm"
-                          showLabel={false}
-                        />
-                      )}
+
                       <Button variant="ghost" size="icon">
                         <MoreVertical className="w-4 h-4" />
                       </Button>
@@ -586,13 +568,6 @@ const Experiments = () => {
                       <MessageSquare className="w-4 h-4" />
                       Discussion & Feedback
                     </h3>
-                    <div className="h-[500px]">
-                      <CommentsSystem
-                        entityId={selectedExperiment.id}
-                        entityType="experiment"
-                        entityName={selectedExperiment.title}
-                      />
-                    </div>
                   </div>
                 </div>
               )}

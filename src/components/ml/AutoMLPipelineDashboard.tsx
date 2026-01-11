@@ -34,7 +34,7 @@ import {
     Pin
 } from 'lucide-react';
 import { runAutoMLWithProgress, checkMLServiceHealth, type ProgressUpdate, type AutoMLResponse } from '@/lib/services/automlService';
-import { PinToDashboardButton } from '@/components/dashboard/PinToDashboardButton';
+
 
 // =============================================================================
 // TYPES
@@ -561,32 +561,7 @@ export const AutoMLPipelineDashboard: React.FC<AutoMLPipelineDashboardProps> = (
 
                             {/* Pin to Dashboard Button */}
                             <div className="flex justify-end pt-2">
-                                <PinToDashboardButton
-                                    title={`AutoML: ${pipelineState.result.summary.model_training_summary.best_model}`}
-                                    description={`${pipelineState.result.summary.problem_type} model with ${(pipelineState.result.summary.model_training_summary.best_score * 100).toFixed(1)}% accuracy`}
-                                    type="chart"
-                                    source="experiment"
-                                    sourceId={datasetId}
-                                    sourceTable="datasets"
-                                    category="models"
-                                    config={{
-                                        chartType: 'bar',
-                                        colors: ['#8b5cf6'],
-                                        showLegend: false,
-                                        animated: true
-                                    }}
-                                    data={{
-                                        labels: ['Best Score'],
-                                        datasets: [{
-                                            label: 'Performance',
-                                            data: [pipelineState.result.summary.model_training_summary.best_score * 100]
-                                        }],
-                                        summary: pipelineState.result.summary.key_findings.join('. ')
-                                    }}
-                                    tags={['automl', pipelineState.result.summary.problem_type, pipelineState.result.summary.model_training_summary.best_model]}
-                                    variant="default"
-                                    size="sm"
-                                />
+                                { /* Pinning Removed */}
                             </div>
                         </CardContent>
                     </Card>

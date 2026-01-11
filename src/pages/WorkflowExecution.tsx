@@ -22,7 +22,6 @@ import {
   RefreshCw,
   Pin,
 } from "lucide-react";
-import { PinToDashboardButton } from "@/components/dashboard/PinToDashboardButton";
 import { useToast } from "@/hooks/use-toast";
 import {
   workflowService,
@@ -356,26 +355,7 @@ const WorkflowExecutionPage = () => {
                 <Download className="w-4 h-4 mr-2" />
                 Export Report
               </Button>
-              {execution.status === 'success' && (
-                <PinToDashboardButton
-                  title={`${workflow.name} Results`}
-                  description={`Workflow execution completed on ${new Date(execution.completed_at || execution.started_at).toLocaleDateString()}`}
-                  type="metric"
-                  source="workflow"
-                  sourceId={workflow.id}
-                  sourceTable="workflows"
-                  category="workflows"
-                  data={{
-                    value: Math.round(execution.progress_percentage || 100),
-                    unit: '%',
-                    trend: 'up',
-                    summary: `${execution.current_step || execution.total_steps}/${execution.total_steps} steps completed in ${Math.round((execution.duration_ms || 0) / 1000)}s`
-                  }}
-                  variant="default"
-                  size="default"
-                  showLabel={true}
-                />
-              )}
+
             </div>
           </div>
 
@@ -473,8 +453,8 @@ const WorkflowExecutionPage = () => {
                       <div
                         key={index}
                         className={`flex items-start gap-3 p-3 rounded-lg border ${log.level === 'error' ? 'bg-red-500/5 border-red-500/20' :
-                            log.level === 'warning' ? 'bg-yellow-500/5 border-yellow-500/20' :
-                              'bg-muted/50'
+                          log.level === 'warning' ? 'bg-yellow-500/5 border-yellow-500/20' :
+                            'bg-muted/50'
                           }`}
                       >
                         <div className="flex-shrink-0 mt-1">

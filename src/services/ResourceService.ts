@@ -83,30 +83,17 @@ export class ResourceService {
         return supabase.from('experiments' as any).select('*').eq('id', experimentId).single();
     }
 
+    // The following methods are stubs to remove collaboration file storage dependency.
+    // Original methods for getFiles, uploadFile, deleteFile have been replaced.
+
     async getFiles(projectId: string): Promise<any[]> {
-        const { data, error } = await supabase.from('shared_files' as any).select('*').eq('project_id', projectId);
-        if (error) throw error;
-        return data as any[];
+        console.log('Collaboration file fetching disabled');
+        return [];
     }
 
     async uploadFile(file: File, projectId: string, labId: string): Promise<any> {
-        const path = `${labId}/${projectId}/${Date.now()}_${file.name}`;
-        const { data: uploadData, error: uploadError } = await supabase.storage.from('collaboration-files').upload(path, file);
-        if (uploadError) throw uploadError;
-
-        const { data: { user } } = await supabase.auth.getUser();
-        const { data, error } = await supabase.from('shared_files' as any).insert({
-            name: file.name,
-            storage_path: path,
-            size_bytes: file.size,
-            mime_type: file.type,
-            project_id: projectId,
-            lab_id: labId,
-            uploaded_by: user?.id
-        }).select().single();
-
-        if (error) throw error;
-        return data as any;
+        console.log('Collaboration file upload disabled');
+        return { success: true, message: 'Upload functionality disabled' };
     }
 
     async deleteFile(fileId: string): Promise<void> {

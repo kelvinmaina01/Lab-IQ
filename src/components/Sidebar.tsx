@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { HeartPulse, Home, Upload, Brain, BarChart3, FlaskConicalIcon, Boxes, Users, FileText, Cpu, Database, ChevronLeft, ChevronRight, Settings, LayoutDashboard, Sparkles } from "lucide-react";
+import { HeartPulse, Home, Upload, Brain, BarChart3, FlaskConicalIcon, Boxes, Users, FileText, Cpu, Database, ChevronLeft, ChevronRight, Settings, LayoutDashboard, Sparkles, Microscope } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "@/components/layout/SidebarContext";
 import { Button } from "@/components/ui/button";
@@ -12,15 +12,12 @@ const Sidebar = () => {
   const navItems = [
     { path: "/upload", label: "Data Ingestion", icon: Upload },
     { path: "/datasets", label: "Datasets", icon: Database },
-    { path: "/insights", label: "AI Assistant", icon: Brain },
+    { path: "/analysis", label: "AI Analysis", icon: Microscope },
     { path: "/dashboard", label: "Command Center", icon: Home },
     { path: "/analytics", label: "Analytics", icon: BarChart3 },
-    { path: "/dashboards", label: "Dashboards", icon: LayoutDashboard },
-    { path: "/overview", label: "AI Overviews", icon: Sparkles },
     { path: "/models", label: "Models", icon: Cpu },
     { path: "/experiments", label: "Experiments", icon: FlaskConicalIcon },
     { path: "/automation", label: "Automation", icon: Boxes },
-    { path: "/collaboration", label: "Collaboration", icon: Users },
     { path: "/reports", label: "Reports", icon: FileText },
   ];
 

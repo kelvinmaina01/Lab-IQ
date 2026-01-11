@@ -13,7 +13,6 @@ import { Pin, Info, ArrowUpRight, ArrowDownRight, Minus } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
-import { PinToDashboardDialog } from '../PinToDashboardDialog';
 import {
     Tooltip,
     TooltipContent,
@@ -71,17 +70,9 @@ export const MetricCell = React.forwardRef<HTMLDivElement, MetricCellProps>(
             <div ref={ref} className={cn("space-y-4", isHighlighted && "ring-2 ring-primary ring-offset-2 rounded-lg p-2")}>
 
                 <div className="flex items-center justify-between">
-                    {/* Header Hidden/Minimal for clean look as per request, just showing cards primarily? 
-                        Actually user screenshot shows "Average file... 4.1" as card.
-                        We need a container header to allow Pinning the group.
-                     */}
-                    {/* We can put the Pin button on the container for now */}
+                    {/* Header Hidden/Minimal for clean look as per request */}
                     <div className="flex w-full justify-end mb-2">
-                        {content.pin_metadata?.pin_eligible && (
-                            <Button variant="ghost" size="sm" onClick={() => setShowPinDialog(true)} className="h-8 gap-2 text-muted-foreground hover:text-primary">
-                                <Pin className="h-4 w-4" /> Pin All
-                            </Button>
-                        )}
+                        {/* Pinning Removed */}
                     </div>
                 </div>
 
@@ -128,15 +119,6 @@ export const MetricCell = React.forwardRef<HTMLDivElement, MetricCellProps>(
                         </Card>
                     ))}
                 </div>
-
-                <PinToDashboardDialog
-                    open={showPinDialog}
-                    onOpenChange={setShowPinDialog}
-                    defaultTitle={content.pin_metadata?.suggested_title}
-                    defaultDescription={content.pin_metadata?.suggested_description}
-                    onConfirm={handlePinConfirm}
-                    isPinning={isPinning}
-                />
             </div>
         );
     }

@@ -755,9 +755,9 @@ class DataAnalysisAgent extends BaseAIAgent {
         }
       };
 
-      console.log('[Chat Debug] Calling /api/v1/chat with payload:', payload);
+      console.log('[Chat Debug] Calling /api/agent/run with payload:', payload);
 
-      const response = await fetch('/api/v1/chat', {
+      const response = await fetch('http://localhost:8002/api/agent/run', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -774,14 +774,61 @@ class DataAnalysisAgent extends BaseAIAgent {
       const backendData = await response.json();
 
       console.log('[Chat Debug] Backend returned:', backendData);
-      console.log('[Chat Debug] content field:', backendData.content);
-      console.log('[Chat Debug] sections field:', backendData.sections);
+
+      // Map Backend Generative UI to Frontend AISections
+      const mappedSections: AISection[] = [];
+      const uiComponents = backendData.ui_components || [];
+
+      // Add the text answer as a paragraph section if it's long, or just keep as main content
+      // We'll add it as a section too for clean rendering
+      if (backendData.answer) {
+        mappedSections.push({
+          type: 'paragraph',
+          content: backendData.answer
+        });
+      }
+
+      for (const comp of uiComponents) {
+        if (comp.component === 'StatCard') {
+          mappedSections.push({
+            type: 'metric',
+            title: comp.props.title,
+            value: comp.props.value,
+            trend: comp.props.trend === 'neutral' ? 'stable' : (comp.props.trend || 'stable'),
+            priority: comp.props.sentiment === 'danger' ? 'critical' : comp.props.sentiment === 'warning' ? 'medium' : 'low'
+          });
+        } else if (comp.component === 'InsightCard') {
+          mappedSections.push({
+            type: 'insight',
+            title: comp.props.title,
+            content: comp.props.content,
+            priority: comp.props.severity === 'critical' ? 'critical' : comp.props.severity === 'warning' ? 'high' : 'medium'
+          });
+        } else if (comp.component === 'Chart') {
+          // Transform data: [{label, value}] -> {labels, values}
+          const chartData = comp.props.data || [];
+          const labels = chartData.map((d: any) => d[comp.props.xKey] || d.label || d.name);
+          const values = chartData.map((d: any) => d[comp.props.yKey] || d.value || 0);
+
+          mappedSections.push({
+            type: 'chart',
+            title: comp.props.title,
+            chartType: comp.props.type || 'bar',
+            data: {
+              labels: labels,
+              values: values,
+              xLabel: comp.props.xKey,
+              yLabel: comp.props.yKey
+            }
+          });
+        }
+      }
 
       // Merge computed data with backend response to ensure frontend consistency
       return {
         success: true,
-        content: backendData.content || "Analysis complete",
-        sections: backendData.sections || [],
+        content: backendData.answer || "Analysis complete",
+        sections: mappedSections.length > 0 ? mappedSections : (backendData.sections || []),
         computedData: computedData,
         suggestions: backendData.suggestions || []
       };

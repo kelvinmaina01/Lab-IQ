@@ -178,34 +178,17 @@ export function AIAssistantChat({
   // Load chat history or inject mock for dev
   useEffect(() => {
     // Only inject mock if messages are empty initially
+    // Mock injection disabled for production/real backend connection
+    /*
     if (messages.length === 0) {
       const mockMessage: Message = {
         role: 'assistant',
-        content: 'Here is the analysis with the code monitor you requested.',
+        content: 'I am ready to analyze your data.',
         timestamp: new Date().toISOString(),
-        thoughtProcess: ['Analyzing dataset structure', 'Checking for outliers', 'Generating visualization code'],
-        challenges: ['Large dataset size detected', 'Missing values in column "age"'],
-        sections: [
-          {
-            type: 'thought_process',
-            items: ['Analyzing dataset structure', 'Checking for outliers', 'Generating visualization code']
-          },
-          {
-            type: 'code',
-            title: 'Outlier Detection',
-            language: 'python',
-            code: `import pandas as pd\nimport numpy as np\n\ndf = pd.read_csv("data.csv")\nz_scores = np.abs(stats.zscore(df['value']))\noutliers = df[z_scores > 3]`,
-            codeExplanation: 'We use Z-score to identify outliers in the dataset.'
-          },
-          {
-            type: 'insight',
-            title: 'Outliers Found',
-            content: 'We detected 3 key outliers in the upper quartile.'
-          }
-        ]
       };
-      setMessages([mockMessage]);
+       setMessages([mockMessage]);
     }
+    */
   }, []);
 
   // Load chat history and dataframes when dataset or mode changes

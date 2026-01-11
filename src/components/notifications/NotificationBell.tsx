@@ -15,7 +15,7 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 export const NotificationBell = () => {
-  const { collaboration, auth } = useServices();
+  const { auth } = useServices();
   const [notifications, setNotifications] = useState<NotificationType[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
@@ -27,8 +27,9 @@ export const NotificationBell = () => {
 
   useEffect(() => {
     if (currentUser) {
-      loadNotifications();
-      subscribeToNotifications();
+      // Notifications disabled (tied to collaboration)
+      // loadNotifications();
+      // subscribeToNotifications();
     }
   }, [currentUser]);
 
@@ -37,49 +38,8 @@ export const NotificationBell = () => {
     setCurrentUser(user);
   };
 
-  const loadNotifications = async () => {
-    if (!currentUser) return;
-
-    try {
-      const { data, error } = await collaboration.getNotifications(currentUser.id);
-      if (error) {
-        console.error('Error loading notifications:', error);
-        return;
-      }
-      if (data) {
-        setNotifications(data);
-        setUnreadCount(data.filter(n => !n.is_read).length);
-      }
-    } catch (error) {
-      console.error('Error:', error);
-    }
-  };
-
-  const subscribeToNotifications = () => {
-    if (!currentUser) return;
-
-    const channel = collaboration.subscribeToNotifications(
-      currentUser.id,
-      (newNotification) => {
-        setNotifications(prev => [newNotification, ...prev]);
-        setUnreadCount(prev => prev + 1);
-
-        // Show browser notification if permission granted
-        if (Notification.permission === 'granted') {
-          new Notification(newNotification.title, {
-            body: newNotification.content,
-            icon: '/logo.png',
-            badge: '/logo.png'
-          });
-        }
-      }
-    );
-
-    return () => channel?.unsubscribe();
-  };
-
   const handleMarkAsRead = async (notificationId: string) => {
-    await collaboration.markNotificationAsRead(notificationId);
+    // Stub
     setNotifications(prev =>
       prev.map(n => n.id === notificationId ? { ...n, is_read: true } : n)
     );
@@ -87,7 +47,7 @@ export const NotificationBell = () => {
   };
 
   const handleMarkAllAsRead = async () => {
-    await collaboration.markAllNotificationsAsRead();
+    // Stub
     setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
     setUnreadCount(0);
   };
@@ -108,7 +68,7 @@ export const NotificationBell = () => {
         return <MessageSquare className="h-4 w-4 text-green-500" />;
       case 'reaction':
         return <Heart className="h-4 w-4 text-pink-500" />;
-      case 'dm':
+      case 'dm': // DM type might also need removal from interfaces if it breaks build
         return <MessageSquare className="h-4 w-4 text-purple-500" />;
       default:
         return <Info className="h-4 w-4 text-muted-foreground" />;

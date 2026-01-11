@@ -63,7 +63,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { PinToDashboardButton } from "@/components/dashboard/PinToDashboardButton";
+
 
 // =============================================================================
 // TYPES
@@ -1054,26 +1054,7 @@ const ModelCard: React.FC<ModelCardProps> = ({ model, onTrain, onDeploy, onDelet
           </div>
         </div>
         <div className="flex items-center gap-1">
-          {(model.status === 'completed' || model.status === 'deployed') && (
-            <PinToDashboardButton
-              title={`${model.name} Performance`}
-              description={`${model.type} model - ${model.algorithm}`}
-              type="metric"
-              source="experiment"
-              sourceId={model.id}
-              sourceTable="ml_models"
-              category="models"
-              data={{
-                value: primaryMetric ? Math.round(primaryMetric * 100) / 100 : 0,
-                unit: model.type === 'classification' ? '' : '',
-                summary: model.description || 'ML Model Performance',
-                trend: 'stable'
-              }}
-              variant="ghost"
-              size="sm"
-              showLabel={false}
-            />
-          )}
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity">

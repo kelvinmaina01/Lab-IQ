@@ -19,13 +19,14 @@ const Dashboard = React.lazy(() => import("./pages/Dashboard"));
 const Upload = React.lazy(() => import("./pages/Upload"));
 const DatasetDetail = React.lazy(() => import("./pages/DatasetDetail"));
 const Insights = React.lazy(() => import("./pages/Insights"));
+
 const Analytics = React.lazy(() => import("./pages/Analytics"));
 const Experiments = React.lazy(() => import("./pages/Experiments"));
 const Automation = React.lazy(() => import("./pages/Automation"));
 const WorkflowExecution = React.lazy(() => import("./pages/WorkflowExecution"));
-const Collaboration = React.lazy(() => import("./pages/Collaboration"));
+
 const Reports = React.lazy(() => import("./pages/Reports"));
-const Assistant = React.lazy(() => import("./pages/Assistant"));
+// Assistant removed/replaced by AIAnalysis
 const Pricing = React.lazy(() => import("./pages/Pricing"));
 const SettingsPage = React.lazy(() => import("./pages/Settings"));
 const NotificationPreferences = React.lazy(() => import("./pages/NotificationPreferences"));
@@ -34,8 +35,6 @@ const DeviceStreams = React.lazy(() => import("./pages/DeviceStreams"));
 const DataAnonymization = React.lazy(() => import("./pages/DataAnonymization"));
 const Models = React.lazy(() => import("./pages/Models"));
 const Datasets = React.lazy(() => import("./pages/Datasets"));
-const Dashboards = React.lazy(() => import("./pages/Dashboards"));
-const Overview = React.lazy(() => import("./pages/Overview"));
 const AuthPage = React.lazy(() => import("./components/auth/AuthPage").then(module => ({ default: module.AuthPage })));
 const LandingPage = React.lazy(() => import("./pages/LandingPage").then(module => ({ default: module.LandingPage })));
 
@@ -100,15 +99,14 @@ const App = () => {
                       <Route path="/datasets" element={<Datasets />} />
                       <Route path="/dashboard/datasets/:id" element={<DatasetDetail />} />
                       <Route path="/upload" element={<Upload />} />
+
                       <Route path="/insights" element={<Insights />} />
                       <Route path="/analytics" element={<Analytics />} />
                       <Route path="/experiments" element={<Experiments />} />
                       <Route path="/automation" element={<Automation />} />
                       <Route path="/automation/execution/:executionId" element={<WorkflowExecution />} />
-                      <Route path="/collaboration" element={<Collaboration />} />
+
                       <Route path="/reports" element={<Reports />} />
-                      <Route path="/assistant" element={<Assistant />} />
-                      <Route path="/assistant/:datasetId" element={<Assistant />} />
                       <Route path="/pricing" element={<Pricing />} />
                       <Route path="/settings" element={<SettingsPage />} />
                       <Route path="/settings/notifications" element={<NotificationPreferences />} />
@@ -118,8 +116,6 @@ const App = () => {
                       <Route path="/device-streams" element={<DeviceStreams />} />
                       <Route path="/data-anonymization" element={<DataAnonymization />} />
                       <Route path="/models" element={<Models />} />
-                      <Route path="/dashboards" element={<Dashboards />} />
-                      <Route path="/overview" element={<Overview />} />
                       <Route path="/accept-invitation" element={<AcceptInvitation />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>
