@@ -18,6 +18,14 @@ const Index = React.lazy(() => import("./pages/Index"));
 const Dashboard = React.lazy(() => import("./pages/Dashboard"));
 const Upload = React.lazy(() => import("./pages/Upload"));
 const DatasetDetail = React.lazy(() => import("./pages/DatasetDetail"));
+const AuthCallback = React.lazy(() => import("./components/auth/AuthCallback").then(module => ({ default: module.AuthCallback })));
+
+// ... existing code ...
+
+                      <Route path="/login" element={<AuthPage />} />
+                      <Route path="/signup" element={<AuthPage />} />
+                      <Route path="/auth/callback" element={<AuthCallback />} />
+                      <Route path="/dashboard" element={<Dashboard />} />
 const Insights = React.lazy(() => import("./pages/Insights"));
 
 const Analytics = React.lazy(() => import("./pages/Analytics"));
