@@ -32,7 +32,12 @@ export const useAuth = () => {
     };
 
     const signInWithGoogle = async () => {
-        return await supabase.auth.signInWithOAuth({ provider: 'google' });
+        return await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+                redirectTo: `${window.location.origin}/auth/callback`
+            }
+        });
     };
 
     const signInWithGithub = async () => {
