@@ -20,14 +20,7 @@ const Upload = React.lazy(() => import("./pages/Upload"));
 const DatasetDetail = React.lazy(() => import("./pages/DatasetDetail"));
 const AuthCallback = React.lazy(() => import("./components/auth/AuthCallback").then(module => ({ default: module.AuthCallback })));
 
-// ... existing code ...
-
-                      <Route path="/login" element={<AuthPage />} />
-                      <Route path="/signup" element={<AuthPage />} />
-                      <Route path="/auth/callback" element={<AuthCallback />} />
-                      <Route path="/dashboard" element={<Dashboard />} />
 const Insights = React.lazy(() => import("./pages/Insights"));
-
 const Analytics = React.lazy(() => import("./pages/Analytics"));
 const Experiments = React.lazy(() => import("./pages/Experiments"));
 const Automation = React.lazy(() => import("./pages/Automation"));
@@ -103,6 +96,7 @@ const App = () => {
                       <Route path="/" element={<Index />} />
                       <Route path="/login" element={<AuthPage />} />
                       <Route path="/signup" element={<AuthPage />} />
+                      <Route path="/auth/callback" element={<AuthCallback />} />
                       <Route path="/dashboard" element={<Dashboard />} />
                       <Route path="/datasets" element={<Datasets />} />
                       <Route path="/dashboard/datasets/:id" element={<DatasetDetail />} />
@@ -130,8 +124,6 @@ const App = () => {
                     </Routes>
                   </Suspense>
                 </ErrorBoundary>
-
-
               </BrowserRouter>
             </SidebarProvider>
           </TooltipProvider>
