@@ -295,31 +295,38 @@ const TopBar = () => {
                   Solutions
                 </NavigationMenuTrigger>
                 <NavigationMenuContent>
-                  <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
-                    {solutions.map((solution) => (
-                      <li key={solution.title}>
-                        <NavigationMenuLink asChild>
-                          <Link
-                            to={solution.href}
-                            className={cn(
-                              "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors",
-                              "hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
-                            )}
-                          >
-                            <div className="flex items-center gap-2">
-                              <solution.icon className="h-4 w-4 text-primary" />
-                              <div className="text-sm font-medium leading-none">
-                                {solution.title}
+                  <div className="w-[340px] p-4">
+                    <div className="mb-3 px-2 text-xs font-bold text-muted-foreground tracking-wider">
+                      PLATFORM SOLUTIONS
+                    </div>
+                    <ul className="flex flex-col gap-2">
+                      {solutions.map((solution) => (
+                        <li key={solution.title}>
+                          <NavigationMenuLink asChild>
+                            <Link
+                              to={solution.href}
+                              className={cn(
+                                "flex select-none gap-3 rounded-md p-3 leading-none no-underline outline-none transition-colors",
+                                "hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+                              )}
+                            >
+                              <div className="mt-0.5 p-1 rounded-md bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                                <solution.icon className="h-5 w-5" />
                               </div>
-                            </div>
-                            <p className="line-clamp-2 text-sm leading-snug text-muted-foreground mt-1">
-                              {solution.description}
-                            </p>
-                          </Link>
-                        </NavigationMenuLink>
-                      </li>
-                    ))}
-                  </ul>
+                              <div className="space-y-1.5">
+                                <div className="text-sm font-semibold leading-none">
+                                  {solution.title}
+                                </div>
+                                <p className="text-xs leading-snug text-muted-foreground line-clamp-2">
+                                  {solution.description}
+                                </p>
+                              </div>
+                            </Link>
+                          </NavigationMenuLink>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 </NavigationMenuContent>
               </NavigationMenuItem>
             </NavigationMenuList>
