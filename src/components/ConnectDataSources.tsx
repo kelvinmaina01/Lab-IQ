@@ -258,7 +258,7 @@ const ConnectDataSources = () => {
         <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4 h-auto p-1 bg-muted/50 rounded-xl">
           <TabsTrigger value="files" className="py-2.5 rounded-lg text-xs font-semibold uppercase tracking-wider">Storage & Files</TabsTrigger>
           <TabsTrigger value="databases" className="py-2.5 rounded-lg text-xs font-semibold uppercase tracking-wider">Enterprise Sources</TabsTrigger>
-          <TabsTrigger value="live" className="py-2.5 rounded-lg text-xs font-semibold uppercase tracking-wider">Live Devices</TabsTrigger>
+          <TabsTrigger value="live" className="py-2.5 rounded-lg text-xs font-semibold uppercase tracking-wider">Medical Devices</TabsTrigger>
           <TabsTrigger value="clinical" className="py-2.5 rounded-lg text-xs font-semibold uppercase tracking-wider">Clinical Connect</TabsTrigger>
         </TabsList>
 

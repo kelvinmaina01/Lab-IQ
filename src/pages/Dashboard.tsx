@@ -179,7 +179,7 @@ const Dashboard = () => {
                     </div>
                     <ArrowRight className="w-5 h-5 text-muted-foreground" />
                   </div>
-                  <h3 className="text-lg font-semibold mb-2">Live Device Streams</h3>
+                  <h3 className="text-lg font-semibold mb-2">Medical Device Streams</h3>
                   <p className="text-sm text-muted-foreground mb-3">
                     Real-time IoT monitoring
                   </p>

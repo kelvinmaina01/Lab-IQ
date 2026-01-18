@@ -454,7 +454,7 @@ const Index = () => {
                         <Activity className="w-5 h-5 text-primary" />
                       </div>
                       <div className="text-left">
-                        <div className="font-semibold">Live Device Streams</div>
+                        <div className="font-semibold">Medical Device Streams</div>
                         <div className="text-xs text-muted-foreground">Wearables, IoT, real-time APIs</div>
                       </div>
                     </Button>

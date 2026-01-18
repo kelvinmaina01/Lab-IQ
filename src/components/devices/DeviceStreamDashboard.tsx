@@ -198,7 +198,7 @@ export const DeviceStreamDashboard = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold">Live Device Streams</h2>
+          <h2 className="text-2xl font-bold">Medical Device Streams</h2>
           <p className="text-muted-foreground">Real-time monitoring of connected IoT devices</p>
         </div>
         <div className="flex gap-2">
