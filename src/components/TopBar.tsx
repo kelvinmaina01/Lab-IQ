@@ -1,4 +1,4 @@
-import { Search, Bell, Settings, Sun, Moon, Menu, User, LogOut, TrendingUp, Database, FlaskConical as Flask, Cpu, X } from "lucide-react";
+import { Search, Bell, Settings, Sun, Moon, Menu, User, LogOut, TrendingUp, Database, FlaskConical as Flask, Cpu, X, Brain, BarChart3, Zap, FileText, Stethoscope, Workflow, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -10,6 +10,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  NavigationMenu,
+  NavigationMenuContent,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+  NavigationMenuTrigger,
+} from "@/components/ui/navigation-menu";
+import { cn } from "@/lib/utils";
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { FlaskConical } from "lucide-react";
@@ -17,6 +26,45 @@ import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
+
+const solutions = [
+  {
+    title: "AI Assistant",
+    href: "/lab-assistant",
+    description: "Intelligent health data analysis powered by advanced AI",
+    icon: Brain,
+  },
+  {
+    title: "Analytics Dashboard",
+    href: "/dashboard",
+    description: "Real-time insights and visualizations for your data",
+    icon: BarChart3,
+  },
+  {
+    title: "ML Models",
+    href: "/models",
+    description: "Train and deploy custom machine learning models",
+    icon: Zap,
+  },
+  {
+    title: "Reports",
+    href: "/reports",
+    description: "Generate comprehensive health analysis reports",
+    icon: FileText,
+  },
+  {
+    title: "Medical Devices",
+    href: "/device-streams",
+    description: "Connect and stream data from medical devices",
+    icon: Stethoscope,
+  },
+  {
+    title: "Automation",
+    href: "/automation",
+    description: "Create automated workflows for data processing",
+    icon: Workflow,
+  },
+];
 
 const TopBar = () => {
   const [darkMode, setDarkMode] = useState(true);
@@ -237,6 +285,46 @@ const TopBar = () => {
         <Button variant="ghost" size="icon" className="md:hidden">
           <Search className="w-5 h-5" />
         </Button>
+
+        {/* Solutions Menu */}
+        <div className="hidden md:block">
+          <NavigationMenu>
+            <NavigationMenuList>
+              <NavigationMenuItem>
+                <NavigationMenuTrigger className="bg-transparent hover:bg-accent data-[state=open]:bg-accent">
+                  Solutions
+                </NavigationMenuTrigger>
+                <NavigationMenuContent>
+                  <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
+                    {solutions.map((solution) => (
+                      <li key={solution.title}>
+                        <NavigationMenuLink asChild>
+                          <Link
+                            to={solution.href}
+                            className={cn(
+                              "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors",
+                              "hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+                            )}
+                          >
+                            <div className="flex items-center gap-2">
+                              <solution.icon className="h-4 w-4 text-primary" />
+                              <div className="text-sm font-medium leading-none">
+                                {solution.title}
+                              </div>
+                            </div>
+                            <p className="line-clamp-2 text-sm leading-snug text-muted-foreground mt-1">
+                              {solution.description}
+                            </p>
+                          </Link>
+                        </NavigationMenuLink>
+                      </li>
+                    ))}
+                  </ul>
+                </NavigationMenuContent>
+              </NavigationMenuItem>
+            </NavigationMenuList>
+          </NavigationMenu>
+        </div>
 
         {/* Pricing Link (Desktop) */}
         <Link to="/pricing" className="hidden md:block">
