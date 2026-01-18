@@ -1640,9 +1640,9 @@ export class LabIQAI {
       // Use getOrFetch for deduplication
       const result = await this.cache.getOrFetch(cacheKey, async () => {
         const prompts: Record<string, string> = {
-          experiment: `Generate a professional 2 - 3 sentence description for an experiment named "${name}".${context || ''} `,
-          dataset: `Generate a professional 1 - 2 sentence description for a dataset named "${name}".${context || ''} `,
-          workflow: `Generate a professional 2 - 3 sentence description for an automation workflow named "${name}".${context || ''} `,
+          experiment: `Generate a professional 2-3 sentence description for an experiment named "${name}".${context || ''}\nStrict rule: Start directly with the description. Do NOT use "Here is", "This experiment", or "Description:".`,
+          dataset: `Generate a professional 1-2 sentence description for a dataset named "${name}".${context || ''}\nStrict rule: Start directly with the description. Do NOT use "Here is" or filler phrases.`,
+          workflow: `Generate a professional 2-3 sentence description for an automation workflow named "${name}".${context || ''}\nStrict rule: Start directly with the description. Do NOT use "Here is" or filler phrases.`,
         };
 
         const response = await this.quickInsight['callAI'](prompts[type] || prompts.experiment);
@@ -1665,6 +1665,58 @@ export class LabIQAI {
         cached: false,
       });
       return '';
+    }
+  }
+
+  /**
+   * Generate both a title and description for an entity
+   */
+  public async generateEntityDetails(
+    type: 'model' | 'experiment' | 'dataset',
+    currentName: string,
+    context?: string
+  ): Promise<{ title: string; description: string } | null> {
+    const startTime = Date.now();
+    const cacheKey = this.cache.generateKey('entityDetails', type, currentName, context);
+
+    try {
+      const result = await this.cache.getOrFetch(cacheKey, async () => {
+        const prompt = `
+          Analyze the following context and generate a professional title and description for a ${type}.
+          Current Name: "${currentName}"
+          Context: ${context || 'None'}
+
+          Instructions:
+          1. Generate a direct, professional title (heading) that accurately reflects the ${type}.
+          2. Generate a concise 2-3 sentence description.
+          3. DO NOT use conversational filler like "Here is a description" or "Title:".
+          4. Return ONLY raw JSON in this format: { "title": "...", "description": "..." }
+        `;
+
+        const responseText = await this.quickInsight['callAI'](prompt);
+        const json = this.parseJSON<{ title: string; description: string }>(responseText);
+
+        if (!json || !json.title || !json.description) {
+          // Fallback if JSON parsing fails
+          return {
+            title: currentName,
+            description: responseText.replace(/^{"title":.*?}/s, '').trim() // Rough cleanup
+          };
+        }
+        return json;
+      });
+
+      this.monitor.record({
+        operation: 'generateEntityDetails',
+        duration: Date.now() - startTime,
+        success: true,
+        cached: false,
+      });
+
+      return result;
+    } catch (error) {
+      console.error('Error generating entity details:', error);
+      return null;
     }
   }
 

@@ -316,6 +316,53 @@ async def train_model(request: Dict[str, Any]):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/api/ml/predict")
+async def predict_model(request: Dict[str, Any]):
+    """
+    Make predictions using a trained model
+    """
+    try:
+        import joblib
+        import pandas as pd
+        import os
+
+        model_path = request.get("model_path")
+        input_data = request.get("input_data")
+        
+        if not model_path or not os.path.exists(model_path):
+             # Try to find it in default dir if only filename provided
+             if model_path and os.path.exists(os.path.join("models", model_path)):
+                 model_path = os.path.join("models", model_path)
+             else:
+                 raise HTTPException(status_code=404, detail=f"Model file not found: {model_path}")
+                 
+        if not input_data:
+            raise HTTPException(status_code=400, detail="No input data provided")
+
+        # Load model
+        try:
+            model = joblib.load(model_path)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to load model: {str(e)}")
+
+        # Prepare data
+        df = pd.DataFrame(input_data)
+        
+        # Ensure primitive types for JSON serialization
+        predictions = model.predict(df).tolist()
+        
+        return {
+            "success": True,
+            "predictions": predictions
+        }
+        
+    except Exception as e:
+        logger.error(f"Prediction failed: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 class InsightsRequest(BaseModel):
     dataset_id: str
     data: List[Dict[str, Any]]

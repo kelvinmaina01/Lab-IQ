@@ -26,7 +26,7 @@ const Automation = React.lazy(() => import("./pages/Automation"));
 const WorkflowExecution = React.lazy(() => import("./pages/WorkflowExecution"));
 
 const Reports = React.lazy(() => import("./pages/Reports"));
-// Assistant removed/replaced by AIAnalysis
+const AIAnalysis = React.lazy(() => import("./pages/AIAnalysis"));
 const Pricing = React.lazy(() => import("./pages/Pricing"));
 const SettingsPage = React.lazy(() => import("./pages/Settings"));
 const NotificationPreferences = React.lazy(() => import("./pages/NotificationPreferences"));
@@ -100,6 +100,7 @@ const App = () => {
                       <Route path="/dashboard/datasets/:id" element={<DatasetDetail />} />
                       <Route path="/upload" element={<Upload />} />
 
+                      <Route path="/ai-analysis" element={<AIAnalysis />} />
                       <Route path="/insights" element={<Insights />} />
                       <Route path="/analytics" element={<Analytics />} />
                       <Route path="/experiments" element={<Experiments />} />

@@ -50,12 +50,16 @@ import {
   ChevronRight,
   Search,
   Filter,
-  ArrowUpRight
+  ArrowUpRight,
+  Database,
+  AlertCircle
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { labIQAI } from "@/lib/ai/LabIQAI";
+import { mlService } from "@/lib/services/mlService";
 import { modelRegistry } from "@/lib/services/ModelRegistry";
+import { PredictionDialog } from "@/components/models/PredictionDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -110,6 +114,7 @@ interface Dataset {
   file_name: string;
   row_count: number;
   columns: string[] | { name: string; type: string }[];
+  schema?: { columns: { name: string; type: string }[] };
 }
 
 // =============================================================================
@@ -167,6 +172,7 @@ const Models = () => {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [selectedModel, setSelectedModel] = useState<MLModel | null>(null);
+  const [predictionModel, setPredictionModel] = useState<MLModel | null>(null);
   const [trainingModels, setTrainingModels] = useState<Set<string>>(new Set());
 
   // Create model form state
@@ -231,12 +237,11 @@ const Models = () => {
         }));
         setModels(formattedModels);
       } else {
-        // Set demo models if none exist
-        setModels(getDemoModels());
+        setModels([]);
       }
     } catch (error) {
       console.error('Error fetching models:', error);
-      setModels(getDemoModels());
+      setModels([]);
     } finally {
       setLoading(false);
     }
@@ -249,7 +254,7 @@ const Models = () => {
 
       const { data, error } = await supabase
         .from('datasets')
-        .select('id, name, file_name, row_count, columns')
+        .select('id, name, file_name, row_count, columns, schema')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
@@ -258,7 +263,11 @@ const Models = () => {
         return;
       }
 
-      setDatasets(data || []);
+      setDatasets((data || []).map((d: any) => ({
+        ...d,
+        // Ensure columns are populated from schema if the top-level columns field is empty
+        columns: d.columns?.length ? d.columns : d.schema?.columns || []
+      })));
     } catch (error) {
       console.error('Error fetching datasets:', error);
     }
@@ -281,19 +290,76 @@ const Models = () => {
   }, [fetchModels, fetchDatasets, location.state]);
 
   // Update columns when dataset changes
+  // Update columns and auto-configure when dataset changes
   useEffect(() => {
     if (newModel.datasetId) {
       const dataset = datasets.find(d => d.id === newModel.datasetId);
-      if (dataset?.columns) {
-        const cols = Array.isArray(dataset.columns)
-          ? dataset.columns.map(c => typeof c === 'string' ? c : c.name)
-          : [];
+      if (dataset) {
+        // Robust Column Extraction
+        let cols: string[] = [];
+        if (dataset.schema?.columns) {
+          cols = dataset.schema.columns.map(c => c.name);
+        } else if (Array.isArray(dataset.columns) && dataset.columns.length > 0) {
+          cols = dataset.columns.map(c => typeof c === 'string' ? c : c.name);
+        }
+
         setAvailableColumns(cols);
+
+        // Initial Name Auto-fill (if empty)
+        setNewModel(prev => {
+          if (!prev.name) {
+            return { ...prev, name: `Analysis of ${dataset.name}` };
+          }
+          return prev;
+        });
       }
     } else {
       setAvailableColumns([]);
     }
   }, [newModel.datasetId, datasets]);
+
+  // Auto-configure Task Type and Metadata based on Target Column
+  useEffect(() => {
+    if (newModel.datasetId && newModel.targetColumn) {
+      const dataset = datasets.find(d => d.id === newModel.datasetId);
+      if (!dataset) return;
+
+      // Try to find column type from schema
+      const colDef = dataset.schema?.columns?.find(c => c.name === newModel.targetColumn);
+      // Fallback: assume string if not found, unless we have data suggesting otherwise
+      // Simple heuristic: 'id', 'category', 'label', 'status' -> classification
+      // 'price', 'amount', 'score', 'temperature' -> regression
+      let suggestedType: MLModel['type'] = 'classification';
+
+      if (colDef) {
+        const type = colDef.type.toLowerCase();
+        if (['integer', 'number', 'float', 'double', 'decimal', 'numeric'].some(t => type.includes(t))) {
+          suggestedType = 'regression';
+        }
+      }
+
+      // Auto-Generate Name/Description
+      // "Human-readable" heuristic
+      const cleanTarget = newModel.targetColumn.replace(/_/g, ' ');
+      const cleanDataset = dataset.name.replace(/_/g, ' ').replace('.csv', '');
+
+      const suggestedName = `${cleanTarget.charAt(0).toUpperCase() + cleanTarget.slice(1)} Predictor`;
+      const suggestedDesc = `An automated ${suggestedType} model designed to predict ${cleanTarget} based on patterns in ${cleanDataset}.`;
+
+      setNewModel(prev => {
+        // Only update if user hasn't typed a custom meaningful name (or if it's the generic default)
+        const isDefaultName = !prev.name || prev.name.startsWith('Analysis of') || prev.name.includes('Predictor');
+        const isDefaultDesc = !prev.description;
+
+        return {
+          ...prev,
+          type: suggestedType,
+          name: isDefaultName ? suggestedName : prev.name,
+          description: isDefaultDesc ? suggestedDesc : prev.description
+        };
+      });
+    }
+  }, [newModel.targetColumn, newModel.datasetId, datasets]);
 
   // =============================================================================
   // HANDLERS
@@ -321,7 +387,7 @@ const Models = () => {
         user_id: user.id,
         name: newModel.name,
         description: newModel.description,
-        type: newModel.type,
+        model_type: newModel.type,
         algorithm: newModel.algorithm,
         dataset_id: newModel.datasetId,
         dataset_name: dataset?.name || dataset?.file_name,
@@ -376,116 +442,141 @@ const Models = () => {
 
     toast({
       title: "Training Started",
-      description: `Training ${model.name}. This may take a few minutes.`,
+      description: `Training ${model.name}. Connecting to ML Service...`,
     });
 
-    // Use AI to generate optimized hyperparameters if available
-    let optimizedParams = model.hyperparameters;
-    if (labIQAI.isAvailable()) {
-      try {
-        const dataset = datasets.find(d => d.id === model.datasetId);
-        const response = await labIQAI.experiment.process(
-          model.datasetId,
-          model.type,
-          { algorithm: model.algorithm, features: model.features }
-        );
-        if (response.success && response.metadata?.parameters) {
-          optimizedParams = { ...optimizedParams, ...response.metadata.parameters };
-          toast({
-            title: "AI Optimization",
-            description: "Hyperparameters optimized by LabIQ Health AI",
-          });
-        }
-      } catch (e) {
-        console.warn('AI optimization skipped:', e);
-      }
-    }
-
     try {
-      // Update to training status
+      // 1. Update status to training
       await supabase
         .from('models')
         .update({
           status: 'training',
           training_progress: 0,
-          hyperparameters: optimizedParams
         })
         .eq('id', model.id);
 
-      // Update local state immediately
       setModels(prev => prev.map(m =>
         m.id === model.id ? { ...m, status: 'training', trainingProgress: 0 } : m
       ));
 
-      // Simulate training with progress updates
-      const startTime = Date.now();
-      for (let progress = 0; progress <= 100; progress += 5) {
-        await new Promise(resolve => setTimeout(resolve, 300));
+      // 2. Fetch Data to send to ML Service
+      // The Orchestrator requires raw data. We fetch a sample (up to 2000 rows) to ensure responsiveness
+      const { data: rowData, error: rowError } = await supabase
+        .from('dataset_rows')
+        .select('data')
+        .eq('dataset_id', model.datasetId)
+        .limit(2000);
 
-        await supabase
-          .from('models')
-          .update({ training_progress: progress })
-          .eq('id', model.id);
-
-        // Update local state for real-time UI
-        setModels(prev => prev.map(m =>
-          m.id === model.id ? { ...m, trainingProgress: progress } : m
-        ));
+      if (rowError || !rowData || rowData.length === 0) {
+        throw new Error("Could not fetch training data. Please ensure the dataset is uploaded correctly.");
       }
 
-      const trainingDuration = Math.floor((Date.now() - startTime) / 1000);
+      const trainingData = rowData.map(r => r.data);
 
-      // Generate metrics based on model type with realistic variance
-      const metrics = generateMockMetrics(model.type);
+      // 3. Connect to WebSocket
+      let ws: WebSocket | null = null;
 
-      // Complete training
-      await supabase
-        .from('models')
-        .update({
-          status: 'completed',
-          training_progress: 100,
-          training_duration: trainingDuration,
-          metrics,
-        })
-        .eq('id', model.id);
+      ws = mlService.connectToAutoML(model.datasetId, {
+        onOpen: () => {
+          // Send configuration payload immediately upon connection
+          if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({
+              target_column: model.targetColumn,
+              problem_type: model.type,
+              options: { ...model.hyperparameters },
+              data: trainingData
+            }));
+            console.log("Sent training payload with", trainingData.length, "rows");
+          }
+        },
+        onProgress: async ({ progress, status }) => {
+          // Update UI
+          setModels(prev => prev.map(m =>
+            m.id === model.id ? { ...m, trainingProgress: progress } : m
+          ));
 
-      // Update local state
-      setModels(prev => prev.map(m =>
-        m.id === model.id ? {
-          ...m,
-          status: 'completed',
-          trainingProgress: 100,
-          trainingDuration,
-          metrics
-        } : m
-      ));
+          // Sync with DB periodically (every 10%) to avoid spamming
+          if (progress % 10 === 0) {
+            await supabase.from('models').update({ training_progress: progress }).eq('id', model.id);
+          }
+        },
+        onComplete: async (result) => {
+          const trainingDuration = result.pipeline_duration || 0;
+          const trainingSummary = result.summary?.model_training_summary || {};
 
-      toast({
-        title: "Training Complete",
-        description: `${model.name} achieved ${model.type === 'classification' ? `${(metrics.accuracy! * 100).toFixed(1)}% accuracy` :
-          model.type === 'regression' ? `R² = ${metrics.r2!.toFixed(3)}` :
-            `Silhouette = ${metrics.silhouetteScore!.toFixed(3)}`
-          }`,
+          const metrics = trainingSummary.best_score ? {
+            // Adapt backend summary to frontend metrics structure
+            accuracy: trainingSummary.best_score,
+            description: trainingSummary.best_model,
+            model_path: trainingSummary.model_path, // Capture the model path
+            // Add other metrics if available in result
+            ...trainingSummary.metrics
+          } : {};
+
+          // @ts-ignore
+          await supabase
+            .from('models')
+            .update({
+              status: 'completed',
+              training_progress: 100,
+              training_duration: trainingDuration,
+              metrics,
+            })
+            .eq('id', model.id);
+
+          setModels(prev => prev.map(m =>
+            m.id === model.id ? {
+              ...m,
+              status: 'completed',
+              trainingProgress: 100,
+              trainingDuration,
+              metrics
+            } : m
+          ));
+
+          toast({
+            title: "Training Complete",
+            description: `Model successfully trained! Duration: ${trainingDuration.toFixed(2)}s`,
+          });
+
+          setTrainingModels(prev => {
+            const next = new Set(prev);
+            next.delete(model.id);
+            return next;
+          });
+        },
+        onError: async (error) => {
+          console.error('WS Error:', error);
+          await supabase
+            .from('models')
+            .update({ status: 'failed' })
+            .eq('id', model.id);
+
+          setModels(prev => prev.map(m =>
+            m.id === model.id ? { ...m, status: 'failed' } : m
+          ));
+
+          setTrainingModels(prev => {
+            const next = new Set(prev);
+            next.delete(model.id);
+            return next;
+          });
+
+          toast({
+            title: "Training Failed",
+            description: "Backend connection failed or training error.",
+            variant: "destructive",
+          });
+        }
       });
 
-    } catch (error) {
-      console.error('Training error:', error);
-
-      await supabase
-        .from('models')
-        .update({ status: 'failed' })
-        .eq('id', model.id);
-
-      setModels(prev => prev.map(m =>
-        m.id === model.id ? { ...m, status: 'failed' } : m
-      ));
-
+    } catch (error: any) {
+      console.error("Setup error", error);
       toast({
-        title: "Training Failed",
-        description: "An error occurred during training. Please check logs.",
+        title: "Training Start Error",
+        description: error.message || "Failed to start training.",
         variant: "destructive",
       });
-    } finally {
       setTrainingModels(prev => {
         const next = new Set(prev);
         next.delete(model.id);
@@ -536,19 +627,55 @@ const Models = () => {
   };
 
   const generateDescription = async () => {
-    if (!newModel.name || !labIQAI.isAvailable()) return;
+    if (!newModel.name) {
+      toast({
+        title: "Model Name Required",
+        description: "Please enter a model name first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!labIQAI.isAvailable()) {
+      toast({
+        title: "AI Not Available",
+        description: "AI service is not configured or reachable.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setIsGeneratingDescription(true);
     try {
       const dataset = datasets.find(d => d.id === newModel.datasetId);
       const context = `Dataset: ${dataset?.name || 'Unknown'}. Target: ${newModel.targetColumn}. Type: ${newModel.type}`;
-      const description = await labIQAI.generateDescription('experiment', newModel.name, context);
 
-      if (description) {
-        setNewModel(prev => ({ ...prev, description }));
+      const result = await labIQAI.generateEntityDetails('model', newModel.name, context);
+
+      if (result) {
+        setNewModel(prev => ({
+          ...prev,
+          name: result.title,
+          description: result.description
+        }));
+        toast({
+          title: "AI Details Generated",
+          description: "Title and description have been updated.",
+        });
+      } else {
+        toast({
+          title: "Generation Failed",
+          description: "AI could not generate details. Please try again.",
+          variant: "destructive",
+        });
       }
     } catch (error) {
-      console.error('Error generating description:', error);
+      console.error('Error generating details:', error);
+      toast({
+        title: "Error",
+        description: "Failed to generate description.",
+        variant: "destructive",
+      });
     } finally {
       setIsGeneratingDescription(false);
     }
@@ -772,48 +899,16 @@ const Models = () => {
               </DialogHeader>
 
               <div className="space-y-6 py-4">
-                {/* Basic Info */}
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Model Name *</Label>
-                    <Input
-                      id="name"
-                      placeholder="e.g., Customer Churn Predictor"
-                      value={newModel.name}
-                      onChange={(e) => setNewModel(prev => ({ ...prev, name: e.target.value }))}
-                      onBlur={generateDescription}
-                    />
-                  </div>
 
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="description">Description</Label>
-                      {isGeneratingDescription && (
-                        <span className="text-xs text-muted-foreground flex items-center gap-1">
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                          Generating...
-                        </span>
-                      )}
-                    </div>
-                    <Textarea
-                      id="description"
-                      placeholder="Describe what this model does..."
-                      rows={2}
-                      value={newModel.description}
-                      onChange={(e) => setNewModel(prev => ({ ...prev, description: e.target.value }))}
-                    />
-                  </div>
-                </div>
-
-                {/* Dataset Selection */}
+                {/* 1. Dataset Selection (Primary Driver) */}
                 <div className="space-y-2">
                   <Label>Dataset *</Label>
                   <Select
                     value={newModel.datasetId}
                     onValueChange={(val) => setNewModel(prev => ({ ...prev, datasetId: val, targetColumn: '', features: [] }))}
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a dataset" />
+                    <SelectTrigger className="h-12 border-primary/20">
+                      <SelectValue placeholder="Select a dataset to begin..." />
                     </SelectTrigger>
                     <SelectContent>
                       {datasets.length === 0 ? (
@@ -822,9 +917,9 @@ const Models = () => {
                         datasets.map(ds => (
                           <SelectItem key={ds.id} value={ds.id}>
                             <div className="flex items-center gap-2">
-                              <Database className="w-4 h-4" />
-                              {ds.name || ds.file_name}
-                              <span className="text-muted-foreground">({ds.row_count?.toLocaleString()} rows)</span>
+                              <Database className="w-4 h-4 text-primary" />
+                              <span className="font-medium">{ds.name || ds.file_name}</span>
+                              <span className="text-muted-foreground text-xs">({ds.row_count?.toLocaleString()} rows)</span>
                             </div>
                           </SelectItem>
                         ))
@@ -833,96 +928,128 @@ const Models = () => {
                   </Select>
                   {datasets.length === 0 && (
                     <p className="text-sm text-muted-foreground">
-                      <Link to="/upload" className="text-primary hover:underline">Upload a dataset</Link> first to create a model.
+                      <Link to="/upload" className="text-primary hover:underline">Upload a dataset</Link> first.
                     </p>
                   )}
                 </div>
 
-                {/* Model Type */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Task Type *</Label>
-                    <Select
-                      value={newModel.type}
-                      onValueChange={(val: MLModel['type']) => setNewModel(prev => ({ ...prev, type: val, algorithm: '' }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="classification">
-                          <div className="flex items-center gap-2">
-                            <Target className="w-4 h-4" />
-                            Classification
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="regression">
-                          <div className="flex items-center gap-2">
-                            <TrendingUp className="w-4 h-4" />
-                            Regression
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="clustering">
-                          <div className="flex items-center gap-2">
-                            <GitBranch className="w-4 h-4" />
-                            Clustering
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="timeseries">
-                          <div className="flex items-center gap-2">
-                            <Activity className="w-4 h-4" />
-                            Time Series
-                          </div>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                {/* 2. Configuration Grid */}
+                {newModel.datasetId && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-2 duration-300">
 
-                  <div className="space-y-2">
-                    <Label>Algorithm *</Label>
-                    <Select
-                      value={newModel.algorithm}
-                      onValueChange={(val) => setNewModel(prev => ({ ...prev, algorithm: val }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select algorithm" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {ALGORITHMS[newModel.type].map(algo => (
-                          <SelectItem key={algo.id} value={algo.id}>
-                            <div>
-                              <p>{algo.name}</p>
-                              <p className="text-xs text-muted-foreground">{algo.description}</p>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+                    {/* Target Column */}
+                    <div className="space-y-2">
+                      <Label>Target Column {newModel.type !== 'clustering' && '*'}</Label>
+                      <Select
+                        value={newModel.targetColumn}
+                        onValueChange={(val) => setNewModel(prev => ({ ...prev, targetColumn: val }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder={availableColumns.length ? "Select target..." : "Loading columns..."} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableColumns.length === 0 ? (
+                            <div className="p-2 text-sm text-muted-foreground text-center">No columns found</div>
+                          ) : (
+                            availableColumns.map(col => (
+                              <SelectItem key={col} value={col}>{col}</SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                      {availableColumns.length === 0 && (
+                        <p className="text-xs text-yellow-600 flex items-center gap-1">
+                          <AlertCircle className="w-3 h-3" />
+                          If columns don't appear, try re-uploading the dataset.
+                        </p>
+                      )}
+                    </div>
 
-                {/* Target Column */}
-                {newModel.datasetId && availableColumns.length > 0 && (
-                  <div className="space-y-2">
-                    <Label>Target Column *</Label>
-                    <Select
-                      value={newModel.targetColumn}
-                      onValueChange={(val) => setNewModel(prev => ({ ...prev, targetColumn: val }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select target variable" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableColumns.map(col => (
-                          <SelectItem key={col} value={col}>{col}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    {/* Task Type (Auto-selected) */}
+                    <div className="space-y-2">
+                      <Label>Task Type *</Label>
+                      <Select
+                        value={newModel.type}
+                        onValueChange={(val: MLModel['type']) => setNewModel(prev => ({ ...prev, type: val, algorithm: '' }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="classification">Classification (Categories)</SelectItem>
+                          <SelectItem value="regression">Regression (Numbers)</SelectItem>
+                          <SelectItem value="clustering">Clustering (Grouping)</SelectItem>
+                          <SelectItem value="timeseries">Time Series (Forecasting)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Algorithm */}
+                    <div className="space-y-2 col-span-2">
+                      <Label>
+                        Algorithm *
+                        <span className="text-xs font-normal text-muted-foreground ml-2">(AutoML will optimize hyperparameters)</span>
+                      </Label>
+                      <Select
+                        value={newModel.algorithm}
+                        onValueChange={(val) => setNewModel(prev => ({ ...prev, algorithm: val }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select algorithm" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {newModel.type === 'classification' && (
+                            <>
+                              <SelectItem value="random_forest_clf">Random Forest Classifier (Recommended)</SelectItem>
+                              <SelectItem value="xgboost_clf">XGBoost Classifier</SelectItem>
+                              <SelectItem value="logistic_regression">Logistic Regression</SelectItem>
+                              <SelectItem value="neural_network_clf">Neural Network</SelectItem>
+                            </>
+                          )}
+                          {newModel.type === 'regression' && (
+                            <>
+                              <SelectItem value="random_forest_reg">Random Forest Regressor (Recommended)</SelectItem>
+                              <SelectItem value="xgboost_reg">XGBoost Regressor</SelectItem>
+                              <SelectItem value="linear_regression">Linear Regression</SelectItem>
+                            </>
+                          )}
+                          {newModel.type === 'clustering' && (
+                            <>
+                              <SelectItem value="kmeans">K-Means Clustering</SelectItem>
+                              <SelectItem value="dbscan">DBSCAN</SelectItem>
+                            </>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Name & Description (Auto-filled) */}
+                    <div className="space-y-2 col-span-2">
+                      <Label>Model Name</Label>
+                      <Input
+                        value={newModel.name}
+                        onChange={(e) => setNewModel(prev => ({ ...prev, name: e.target.value }))}
+                        className="font-medium"
+                        placeholder="Auto-generated name..."
+                      />
+                    </div>
+
+                    <div className="space-y-2 col-span-2">
+                      <Label>Description</Label>
+                      <Textarea
+                        value={newModel.description}
+                        onChange={(e) => setNewModel(prev => ({ ...prev, description: e.target.value }))}
+                        rows={2}
+                        className="resize-none"
+                        placeholder="Auto-generated description..."
+                      />
+                    </div>
+
                   </div>
                 )}
 
                 {/* Feature Selection */}
-                {newModel.targetColumn && availableColumns.length > 0 && (
+                {newModel.datasetId && availableColumns.length > 0 && (
                   <div className="space-y-2">
                     <Label>Features (Optional - defaults to all)</Label>
                     <div className="flex flex-wrap gap-2 p-3 border rounded-md bg-muted/30 max-h-32 overflow-y-auto">
@@ -961,7 +1088,13 @@ const Models = () => {
                 </Button>
                 <Button
                   onClick={handleCreateModel}
-                  disabled={isCreating || !newModel.name || !newModel.datasetId || !newModel.targetColumn || !newModel.algorithm}
+                  disabled={
+                    isCreating ||
+                    !newModel.name ||
+                    !newModel.datasetId ||
+                    (!newModel.targetColumn && newModel.type !== 'clustering') ||
+                    !newModel.algorithm
+                  }
                 >
                   {isCreating ? (
                     <>
@@ -987,8 +1120,15 @@ const Models = () => {
               model={selectedModel}
               onTrain={() => handleTrainModel(selectedModel)}
               onDeploy={() => handleDeployModel(selectedModel)}
+              onTest={() => setPredictionModel(selectedModel)}
             />
           )}
+
+          <PredictionDialog
+            model={predictionModel}
+            open={!!predictionModel}
+            onOpenChange={(open) => !open && setPredictionModel(null)}
+          />
         </main>
       </MainLayout>
     </AuthGuard>
@@ -1143,6 +1283,7 @@ interface ModelDetailsDialogProps {
   model: MLModel;
   onTrain: () => void;
   onDeploy: () => void;
+  onTest?: () => void;
 }
 
 const ModelDetailsDialog: React.FC<ModelDetailsDialogProps> = ({
@@ -1151,6 +1292,7 @@ const ModelDetailsDialog: React.FC<ModelDetailsDialogProps> = ({
   model,
   onTrain,
   onDeploy,
+  onTest,
 }) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -1276,6 +1418,12 @@ const ModelDetailsDialog: React.FC<ModelDetailsDialogProps> = ({
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Retrain
               </Button>
+              {onTest && (
+                <Button variant="outline" onClick={onTest}>
+                  <FlaskConical className="w-4 h-4 mr-2" />
+                  Test Prediction
+                </Button>
+              )}
               <Button onClick={onDeploy}>
                 <Rocket className="w-4 h-4 mr-2" />
                 Deploy Model
@@ -1283,10 +1431,18 @@ const ModelDetailsDialog: React.FC<ModelDetailsDialogProps> = ({
             </>
           )}
           {model.status === 'deployed' && (
-            <Button variant="outline">
-              <Download className="w-4 h-4 mr-2" />
-              Export Model
-            </Button>
+            <>
+              {onTest && (
+                <Button variant="outline" onClick={onTest}>
+                  <FlaskConical className="w-4 h-4 mr-2" />
+                  Test Prediction
+                </Button>
+              )}
+              <Button variant="outline">
+                <Download className="w-4 h-4 mr-2" />
+                Export Model
+              </Button>
+            </>
           )}
         </DialogFooter>
       </DialogContent>
@@ -1309,64 +1465,7 @@ const MetricCard: React.FC<{ label: string; value: number; suffix?: string }> = 
 // HELPER FUNCTIONS
 // =============================================================================
 
-function getDemoModels(): MLModel[] {
-  return [
-    {
-      id: 'demo-1',
-      name: 'Customer Churn Predictor',
-      description: 'Predicts customer churn probability based on usage patterns and engagement metrics.',
-      type: 'classification',
-      algorithm: 'random_forest_clf',
-      status: 'deployed',
-      datasetId: '',
-      datasetName: 'Customer Data Q4',
-      targetColumn: 'churned',
-      features: ['usage_days', 'support_tickets', 'payment_delays', 'feature_adoption'],
-      metrics: { accuracy: 0.92, precision: 0.89, recall: 0.94, f1Score: 0.91, auc: 0.96 },
-      hyperparameters: { n_estimators: 100, max_depth: 10 },
-      version: '2.1.0',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      predictions: 15420,
-    },
-    {
-      id: 'demo-2',
-      name: 'Revenue Forecaster',
-      description: 'Time series model for quarterly revenue prediction.',
-      type: 'regression',
-      algorithm: 'xgboost_reg',
-      status: 'completed',
-      datasetId: '',
-      datasetName: 'Financial Data',
-      targetColumn: 'revenue',
-      features: ['quarter', 'marketing_spend', 'new_customers', 'seasonality'],
-      metrics: { r2: 0.87, rmse: 12500, mae: 9800 },
-      hyperparameters: { learning_rate: 0.1, max_depth: 6 },
-      version: '1.0.0',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      predictions: 234,
-    },
-    {
-      id: 'demo-3',
-      name: 'Anomaly Detector',
-      description: 'Identifies anomalous patterns in sensor data.',
-      type: 'clustering',
-      algorithm: 'dbscan',
-      status: 'training',
-      datasetId: '',
-      datasetName: 'Sensor Readings',
-      targetColumn: 'anomaly_label',
-      features: ['temperature', 'pressure', 'vibration', 'humidity'],
-      metrics: {},
-      hyperparameters: { eps: 0.5, min_samples: 5 },
-      version: '1.0.0',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      trainingProgress: 65,
-    },
-  ];
-}
+
 
 function getDefaultHyperparameters(algorithm: string): Record<string, any> {
   const defaults: Record<string, Record<string, any>> = {
@@ -1384,26 +1483,7 @@ function getDefaultHyperparameters(algorithm: string): Record<string, any> {
   return defaults[algorithm] || {};
 }
 
-function generateMockMetrics(type: MLModel['type']): ModelMetrics {
-  if (type === 'classification') {
-    return {
-      accuracy: 0.85 + Math.random() * 0.12,
-      precision: 0.82 + Math.random() * 0.15,
-      recall: 0.79 + Math.random() * 0.18,
-      f1Score: 0.83 + Math.random() * 0.14,
-      auc: 0.88 + Math.random() * 0.1,
-    };
-  } else if (type === 'regression') {
-    return {
-      r2: 0.75 + Math.random() * 0.2,
-      rmse: 2.5 + Math.random() * 3,
-      mae: 1.8 + Math.random() * 2,
-    };
-  } else {
-    return {
-      silhouetteScore: 0.5 + Math.random() * 0.4,
-    };
-  }
-}
+// generateMockMetrics removed
+
 
 export default Models;

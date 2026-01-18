@@ -1,27 +1,40 @@
-# Core Framework
-fastapi>=0.104.0
-uvicorn[standard]>=0.24.0
-pydantic>=2.5.0
+# Core Framework - WORKING
+fastapi==0.115.5
+uvicorn==0.34.0
+pydantic==2.10.3
+python-multipart==0.0.20
+
+# Core ML Libraries - WORKING
+scikit-learn==1.6.0
+xgboost==2.1.2
+lightgbm==4.5.0
+joblib==1.4.2
+
+# Data Processing - WORKING
+numpy==2.2.0
+pandas==2.2.3
+scipy==1.14.1
+imbalanced-learn==0.12.4
+
+# Feature Engineering - WORKING
+category-encoders==2.6.4
+
+# AutoML - WORKING
+optuna==4.1.0
+
+# Visualization - WORKING
+matplotlib==3.9.2
+seaborn==0.13.2
+plotly==5.24.1
+
+# Experiment Tracking - WORKING
+mlflow==2.18.0
+
+# Statistical Analysis - WORKING
+statsmodels==0.14.4
+
+# Utilities - WORKING
 python-dotenv==1.0.1
-httpx>=0.25.0
-
-# Data Processing
-pandas>=2.0.0
-numpy>=1.24.0
-tabulate
-
-# Multi-Agent Framework (Core)
-langgraph
-langchain
-langchain-groq
-langchain-community
-langchain-core
-langchain-openai
-
-# Utilities
 requests==2.32.3
 tqdm==4.67.1
-langchain-groq
-langchain-google-genai
-jsonpointer
-jsonpatch3
+pyyaml==6.0.2

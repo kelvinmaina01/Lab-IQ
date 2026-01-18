@@ -49,6 +49,7 @@ export interface TrainModelResponse {
 
 export interface PredictRequest {
     model_id: string;
+    model_path?: string;
     input_data: Record<string, any>[];
 }
 
@@ -129,6 +130,58 @@ export class MLService {
         } catch {
             return false;
         }
+    }
+
+    /**
+     * Connect to AutoML WebSocket
+     */
+    connectToAutoML(
+        datasetId: string,
+        handlers: {
+            onOpen?: () => void;
+            onProgress: (data: { progress: number; status: any }) => void;
+            onComplete: (result: any) => void;
+            onError: (error: any) => void;
+        }
+    ): WebSocket {
+        const wsUrl = this.baseUrl.replace('http', 'ws');
+        const ws = new WebSocket(`${wsUrl}/ws/automl/${datasetId}`);
+
+        ws.onopen = () => {
+            console.log(`Connected to AutoML WS for ${datasetId}`);
+            if (handlers.onOpen) handlers.onOpen();
+        };
+
+        ws.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+
+                if (data.type === 'status' || data.type === 'progress') {
+                    handlers.onProgress({
+                        progress: data.progress,
+                        status: data.status
+                    });
+                } else if (data.type === 'complete') {
+                    handlers.onComplete(data.result);
+                } else if (data.type === 'error') {
+                    console.error('AutoML WS Error:', data.error);
+                    handlers.onError(data.error);
+                }
+            } catch (error) {
+                console.error('Failed to parse WS message:', error);
+            }
+        };
+
+        ws.onerror = (error) => {
+            console.error('AutoML WS connection error:', error);
+            handlers.onError(error);
+        };
+
+        ws.onclose = () => {
+            console.log(`AutoML WS closed for ${datasetId}`);
+        };
+
+        return ws;
     }
 }
 
