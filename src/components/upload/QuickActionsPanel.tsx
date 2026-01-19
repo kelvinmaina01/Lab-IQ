@@ -7,7 +7,8 @@ import {
     Zap,
     Sparkles,
     ArrowRight,
-    Rocket
+    Rocket,
+    FileBox
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -64,11 +65,20 @@ export const QuickActionsPanel: React.FC<QuickActionsPanelProps> = ({
         {
             id: 'ai_assistant',
             icon: Sparkles,
-            title: 'Analyze with AI',
-            description: 'Get instant insights from Gemini AI',
+            title: 'Interactive Agent',
+            description: 'Get instant insights from LabIQ Interactive Agent',
             action: () => handleAnalyzeWithAI(),
             gradient: 'from-green-500 to-emerald-500',
             iconColor: 'text-green-500'
+        },
+        {
+            id: 'auto_analysis',
+            icon: FileBox,
+            title: 'Auto Analysis',
+            description: 'Run background analysis & create artifacts',
+            action: () => handleAutoAnalysis(),
+            gradient: 'from-amber-400 to-orange-600',
+            iconColor: 'text-amber-500'
         }
     ];
 
@@ -117,6 +127,13 @@ export const QuickActionsPanel: React.FC<QuickActionsPanelProps> = ({
         });
     };
 
+    const handleAutoAnalysis = () => {
+        toast({
+            title: "Phase 2 Initiated",
+            description: "Auto Analysis system architecture is being designed.",
+        });
+    };
+
     return (
         <>
             <Card className="border-primary/20 bg-gradient-to-br from-primary/5 via-background to-secondary/5">
@@ -132,7 +149,7 @@ export const QuickActionsPanel: React.FC<QuickActionsPanelProps> = ({
                     </div>
                 </CardHeader>
                 <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                         {quickActions.map((action) => {
                             const Icon = action.icon;
                             return (
