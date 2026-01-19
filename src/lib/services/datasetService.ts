@@ -396,14 +396,73 @@ export class DatasetService {
     }
 
     async getAnonymizationLogs(datasetId: string) {
-        const { data, error } = await (supabase
-            .from('anonymization_logs' as any) as any)
+        const { data, error } = await supabase
+            .from('anonymization_logs')
             .select('*')
             .eq('dataset_id', datasetId)
-            .order('completed_at', { ascending: false });
+            .order('created_at', { ascending: false });
 
         if (error) throw error;
-        return data;
+        return data || [];
+    }
+
+    /**
+     * Run Auto Analysis (Screening -> Diagnosis -> Treatment)
+     * Centralized logic for triggering ML insights and persisting them back to Supabase.
+     */
+    async runAutoAnalysis(datasetId: string, customRows?: any[]): Promise<any> {
+        let rows = customRows;
+
+        // 1. Fetch rows if not provided
+        if (!rows) {
+            const { data, error } = await supabase
+                .from('dataset_rows')
+                .select('data')
+                .eq('dataset_id', datasetId)
+                .limit(1000);
+
+            if (error) throw error;
+            rows = data.map(r => r.data);
+        }
+
+        // 2. Call ML Service
+        const response = await fetch(`${ML_API_URL}/api/ml/insights`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                dataset_id: datasetId,
+                data: rows
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`ML Service failed: ${response.statusText}`);
+        }
+
+        const aiResults = await response.json();
+
+        // 3. Persist to Supabase
+        // First get existing metadata to merge
+        const { data: dataset } = await supabase
+            .from('datasets')
+            .select('metadata')
+            .eq('id', datasetId)
+            .single();
+
+        const currentMetadata = dataset?.metadata || {};
+
+        await supabase
+            .from('datasets')
+            .update({
+                metadata: {
+                    ...currentMetadata,
+                    analysis: aiResults,
+                    lastAutoAnalysisAt: new Date().toISOString()
+                }
+            })
+            .eq('id', datasetId);
+
+        return aiResults;
     }
 
     /**

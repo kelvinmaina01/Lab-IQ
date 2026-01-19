@@ -171,7 +171,19 @@ const DatasetDetail = () => {
     };
 
     const runAutoAnalysis = async () => {
-        toast.info('Analysis feature coming soon!');
+        if (!id) return;
+
+        setAnalysisLoading(true);
+        try {
+            const results = await datasetService.runAutoAnalysis(id);
+            setAnalysisResults(results);
+            toast.success('Auto Analysis Complete!');
+        } catch (err) {
+            console.error("Manual Auto Analysis failed:", err);
+            toast.error('Failed to run analysis. Check backend status.');
+        } finally {
+            setAnalysisLoading(false);
+        }
     };
 
     if (loading) {

@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
-import { mlService } from '@/services/mlService';
+import { datasetService } from '@/lib/services/datasetService';
 import { supabase } from '@/integrations/supabase/client';
 
 
@@ -140,26 +140,15 @@ export const QuickActionsPanel: React.FC<QuickActionsPanelProps> = ({
         });
 
         try {
-            // Fetch sample rows for analysis
-            const { data: rowData, error } = await supabase
-                .from('dataset_rows')
-                .select('data')
-                .eq('dataset_id', datasetId)
-                .limit(1000);
+            // Trigger centralized Auto Analysis via Service
+            const result = await datasetService.runAutoAnalysis(datasetId);
 
-            if (error) throw error;
+            toast({
+                title: "Analysis Complete",
+                description: `Successfully analyzed dataset. Findings have been saved permanently.`,
+            });
 
-            const rows = rowData ? rowData.map(r => r.data) : [];
-
-            // Trigger ML Service insights
-            const result = await mlService.generateInsights(datasetId, rows);
-
-            if (result.success) {
-                toast({
-                    title: "Analysis Complete",
-                    description: `Successfully analyzed dataset. Found ${result.insights?.length || 0} key findings.`,
-                });
-            }
+            // Note: In a real app we might want to trigger a refresh here if this component is paired with a list
         } catch (err) {
             console.error("Auto Analysis failed:", err);
             toast({
