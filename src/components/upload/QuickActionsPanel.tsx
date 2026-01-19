@@ -11,6 +11,7 @@ import {
     FileBox
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from '@/hooks/use-toast';
 
 
 interface QuickActionsPanelProps {
@@ -33,6 +34,7 @@ export const QuickActionsPanel: React.FC<QuickActionsPanelProps> = ({
     datasetName
 }) => {
     const navigate = useNavigate();
+    const { toast } = useToast();
 
     const quickActions: QuickAction[] = [
         {
