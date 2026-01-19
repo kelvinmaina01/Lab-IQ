@@ -172,7 +172,46 @@ export class DatasetService {
                 }
             );
 
-            onProgress?.(100, 'Upload complete!');
+            // 10. Trigger AI Cleaning & Analysis Pipeline
+            // This is the "Brain" connection - offloading to the Python ML Service
+            try {
+                onProgress?.(100, 'Handing over to AI Brain for Cleaning & Diagnosis...');
+                const ML_API_URL = import.meta.env.VITE_ML_API_URL || 'http://localhost:8002';
+
+                // We fire and forget or wait? User wants "thorough" so we wait for initial scan
+                const response = await fetch(`${ML_API_URL}/api/ml/insights`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        dataset_id: datasetId,
+                        data: parsedData.rows.slice(0, 1000), // Send a sample for quick diagnosis
+                        columns: parsedData.columns
+                    })
+                });
+
+                if (response.ok) {
+                    const aiResults = await response.json();
+
+                    // Update dataset with AI findings
+                    await supabase
+                        .from('datasets')
+                        .update({
+                            metadata: {
+                                ...extraMetadata,
+                                healthMetadata,
+                                aiInsights: aiResults,
+                                lastProcessedAt: new Date().toISOString()
+                            }
+                        })
+                        .eq('id', datasetId);
+
+                    onProgress?.(100, 'AI Cleaning Complete! 🧠');
+                }
+            } catch (mlError) {
+                console.error('ML Service trigger failed:', mlError);
+                // We don't throw here to avoid failing the whole upload if the brain is sleepy
+            }
+
             return datasetId;
 
         } catch (error) {

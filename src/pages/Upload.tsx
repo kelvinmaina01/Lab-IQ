@@ -425,6 +425,50 @@ export default function Upload() {
           </Card>
         </div>
 
+        {/* AI Agent Findings (The Brain Results) */}
+        {data.metadata?.aiInsights && (
+          <div className="bg-white/50 border border-indigo-100 rounded-xl p-4 space-y-4">
+            <div className="flex items-center gap-2 text-indigo-900 border-b border-indigo-50 pb-2">
+              <Shield className="h-4 w-4" />
+              <h4 className="font-bold text-sm">AI Agent Diagnosis & Treatment</h4>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Logic & Screening</p>
+                {data.metadata.aiInsights.domain_analysis?.logic_errors?.length > 0 ? (
+                  <div className="space-y-1">
+                    {data.metadata.aiInsights.domain_analysis.logic_errors.map((err: string, i: number) => (
+                      <div key={i} className="flex items-start gap-2 text-xs text-orange-700 bg-orange-50/50 p-2 rounded">
+                        <AlertCircle className="h-3 w-3 mt-0.5 shrink-0" />
+                        <span>{err}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-green-700 font-medium flex items-center gap-1">
+                    <CheckCircle2 className="h-3 w-3" /> No logic errors detected
+                  </p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">AI Diagnosis (Anomalies)</p>
+                {data.metadata.aiInsights.data_profile?.anomaly_classification?.ai_detected_count > 0 ? (
+                  <div className="flex items-center gap-2 p-2 bg-indigo-50/50 rounded text-indigo-700">
+                    <Activity className="h-4 w-4" />
+                    <span className="text-xs font-bold">
+                      {data.metadata.aiInsights.data_profile.anomaly_classification.ai_detected_count} AI Anomalies Flagged
+                    </span>
+                  </div>
+                ) : (
+                  <p className="text-xs text-green-700 font-medium flex items-center gap-1">
+                    <CheckCircle2 className="h-3 w-3" /> No multivariale anomalies found
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-green-100">
           <Button
             className="flex-1 gap-2 bg-green-600 hover:bg-green-700 text-white h-12 text-lg"
