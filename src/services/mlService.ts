@@ -1,8 +1,9 @@
 import { IMLService } from "@/core/interfaces";
+import { ML_API_URL } from "@/lib/config";
 
 export class PythonMLService implements IMLService {
-    // TODO: Environment variable for production
-    private baseUrl = "http://localhost:8002/api/ml";
+    // Environment variable for production
+    private baseUrl = `${ML_API_URL}/api/ml`;
 
     async startAutoML(datasetId: string, options: any) {
         const response = await fetch(`${this.baseUrl}/automl`, {

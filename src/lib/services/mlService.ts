@@ -3,7 +3,9 @@
  * TypeScript client for communicating with Python ML service
  */
 
-const ML_SERVICE_URL = 'http://localhost:8002';
+import { ML_API_URL } from '../config';
+
+const ML_SERVICE_URL = ML_API_URL;
 
 export interface DetectProblemRequest {
     data: Record<string, any>[];

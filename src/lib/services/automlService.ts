@@ -2,6 +2,7 @@
  * AutoML Service Client
  * Handles communication with the Multi-Agent AutoML backend
  */
+import { ML_API_URL as ML_SERVICE_URL } from '../config';
 
 export interface AutoMLRequest {
     dataset_id: string;
@@ -53,7 +54,6 @@ export interface ProgressUpdate {
     error?: string;
 }
 
-const ML_SERVICE_URL = import.meta.env.VITE_ML_SERVICE_URL || 'http://localhost:8002';
 
 /**
  * Run complete AutoML pipeline via HTTP

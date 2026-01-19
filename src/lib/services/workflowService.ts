@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { eventBus, EventTypes, WorkflowPayload } from './eventBus';
+import { ML_API_URL } from '../config';
 
 export interface WorkflowStep {
   type: 'quality_check' | 'transform' | 'train_model' | 'analyze' | 'notify' | 'export';
@@ -451,7 +452,7 @@ class WorkflowService {
    * Execute individual workflow step with real ML service integration
    */
   private async executeStep(step: WorkflowStep, datasetId?: string): Promise<any> {
-    const ML_SERVICE_URL = 'http://localhost:8002';
+    const ML_SERVICE_URL = ML_API_URL;
 
     switch (step.type) {
       case 'quality_check':

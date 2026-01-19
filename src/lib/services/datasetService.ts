@@ -4,6 +4,7 @@ import { qualityAnalyzer } from '@/lib/analysis/qualityAnalyzer';
 // statisticalAnalyzer will be imported dynamically where needed to avoid build issues
 import { eventBus, EventTypes, DatasetUploadedPayload } from '@/lib/events';
 import { analyzeHealthData, HealthMetadata } from '@/lib/parsers/healthDataTypes';
+import { ML_API_URL } from '../config';
 
 
 export class DatasetService {
@@ -176,7 +177,6 @@ export class DatasetService {
             // This is the "Brain" connection - offloading to the Python ML Service
             try {
                 onProgress?.(100, 'Handing over to AI Brain for Cleaning & Diagnosis...');
-                const ML_API_URL = import.meta.env.VITE_ML_API_URL || 'http://localhost:8002';
 
                 // We fire and forget or wait? User wants "thorough" so we wait for initial scan
                 const response = await fetch(`${ML_API_URL}/api/ml/insights`, {

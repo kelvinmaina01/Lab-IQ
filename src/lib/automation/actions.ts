@@ -6,6 +6,7 @@
  */
 
 import { HealthEvent } from '../events/eventTypes';
+import { ML_API_URL } from '../config';
 
 // =============================================================================
 // ACTION TYPES
@@ -210,15 +211,15 @@ registerActionHandler(ActionTypes.TRIGGER_AUTOML, async (action, event, context)
             config: action.config,
         });
 
-        // TODO: Call ML service endpoint
-        // const result = await fetch('http://localhost:8002/api/ml/automl', {
-        //   method: 'POST',
-        //   headers: { 'Content-Type': 'application/json' },
-        //   body: JSON.stringify({
-        //     dataset_id: (event.payload as any).datasetId,
-        //     ...action.config,
-        //   }),
-        // });
+        // Call ML service endpoint
+        const result = await fetch(`${ML_API_URL}/api/ml/automl`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                dataset_id: (event.payload as any).datasetId,
+                ...action.config,
+            }),
+        });
 
         return {
             success: true,

@@ -12,6 +12,10 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
+import { mlService } from '@/services/mlService';
+import { supabase } from '@/integrations/supabase/client';
+import { mlService } from '@/services/mlService';
+import { supabase } from '@/integrations/supabase/client';
 
 
 interface QuickActionsPanelProps {
@@ -129,11 +133,43 @@ export const QuickActionsPanel: React.FC<QuickActionsPanelProps> = ({
         });
     };
 
-    const handleAutoAnalysis = () => {
+    const handleAutoAnalysis = async () => {
+        if (!datasetId) return;
+
         toast({
-            title: "Phase 2 Initiated",
-            description: "Auto Analysis system architecture is being designed.",
+            title: "Started Auto Analysis",
+            description: "LabIQ Brain is now performing Screening -> Diagnosis -> Treatment analysis in the background.",
         });
+
+        try {
+            // Fetch sample rows for analysis
+            const { data: rowData, error } = await supabase
+                .from('dataset_rows')
+                .select('data')
+                .eq('dataset_id', datasetId)
+                .limit(1000);
+
+            if (error) throw error;
+
+            const rows = rowData ? rowData.map(r => r.data) : [];
+
+            // Trigger ML Service insights
+            const result = await mlService.generateInsights(datasetId, rows);
+
+            if (result.success) {
+                toast({
+                    title: "Analysis Complete",
+                    description: `Successfully analyzed dataset. Found ${result.insights?.length || 0} key findings.`,
+                });
+            }
+        } catch (err) {
+            console.error("Auto Analysis failed:", err);
+            toast({
+                title: "Analysis Failed",
+                description: "Could not complete background analysis. Please check ML service status.",
+                variant: "destructive"
+            });
+        }
     };
 
     return (

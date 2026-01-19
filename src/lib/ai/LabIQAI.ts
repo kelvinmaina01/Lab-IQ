@@ -18,6 +18,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { ML_API_URL } from '../config';
 
 // =============================================================================
 // CONFIGURATION - Multi-Provider Support
@@ -393,7 +394,7 @@ abstract class BaseAIAgent {
    */
   protected async callBackendAgent(prompt: string, systemContext: string = ''): Promise<string> {
     try {
-      const response = await fetch('http://localhost:8002/api/agent/run', {
+      const response = await fetch(`${ML_API_URL}/api/agent/run`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -757,7 +758,7 @@ class DataAnalysisAgent extends BaseAIAgent {
 
       console.log('[Chat Debug] Calling /api/agent/run with payload:', payload);
 
-      const response = await fetch('http://localhost:8002/api/agent/run', {
+      const response = await fetch(`${ML_API_URL}/api/agent/run`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

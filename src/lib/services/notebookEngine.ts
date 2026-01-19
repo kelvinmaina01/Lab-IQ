@@ -15,6 +15,7 @@ import {
     isInsightCell
 } from '@/lib/types/notebook';
 import { supabase } from '@/integrations/supabase/client';
+import { ML_API_URL } from '../config';
 
 interface AgentOutput {
     plan?: string;
@@ -75,7 +76,7 @@ export class NotebookEngine {
         messages.push({ role: 'user', content: userPrompt });
 
         // 2. Call Backend API
-        const response = await fetch('http://localhost:8002/api/agent/run', {
+        const response = await fetch(`${ML_API_URL}/api/agent/run`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

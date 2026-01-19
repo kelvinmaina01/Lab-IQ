@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { eventBus, EventTypes, ReportPayload } from '@/lib/events';
+import { ML_API_URL } from '../config';
 
 export interface Report {
     id: string;
@@ -86,7 +87,7 @@ export const reportService = {
 
         // Call Real ML Backend for Report Generation
         try {
-            const mlResponse = await fetch('http://localhost:8002/api/ml/generate-report', {
+            const mlResponse = await fetch(`${ML_API_URL}/api/ml/generate-report`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
