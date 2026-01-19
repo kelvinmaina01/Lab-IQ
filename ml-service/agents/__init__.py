@@ -5,7 +5,12 @@ from .base_agent import BaseAgent, AgentStatus
 from .data_agent import DataAgent
 from .feature_agent import FeatureEngineeringAgent
 from .model_selection_agent import ModelSelectionAgent
-from .hyperparameter_agent import HyperparameterAgent
+from .model_selection_agent import ModelSelectionAgent
+try:
+    from .hyperparameter_agent import HyperparameterAgent
+except Exception:
+    HyperparameterAgent = None
+from .training_agent import TrainingAgent
 from .training_agent import TrainingAgent
 from .insights_agent import InsightsAgent
 from .orchestrator import OrchestratorAgent

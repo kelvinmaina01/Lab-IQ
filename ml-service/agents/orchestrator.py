@@ -6,7 +6,11 @@ from .base_agent import BaseAgent
 from .data_agent import DataAgent
 from .feature_agent import FeatureEngineeringAgent
 from .model_selection_agent import ModelSelectionAgent
-from .hyperparameter_agent import HyperparameterAgent
+try:
+    from .hyperparameter_agent import HyperparameterAgent
+except Exception as e:
+    HyperparameterAgent = None
+    logger.warning(f"HyperparameterAgent disabled: {e}")
 from .training_agent import TrainingAgent
 from .insights_agent import InsightsAgent
 from .labai_agent import LabAIAgent
@@ -26,7 +30,7 @@ class OrchestratorAgent(BaseAgent):
         self.data_agent = DataAgent()
         self.feature_agent = FeatureEngineeringAgent()
         self.model_selection_agent = ModelSelectionAgent()
-        self.hyperparameter_agent = HyperparameterAgent()
+        self.hyperparameter_agent = HyperparameterAgent() if HyperparameterAgent else None
         self.training_agent = TrainingAgent()
         self.insights_agent = InsightsAgent()
         self.labai_agent = LabAIAgent()
@@ -118,11 +122,15 @@ class OrchestratorAgent(BaseAgent):
             logger.info("=" * 60)
             self.progress = 55
             
-            hyperparameter_result = await self.hyperparameter_agent.run(engineered_data, shared_context)
-            results["stages"]["hyperparameter_optimization"] = hyperparameter_result
-            
-            optimized_algorithms = hyperparameter_result.get("results", {}).get("optimized_algorithms", [])
-            shared_context["optimized_algorithms"] = optimized_algorithms
+            if self.hyperparameter_agent:
+                hyperparameter_result = await self.hyperparameter_agent.run(engineered_data, shared_context)
+                results["stages"]["hyperparameter_optimization"] = hyperparameter_result
+                
+                optimized_algorithms = hyperparameter_result.get("results", {}).get("optimized_algorithms", [])
+                shared_context["optimized_algorithms"] = optimized_algorithms
+            else:
+                 logger.info("Skipping Hyperparameter Optimization (Agent not available)")
+                 shared_context["optimized_algorithms"] = []
             
             # Stage 5: Model Training & Evaluation
             logger.info("=" * 60)

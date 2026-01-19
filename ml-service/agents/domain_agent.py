@@ -76,6 +76,18 @@ class DomainAgent(BaseAgent):
         super().__init__("domain_agent", "Domain Expert Agent 🧬")
         self.supported_domains = ["biotech", "chemistry", "public_health", "clinical", "general"]
         
+        # Biological plausible ranges (lower, upper)
+        self.bio_ranges = {
+            'vital_bp': (30, 300),          # Blood Pressure (Systolic usually max ~250)
+            'vital_hr': (20, 250),          # Heart Rate
+            'vital_temp': (30, 45),         # Temperature (Celsius)
+            'vital_weight': (0.5, 600),     # Weight (kg) - broad range for infants to adults
+            'vital_height': (20, 300),      # Height (cm)
+            'vital_spo2': (50, 100),        # Oxygen Saturation
+            'lab_glucose': (10, 2000),      # Glucose (mg/dL) - 2000 is extreme hyperglycemic coma
+            'lab_cholesterol': (50, 1000)   # Cholesterol
+        }
+
     async def execute(self, data: Any, context: Dict[str, Any]) -> Dict[str, Any]:
         """
         Detect domain and perform specific analysis
@@ -93,10 +105,18 @@ class DomainAgent(BaseAgent):
             "analysis": {},
             "phi_fields": [],
             "clinical_codes": [],
-            "recommendations": []
+            "recommendations": [],
+            "consistency_issues": [],
+            "range_violations": []
         }
         
         # 2. Perform Domain-Specific Analysis
+        # Always run consistency checks for health domains
+        if domain in ["public_health", "clinical", "general"]:
+             # Heuristic: even if 'general', it might have some health columns
+             consistency_report = self._check_consistency(df, domain_info)
+             results["consistency_issues"] = consistency_report.get("logic_errors", [])
+             results["range_violations"] = consistency_report.get("range_violations", [])
         if domain == "biotech" and confidence > 0.6:
             results["analysis"] = self._analyze_biotech(df, domain_info["columns"])
         elif domain == "chemistry" and confidence > 0.6:
@@ -107,6 +127,12 @@ class DomainAgent(BaseAgent):
             results["phi_fields"] = health_analysis.get("phi_fields", [])
             results["clinical_codes"] = health_analysis.get("clinical_codes", [])
             results["recommendations"] = health_analysis.get("recommendations", [])
+            
+            # Merge recommendations
+            if results["consistency_issues"]:
+                 results["recommendations"].append(f"⚠️ Found {len(results['consistency_issues'])} logical consistency issues (e.g., Male + Pregnant).")
+            if results["range_violations"]:
+                 results["recommendations"].append(f"⚠️ Found {len(results['range_violations'])} biological range violations.")
             
         return results
     
@@ -208,6 +234,70 @@ class DomainAgent(BaseAgent):
              return {"domain": "chemistry", "confidence": 0.8 if chem_content_match else 0.5, "columns": chem_cols}
              
         return {"domain": "general", "confidence": 1.0, "columns": []}
+
+    def _check_consistency(self, df: pd.DataFrame, domain_info: Dict) -> Dict[str, List[str]]:
+        """Check for logical errors and biological range violations"""
+        logic_errors = []
+        range_violations = []
+        
+        cols = domain_info.get("columns", {})
+        
+        # 1. Biological Range Checks
+        vitals = cols.get('vitals', [])
+        labs = cols.get('labs', [])
+        
+        for category, col_list in [('vitals', vitals), ('labs', labs)]:
+            for col in col_list:
+                # Find matching range rule
+                rule_key = None
+                for key in self.bio_ranges:
+                    # Simple fuzzy match: if key suffix is in column name
+                    # e.g. 'vital_bp' rule matches 'systolic_bp' column? 
+                    # This is naive, let's look at the mapping logic in domain extraction maybe?
+                    # For now, let's try to match the regex patterns from EHR_COLUMN_PATTERNS
+                    
+                    # Better: We know which pattern matched this column in _detect_domain
+                    # But we lost that specific mapping. Re-check.
+                    if any(part in col.lower() for part in key.split('_')[1:]):
+                         rule_key = key
+                         break
+                
+                if rule_key and col in df.columns:
+                    min_val, max_val = self.bio_ranges[rule_key]
+                    numeric_col = pd.to_numeric(df[col], errors='coerce')
+                    violations = numeric_col[(numeric_col < min_val) | (numeric_col > max_val)]
+                    
+                    if not violations.empty:
+                        count = len(violations)
+                        examples = violations.head(3).tolist()
+                        range_violations.append(
+                            f"Column '{col}' has {count} values outside biological range ({min_val}-{max_val}). Examples: {examples}"
+                        )
+
+        # 2. Logic/Consistency Checks
+        
+        # Gender vs Pregnancy
+        # Find gender column
+        gender_cols = cols.get('demographics', [])
+        gender_col = next((c for c in gender_cols if 'gender' in c.lower() or 'sex' in c.lower()), None)
+        
+        # Find pregnancy column (heuristic)
+        preg_col = next((c for c in df.columns if 'preg' in c.lower()), None)
+        
+        if gender_col and preg_col:
+            # Assume 'Male'/'M' and 'Yes'/'True' for pregnancy
+            males = df[df[gender_col].astype(str).str.match(r'^(male|m)$', case=False, na=False)]
+            pregnant_males = males[males[preg_col].astype(str).str.match(r'^(yes|true|1|positive)$', case=False, na=False)]
+            
+            if not pregnant_males.empty:
+                logic_errors.append(f"Found {len(pregnant_males)} records with Gender='Male' and Pregnancy='Yes'")
+        
+        # Age vs Pediatric Vitals (Advanced todo)
+        
+        return {
+            "logic_errors": logic_errors,
+            "range_violations": range_violations
+        }
 
     def _analyze_health_data(self, df: pd.DataFrame, domain_info: Dict) -> Dict[str, Any]:
         """Analyze health/clinical data"""

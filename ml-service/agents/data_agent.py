@@ -6,6 +6,7 @@ import numpy as np
 from typing import Dict, Any, List
 from .base_agent import BaseAgent
 from .domain_agent import DomainAgent
+from sklearn.ensemble import IsolationForest
 import logging
 
 logger = logging.getLogger(__name__)
@@ -36,8 +37,11 @@ class DataAgent(BaseAgent):
         # Statistical summary
         stats_summary = self._statistical_summary(df)
         
-        # Outlier detection
+        # Outlier detection (Advanced)
         outliers = self._detect_outliers(df)
+        
+        # Classification of anomalies
+        anomaly_classification = self._classify_anomalies(df, outliers)
         
         # Data quality score
         quality_score = self._calculate_quality_score(df, missing_analysis, outliers)
@@ -55,7 +59,9 @@ class DataAgent(BaseAgent):
             "type_analysis": type_analysis,
             "missing_analysis": missing_analysis,
             "statistical_summary": stats_summary,
+            "statistical_summary": stats_summary,
             "outliers": outliers,
+            "anomaly_classification": anomaly_classification,
             "quality_score": quality_score,
             "recommendations": recommendations,
             "domain_analysis": domain_analysis
@@ -161,6 +167,47 @@ class DataAgent(BaseAgent):
                 }
         
         return outliers
+
+    def _classify_anomalies(self, df: pd.DataFrame, iqr_outliers: Dict) -> Dict[str, Any]:
+        """
+        Classify anomalies using multi-grade strategy:
+        1. Isolation Forest (AI) for multivariate anomalies
+        2. Diagnosis: Potential Error vs True Extreme
+        """
+        numeric_df = df.select_dtypes(include=[np.number]).dropna()
+        if numeric_df.empty or len(numeric_df) < 10:
+             return {"message": "Not enough data for advanced anomaly detection"}
+             
+        classification = {}
+        
+        # 1. Isolation Forest
+        iso = IsolationForest(contamination=0.05, random_state=42)
+        try:
+             preds = iso.fit_predict(numeric_df)
+             # -1 is outlier
+             total_anomalies = (preds == -1).sum()
+             
+             classification["ai_detected_count"] = int(total_anomalies)
+             classification["ai_detected_indices"] = [int(i) for i in np.where(preds == -1)[0]]
+             
+             # Diagnosing the anomalies
+             diagnoses = []
+             for col, info in iqr_outliers.items():
+                 # Heuristic: If standard deviation is extremely high, might be error
+                 std = numeric_df[col].std()
+                 mean = numeric_df[col].mean()
+                 if std > mean * 3: # Very high variance
+                     diagnoses.append(f"{col}: High variance (spread). Likely contains errors or extreme events.")
+                 else:
+                     diagnoses.append(f"{col}: Standard distribution. Outliers are likely true extremes.")
+                     
+             classification["diagnosi_summary"] = diagnoses
+             
+        except Exception as e:
+             logger.warning(f"Isolation Forest failed: {e}")
+             classification["error"] = str(e)
+             
+        return classification
     
     def _calculate_quality_score(self, df: pd.DataFrame, missing_analysis: Dict, outliers: Dict) -> Dict[str, Any]:
         """Calculate overall data quality score (0-100)"""

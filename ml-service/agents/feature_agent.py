@@ -8,6 +8,9 @@ from .base_agent import BaseAgent
 from sklearn.preprocessing import StandardScaler, LabelEncoder, OneHotEncoder
 from sklearn.feature_selection import SelectKBest, f_classif, f_regression, mutual_info_classif, mutual_info_regression
 from sklearn.decomposition import PCA
+# Must enable experimental feature before importing IterativeImputer
+from sklearn.experimental import enable_iterative_imputer
+from sklearn.impute import KNNImputer, IterativeImputer
 import logging
 
 logger = logging.getLogger(__name__)
@@ -101,19 +104,57 @@ class FeatureEngineeringAgent(BaseAgent):
                 # Drop columns with >50% missing
                 df = df.drop(columns=[col])
                 report["strategies"][col] = f"Dropped (>{missing_pct:.1f}% missing)"
+                df = df.drop(columns=[col])
+                report["strategies"][col] = f"Dropped (>{missing_pct:.1f}% missing)"
             elif missing_pct > 0:
-                if df[col].dtype in ['int64', 'float64']:
-                    # Fill numeric with median
+                 # Check if we should use advanced imputation (if missingness is significant but not overwhelming)
+                 if 5 < missing_pct <= 50 and df[col].dtype in ['int64', 'float64']:
+                      # Mark for advanced imputation later (batch handle)
+                      continue 
+                      
+                 if df[col].dtype in ['int64', 'float64']:
+                    # Fill numeric with median (fallback or for low missing)
                     df[col].fillna(df[col].median(), inplace=True)
                     report["strategies"][col] = f"Filled with median ({missing_pct:.1f}% missing)"
-                else:
+                 else:
                     # Fill categorical with mode
-                    mode_val = df[col].mode()[0] if not df[col].mode().empty else 'Unknown'
                     df[col].fillna(mode_val, inplace=True)
                     report["strategies"][col] = f"Filled with mode ({missing_pct:.1f}% missing)"
         
+        # Run advanced imputation for remaining numeric columns
+        df = self._advanced_imputation(df, report)
+        
         report["total_handled"] = len(report["strategies"])
         return df, report
+
+    def _advanced_imputation(self, df: pd.DataFrame, report: Dict) -> pd.DataFrame:
+        """Apply AI-based imputation (KNN/Iterative)"""
+        # Select numeric columns with missing values
+        numeric_missing = [col for col in df.columns if df[col].isnull().any() and pd.api.types.is_numeric_dtype(df[col])]
+        
+        if not numeric_missing:
+            return df
+            
+        # Strategy selection
+        # If dataset is small < 1000 rows, KNN is good. If larger, Iterative might be better/faster?
+        # Actually Iterative (MICE) is generally robust.
+        
+        try:
+             # Use IterativeImputer (MICE) as default advanced method
+             imputer = IterativeImputer(random_state=42, max_iter=10)
+             df_imputed = df.copy()
+             
+             # Only impute numeric columns
+             imputed_data = imputer.fit_transform(df[numeric_missing])
+             df_imputed[numeric_missing] = imputed_data
+             
+             for col in numeric_missing:
+                 report["strategies"][col] = "Filled with IterativeImputer (AI-based)"
+                 
+             return df_imputed
+        except Exception as e:
+             logger.warning(f"Advanced imputation failed: {e}. Falling back to simple methods.")
+             return df
     
     def _encode_categorical(self, df: pd.DataFrame, target_column: str = None) -> Tuple[pd.DataFrame, Dict]:
         """Encode categorical variables"""

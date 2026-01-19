@@ -1,0 +1,13 @@
+services:
+  # This serves your Python ML Backend
+  - type: web
+    name: lab-iq-ml-service
+    env: python
+    region: ohio
+    plan: free
+    rootDir: ml-service  # <--- THIS IS THE MAGIC KEY
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
