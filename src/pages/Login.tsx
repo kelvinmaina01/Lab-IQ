@@ -56,7 +56,7 @@ const Login = () => {
         password,
       });
       if (error) throw error;
-      toast({ title: 'Welcome back!', description: 'Successfully signed in to LabIQ Health.' });
+      toast({ title: 'Welcome back!', description: 'Successfully signed in to DataIQ.' });
 
       if (redirect) {
         navigate(`${redirect}${token ? `?token=${token}` : ''}`);
@@ -114,7 +114,7 @@ const Login = () => {
               <HeartPulse className="w-7 h-7 text-white" />
             </div>
             <span className="text-3xl font-black bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              LabIQ Health
+              DataIQ
             </span>
           </Link>
 
@@ -123,10 +123,10 @@ const Login = () => {
             <h1 className="text-4xl xl:text-5xl font-bold leading-tight">
               Welcome back to
               <br />
-              <span className="text-muted-foreground">intelligent research</span>
+              <span className="text-muted-foreground">intelligent data</span>
             </h1>
             <p className="text-lg text-muted-foreground max-w-md leading-relaxed">
-              Continue your journey with AI-powered health data intelligence.
+              Continue your journey with AI-powered data intelligence.
               Your projects and insights are waiting.
             </p>
           </div>
@@ -176,7 +176,7 @@ const Login = () => {
               <HeartPulse className="w-6 h-6 text-white" />
             </div>
             <span className="text-2xl font-black bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              LabIQ Health
+              DataIQ
             </span>
           </Link>
         </div>
@@ -188,9 +188,9 @@ const Login = () => {
               <Sparkles className="w-4 h-4" />
               <span>Welcome back</span>
             </div>
-            <h2 className="text-3xl font-bold mb-2">Sign in to LabIQ Health</h2>
+            <h2 className="text-3xl font-bold mb-2">Sign in to DataIQ</h2>
             <p className="text-muted-foreground">
-              Enter your credentials to access your health data workspace
+              Enter your credentials to access your data workspace
             </p>
           </div>
 
@@ -272,7 +272,7 @@ const Login = () => {
             </div>
             <div className="relative flex justify-center text-sm">
               <span className="px-4 bg-background text-muted-foreground">
-                New to LabIQ Health?
+                New to DataIQ?
               </span>
             </div>
           </div>

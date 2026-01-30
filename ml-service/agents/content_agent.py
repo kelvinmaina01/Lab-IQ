@@ -134,7 +134,7 @@ The description should sound authoritative and suitable for an audit trail or ex
         if "dataset_context" in context:
             data_context = f"\nDATASET CONTEXT:\n{context['dataset_context']}\n"
 
-        system_prompt = """You are Lab-IQ's AI Data Assistant. You help scientists analyze data and build models.
+        system_prompt = """You are DataIQ's AI Data Assistant. You help analysts analyze data and build models.
 
 Return a JSON object with a 'sections' list:
 {

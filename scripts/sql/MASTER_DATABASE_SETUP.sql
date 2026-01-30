@@ -1,5 +1,5 @@
 -- =====================================================================
--- LAB-IQ MASTER DATABASE SETUP
+-- DATAIQ MASTER DATABASE SETUP
 -- =====================================================================
 -- Complete database setup following Supabase best practices
 -- This script is IDEMPOTENT - safe to run multiple times
@@ -443,7 +443,7 @@ BEGIN
 
   RAISE NOTICE '';
   RAISE NOTICE '========================================';
-  RAISE NOTICE '✅ LAB-IQ DATABASE SETUP COMPLETE!';
+  RAISE NOTICE '✅ DATAIQ DATABASE SETUP COMPLETE!';
   RAISE NOTICE '========================================';
   RAISE NOTICE '';
   RAISE NOTICE '📊 Summary:';
@@ -465,7 +465,7 @@ BEGIN
   RAISE NOTICE '  - No policy conflicts';
   RAISE NOTICE '';
   RAISE NOTICE '🚀 Next Steps:';
-  RAISE NOTICE '  1. Refresh your Lab-IQ app';
+  RAISE NOTICE '  1. Refresh your DataIQ app';
   RAISE NOTICE '  2. Check console - no more 404 errors';
   RAISE NOTICE '  3. Test dataset uploads';
   RAISE NOTICE '  4. Test collaboration features';

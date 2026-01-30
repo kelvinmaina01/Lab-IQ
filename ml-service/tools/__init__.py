@@ -1,3 +1,3 @@
 """
-Tools package for Lab-IQ AI Agent
+Tools package for DataIQ AI Agent
 """

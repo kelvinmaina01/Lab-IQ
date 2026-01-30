@@ -1,4 +1,4 @@
-# Lab-IQ
+# DataIQ
 
 > **Port Configuration Rule**
 > - **Frontend**: Port 8080
@@ -6,5 +6,5 @@
 > *Always ensure these ports are used to maintain proxy connectivity.*
 
 ## Overview
-Lab-IQ is a Multi-Agent AutoML platform specialized for the Biotech/Health domain.
+DataIQ is a Multi-Agent AutoML platform for universal data collection, analysis, and insights across all domains.
 ...

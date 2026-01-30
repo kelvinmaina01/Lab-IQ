@@ -144,7 +144,7 @@ async def demo_auto_detect():
 async def main():
     """Run all demos"""
     print("\n" + "=" * 70)
-    print("🤖 Lab-IQ Multi-Agent AutoML System - Demo")
+    print("🤖 DataIQ Multi-Agent AutoML System - Demo")
     print("=" * 70)
     print("\nThis demo will test the complete AutoML pipeline with:")
     print("  1. Classification (Iris)")

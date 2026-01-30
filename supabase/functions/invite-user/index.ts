@@ -72,12 +72,12 @@ serve(async (req) => {
                 'Authorization': `Bearer ${resendApiKey}`,
             },
             body: JSON.stringify({
-                from: 'Lab-IQ <onboarding@resend.dev>', // Update this with your verified domain
+                from: 'DataIQ <onboarding@resend.dev>', // Update this with your verified domain
                 to: [email],
-                subject: 'You have been invited to join a Lab-IQ Team',
+                subject: 'You have been invited to join a DataIQ Team',
                 html: `
-          <h1>Welcome to Lab-IQ!</h1>
-          <p>You have been invited to join a team on Lab-IQ as a <strong>${role}</strong>.</p>
+          <h1>Welcome to DataIQ!</h1>
+          <p>You have been invited to join a team on DataIQ as a <strong>${role}</strong>.</p>
           <p>Click the link below to accept the invitation:</p>
           <a href="${inviteLink}" style="padding: 12px 24px; background-color: #0070f3; color: white; text-decoration: none; border-radius: 5px;">Accept Invitation</a>
           <p>Or copy and paste this link into your browser:</p>

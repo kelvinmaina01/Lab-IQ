@@ -34,7 +34,7 @@ export function DeviceStreamsSection() {
   const [newStream, setNewStream] = useState({
     name: "",
     stream_type: "mqtt",
-    broker_url: "mqtt://broker.lab-iq.com:1883",
+    broker_url: "mqtt://broker.dataiq.io:1883",
     topic: "",
     username: "",
     password: "",
@@ -95,13 +95,13 @@ export function DeviceStreamsSection() {
       const connection_config: any = {};
 
       if (newStream.stream_type === 'mqtt') {
-        connection_config.broker_url = newStream.broker_url || 'mqtt://broker.lab-iq.com:1883';
+        connection_config.broker_url = newStream.broker_url || 'mqtt://broker.dataiq.io:1883';
         connection_config.topic = newStream.topic || `lab/${user.id}/data`;
         connection_config.username = newStream.username || `device_${Date.now()}`;
         connection_config.password = newStream.password || generateRandomPassword();
       } else if (newStream.stream_type === 'webhook') {
         const streamId = `wh_${Date.now()}`;
-        connection_config.endpoint_url = newStream.endpoint_url || `https://api.lab-iq.com/webhooks/${streamId}`;
+        connection_config.endpoint_url = newStream.endpoint_url || `https://api.dataiq.io/webhooks/${streamId}`;
         connection_config.secret_key = newStream.secret_key || `sk_${generateRandomPassword()}`;
       } else if (newStream.stream_type === 'token_auth') {
         connection_config.api_token = newStream.api_token || `Bearer ${generateRandomPassword(32)}`;
@@ -129,7 +129,7 @@ export function DeviceStreamsSection() {
       setNewStream({
         name: "",
         stream_type: "mqtt",
-        broker_url: "mqtt://broker.lab-iq.com:1883",
+        broker_url: "mqtt://broker.dataiq.io:1883",
         topic: "",
         username: "",
         password: "",

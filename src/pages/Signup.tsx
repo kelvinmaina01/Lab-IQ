@@ -82,7 +82,7 @@ const Signup = () => {
       if (error) throw error;
       toast({
         title: 'Account created!',
-        description: 'Welcome to LabIQ Health. Start exploring your health data intelligence platform.',
+        description: 'Welcome to DataIQ. Start exploring your data intelligence platform.',
       });
       if (redirect) {
         navigate(`${redirect}${token ? `?token=${token}` : ''}`);
@@ -139,7 +139,7 @@ const Signup = () => {
               <HeartPulse className="w-6 h-6 text-white" />
             </div>
             <span className="text-2xl font-black bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              LabIQ Health
+              DataIQ
             </span>
           </Link>
         </div>
@@ -153,7 +153,7 @@ const Signup = () => {
             </div>
             <h2 className="text-3xl font-bold mb-2">Create your account</h2>
             <p className="text-muted-foreground">
-              Join researchers worldwide using LabIQ Health for intelligent data analysis
+              Join analysts worldwide using DataIQ for intelligent data analysis
             </p>
           </div>
 
@@ -332,7 +332,7 @@ const Signup = () => {
               <HeartPulse className="w-7 h-7 text-white" />
             </div>
             <span className="text-3xl font-black bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              LabIQ Health
+              DataIQ
             </span>
           </Link>
 
@@ -341,10 +341,10 @@ const Signup = () => {
             <h1 className="text-4xl xl:text-5xl font-bold leading-tight">
               Transform your
               <br />
-              <span className="text-muted-foreground">research today</span>
+              <span className="text-muted-foreground">data analysis today</span>
             </h1>
             <p className="text-lg text-muted-foreground max-w-md leading-relaxed">
-              Join the next generation of health data intelligence.
+              Join the next generation of data intelligence.
               Analyze data 10x faster with AI-powered insights.
             </p>
           </div>
@@ -376,10 +376,10 @@ const Signup = () => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground italic mb-2">
-                  "LabIQ Health transformed how we analyze health data. What used to take days now takes minutes."
+                  "DataIQ transformed how we analyze data. What used to take days now takes minutes."
                 </p>
                 <p className="text-xs font-medium">
-                  Research Team Lead
+                  Data Team Lead
                 </p>
               </div>
             </div>

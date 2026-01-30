@@ -26,5 +26,5 @@ except ImportError:
 import uvicorn
 
 if __name__ == "__main__":
-    print("Starting Lab-IQ ML Service...")
+    print("Starting DataIQ ML Service...")
     uvicorn.run("main:app", host="0.0.0.0", port=8002, reload=True)

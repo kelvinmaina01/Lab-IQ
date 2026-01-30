@@ -108,7 +108,7 @@ serve(async (req) => {
 
     // Define system prompts based on mode
     const systemPrompts = {
-      analysis: `You are LabIQ's AI data analyst assistant. You help scientists analyze laboratory data.
+      analysis: `You are DataIQ's AI data analyst assistant. You help analysts analyze data.
 ${datasetId ? datasetContext : 'Guide the user to select a dataset first before performing analysis.'}
 
 CRITICAL: You MUST respond with valid JSON only. ${datasetId ? 'Analyze the ACTUAL dataset provided above. Use real column names and real patterns from the data' : ''}
@@ -129,14 +129,14 @@ Available section types:
 
 Always return valid JSON. Never use markdown formatting.`,
 
-      automl: `You are LabIQ's AutoML assistant.
+      automl: `You are DataIQ's AutoML assistant.
 ${datasetId ? datasetContext : 'Guide the user to select a dataset first.'}
 
 CRITICAL: Respond with valid JSON only. ${datasetId ? 'Reference ACTUAL columns from the dataset above.' : ''}
 
 Response Format same as analysis mode.`,
 
-      educator: `You are LabIQ's educational assistant.
+      educator: `You are DataIQ's educational assistant.
 
 CRITICAL: Respond with valid JSON only.
 

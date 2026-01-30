@@ -26,7 +26,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(
-    title="Lab-IQ Multi-Agent AutoML Service",
+    title="DataIQ Multi-Agent AutoML Service",
     description="Comprehensive automated machine learning powered by multi-agent system",
     version="2.0.0"
 )
@@ -64,7 +64,7 @@ active_orchestrators: Dict[str, OrchestratorAgent] = {}
 @app.get("/")
 def root():
     return {
-        "service": "Lab-IQ Multi-Agent AutoML",
+        "service": "DataIQ Multi-Agent AutoML",
         "version": "2.0.0",
         "status": "running",
         "capabilities": [
@@ -589,7 +589,7 @@ async def run_agent_endpoint(request: ChatRequest):
 if __name__ == "__main__":
     import uvicorn
     print("=" * 70)
-    print("= Lab-IQ Multi-Agent AutoML Service")
+    print("= DataIQ Multi-Agent AutoML Service")
     print("= Serving on http://localhost:8002")
     print("= Documentation: http://localhost:8002/docs")
     print("=" * 70)
