@@ -19,7 +19,7 @@ export interface DataSourceConfig {
     fileName?: string;
 }
 
-export type DataSourceType = 'database' | 'warehouse' | 'clinical' | 'wearable' | 'cloud' | 'file' | 'file_stream';
+export type DataSourceType = 'database' | 'warehouse' | 'clinical' | 'wearable' | 'cloud' | 'file' | 'file_stream' | 'integration';
 
 export interface DataSource {
     id: string;
@@ -78,16 +78,16 @@ class DataSourceService {
         return data.id;
     }
 
-    /**
-     * Test a connection (Functional simulation for MVP, moving to backend proxy later)
-     */
     async testConnection(provider: string, config: DataSourceConfig): Promise<boolean> {
         // In a real production app, this would call a backend edge function 
         // to perform an actual TCP/HTTP handshake.
         return new Promise((resolve) => {
             setTimeout(() => {
-                // Logic: Require host for non-wearables
-                if (!config.host && !['csv', 'hl7', 'googledrive', 'applehealth', 'fitbit', 'oura', 'dexcom', 'epic', 'cerner', 'fhir', 'biobank'].includes(provider)) {
+                // List of OAuth/Integration sources that don't need host
+                const oauthSources = ['csv', 'hl7', 'googledrive', 'googlesheets', 'onedrive', 'sharepoint', 'googleads', 'applehealth', 'fitbit', 'oura', 'dexcom', 'epic', 'cerner', 'fhir', 'biobank'];
+
+                // Logic: Require host for database and warehouse connections
+                if (!config.host && !oauthSources.includes(provider)) {
                     resolve(false);
                 }
                 resolve(true);

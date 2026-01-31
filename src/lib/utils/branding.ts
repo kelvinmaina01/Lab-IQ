@@ -20,19 +20,27 @@ export const DATA_SOURCE_BRANDS: Record<string, BrandInfo> = {
     oracle: { name: "Oracle", logoUrl: "https://cdn.simpleicons.org/oracle" },
     supabase: { name: "Supabase", logoUrl: "https://cdn.simpleicons.org/supabase/3ECF8E" },
     redis: { name: "Redis", logoUrl: "https://cdn.simpleicons.org/redis" },
+    vertica: { name: "Vertica", logoUrl: "https://cdn.simpleicons.org/hp/0096D6" },
 
     // Warehouse
     bigquery: { name: "Google BigQuery", logoUrl: "https://cdn.simpleicons.org/googlecloud" },
     snowflake: { name: "Snowflake", logoUrl: "https://cdn.simpleicons.org/snowflake/29B5E8" },
+    databricks: { name: "Databricks", logoUrl: "https://cdn.simpleicons.org/databricks/FF3621" },
     redshift: { name: "AWS Redshift", logoUrl: "https://cdn.simpleicons.org/amazons3" },
     s3: { name: "Amazon S3", logoUrl: "https://cdn.simpleicons.org/amazons3" },
     azure: { name: "Azure Blob", logoUrl: "https://cdn.simpleicons.org/microsoftazure" },
+
+    // Integrations
+    googledrive: { name: "Google Drive", logoUrl: "https://cdn.simpleicons.org/googledrive" },
+    googlesheets: { name: "Google Sheets", logoUrl: "https://cdn.simpleicons.org/googlesheets/0F9D58" },
+    onedrive: { name: "Microsoft OneDrive", logoUrl: "https://cdn.simpleicons.org/microsoftonedrive/0078D4" },
+    sharepoint: { name: "SharePoint", logoUrl: "https://cdn.simpleicons.org/microsoftsharepoint/0078D4" },
+    googleads: { name: "Google Ads", logoUrl: "https://cdn.simpleicons.org/googleads/4285F4" },
 
     // Clinical / Enterprise
     fhir: { name: "FHIR API", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/2/25/FHIR_logo.svg" },
     epic: { name: "Epic EHR", logoUrl: "https://www.vectorlogo.zone/logos/epic/epic-icon.svg" },
     cerner: { name: "Oracle Cerner", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/c/c5/Oracle_Cerner_logo.svg" },
-    googledrive: { name: "Google Drive", logoUrl: "https://cdn.simpleicons.org/googledrive" },
     biobank: { name: "UK Biobank", logoUrl: "https://www.ukbiobank.ac.uk/media/3133/uk-biobank-logo.png" },
 
     // Live Devices

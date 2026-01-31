@@ -18,7 +18,7 @@ import { datasetService } from "@/lib/services/datasetService";
 import { supabase } from "@/integrations/supabase/client";
 
 const ConnectDataSources = () => {
-  const [activeTab, setActiveTab] = useState("files");
+  const [activeTab, setActiveTab] = useState("all");
   const [selectedSource, setSelectedSource] = useState<string | null>(null);
   const [connectedSources, setConnectedSources] = useState<DataSource[]>([]);
   const [loading, setLoading] = useState(false);
@@ -90,9 +90,9 @@ const ConnectDataSources = () => {
   const handleConnect = async () => {
     // Validation: Require host only for DBs and Warehouses
     const isFileSource = ["csv", "hl7"].includes(selectedSource || "");
-    const isOAuthOrClinical = ["googledrive", "applehealth", "fitbit", "oura", "dexcom", "epic", "cerner", "fhir", "biobank"].includes(selectedSource || "");
+    const isOAuthSource = ["googledrive", "googlesheets", "onedrive", "sharepoint", "googleads", "applehealth", "fitbit", "oura", "dexcom", "epic", "cerner", "fhir", "biobank"].includes(selectedSource || "");
 
-    if (!connectionConfig.host && !isFileSource && !isOAuthOrClinical) {
+    if (!connectionConfig.host && !isFileSource && !isOAuthSource) {
       toast({
         title: "Configuration Error",
         description: "Please provide the connection host/endpoint.",
@@ -152,8 +152,8 @@ const ConnectDataSources = () => {
         });
 
         fetchConnectedSources();
-      } else if (["googledrive", "applehealth", "fitbit", "oura", "dexcom", "epic", "cerner", "fhir", "biobank"].includes(selectedSource || "")) {
-        // OAuth / Clinical Auth Flow
+      } else if (isOAuthSource) {
+        // OAuth / Integration Auth Flow
         setConnectionPhase('auth');
 
         // Simulate OAuth wait
@@ -175,7 +175,7 @@ const ConnectDataSources = () => {
         // Save source
         await dataSourceService.saveSource(
           `${selectedSource} Active Sync`,
-          'clinical',
+          isOAuthSource && ['googledrive', 'googlesheets', 'onedrive', 'sharepoint', 'googleads'].includes(selectedSource || '') ? 'integration' : 'clinical',
           selectedSource || 'generic',
           connectionConfig
         );
@@ -226,46 +226,77 @@ const ConnectDataSources = () => {
   };
 
   const connectionCards = {
-    files: [
-      { id: "csv", title: "CSV / Excel", description: "Direct spreadsheet ingestion with auto-mapping", icon: <FileText className="w-6 h-6 text-green-500" />, sourceType: "csv" },
-      { id: "hl7", title: "HL7 Messages", description: "Clinical data standards (V2/V3) parser", icon: <Activity className="w-6 h-6 text-blue-500" />, sourceType: "hl7" },
+    all: [
+      // Databases
+      { id: "postgres", title: "Postgres", description: "Connect your Postgres data for instant AI analysis", icon: <Database className="w-6 h-6 text-indigo-500" />, sourceType: "postgresql", category: "Database" },
+      { id: "mysql", title: "MySQL", description: "Connect your MySQL data for instant AI analysis", icon: <Database className="w-6 h-6 text-orange-500" />, sourceType: "mysql", category: "Database" },
+      { id: "sqlserver", title: "SqlServer", description: "Connect your SqlServer data for instant AI analysis", icon: <Database className="w-6 h-6 text-blue-600" />, sourceType: "sqlserver", category: "Database" },
+      { id: "supabase", title: "Supabase", description: "Connect your Supabase data for instant AI analysis", icon: <Database className="w-6 h-6 text-green-500" />, sourceType: "supabase", category: "Database" },
+      { id: "vertica", title: "Vertica", description: "Connect your Vertica data for instant AI analysis", icon: <Database className="w-6 h-6 text-slate-600" />, sourceType: "vertica", category: "Database" },
+      // Data Warehouses
+      { id: "bigquery", title: "BigQuery", description: "Connect your BigQuery data for instant AI analysis", icon: <Warehouse className="w-6 h-6 text-blue-600" />, sourceType: "bigquery", category: "Data Warehouse" },
+      { id: "snowflake", title: "Snowflake", description: "Connect your Snowflake data for instant AI analysis", icon: <Warehouse className="w-6 h-6 text-cyan-500" />, sourceType: "snowflake", category: "Data Warehouse" },
+      { id: "databricks", title: "Databricks", description: "Connect your Databricks data for instant AI analysis", icon: <Warehouse className="w-6 h-6 text-red-500" />, sourceType: "databricks", category: "Data Warehouse" },
+      // Integrations
+      { id: "googledrive", title: "Google Drive", description: "Analyze your Google Drive files and folders", icon: <Cloud className="w-6 h-6 text-blue-500" />, sourceType: "googledrive", category: "Integration", badge: null },
+      { id: "googlesheets", title: "Google Sheets", description: "Live connection to your Google Sheets", icon: <FileText className="w-6 h-6 text-green-500" />, sourceType: "googlesheets", category: "Integration" },
+      { id: "onedrive", title: "Microsoft OneDrive", description: "Analyze your Personal OneDrive files and folders", icon: <Cloud className="w-6 h-6 text-blue-600" />, sourceType: "onedrive", category: "Integration", badge: "New" },
+      { id: "sharepoint", title: "SharePoint", description: "Analyze your SharePoint or OneDrive for Business files", icon: <Cloud className="w-6 h-6 text-indigo-600" />, sourceType: "sharepoint", category: "Integration", badge: "New" },
+      { id: "googleads", title: "Google Ads", description: "Analyze your data and manage your campaigns in Google Ads", icon: <TrendingUp className="w-6 h-6 text-yellow-600" />, sourceType: "googleads", category: "Integration", badge: "New" },
+      // Files
+      { id: "csv", title: "CSV / Excel", description: "Direct spreadsheet ingestion with auto-mapping", icon: <FileText className="w-6 h-6 text-green-500" />, sourceType: "csv", category: "Files" },
+      // Health (existing)
+      { id: "apple", title: "Apple Health", description: "Vitals, activity, and clinical records via HealthKit", icon: <Activity className="w-6 h-6 text-red-500" />, sourceType: "applehealth", category: "Health" },
+      { id: "fitbit", title: "Fitbit", description: "Sleep and activity data via OAuth sync", icon: <Activity className="w-6 h-6 text-teal-500" />, sourceType: "fitbit", category: "Health" },
+      { id: "oura", title: "Oura Ring", description: "Advanced sleep and recovery biometric sync", icon: <Activity className="w-6 h-6 text-gray-500" />, sourceType: "oura", category: "Health" },
+      { id: "dexcom", title: "Dexcom CGM", description: "Real-time glucose monitor streaming", icon: <Activity className="w-6 h-6 text-green-500" />, sourceType: "dexcom", category: "Health" },
+      { id: "epic", title: "Epic EHR", description: "SMART on FHIR clinical integration", icon: <Activity className="w-6 h-6 text-orange-600" />, sourceType: "epic", category: "Health" },
+      { id: "cerner", title: "Oracle Cerner", description: "Enterprise medical record synchronization", icon: <Activity className="w-6 h-6 text-blue-600" />, sourceType: "cerner", category: "Health" },
     ],
     databases: [
-      { id: "postgres", title: "PostgreSQL", description: "Production scale relationship data analysis", icon: <Database className="w-6 h-6 text-indigo-500" />, sourceType: "postgresql" },
-      { id: "mysql", title: "MySQL", description: "High-performance application data sync", icon: <Database className="w-6 h-6 text-orange-500" />, sourceType: "mysql" },
-      { id: "snowflake", title: "Snowflake", description: "Cloud native data lake and warehousing", icon: <Warehouse className="w-6 h-6 text-cyan-500" />, sourceType: "snowflake" },
-      { id: "bigquery", title: "BigQuery", description: "Petabyte-scale analytics for research", icon: <Warehouse className="w-6 h-6 text-blue-600" />, sourceType: "bigquery" },
-      { id: "s3", title: "Amazon S3", description: "Scalable object storage for raw data", icon: <Cloud className="w-6 h-6 text-orange-500" />, sourceType: "s3" },
+      { id: "postgres", title: "Postgres", description: "Connect your Postgres data for instant AI analysis", icon: <Database className="w-6 h-6 text-indigo-500" />, sourceType: "postgresql" },
+      { id: "mysql", title: "MySQL", description: "Connect your MySQL data for instant AI analysis", icon: <Database className="w-6 h-6 text-orange-500" />, sourceType: "mysql" },
+      { id: "sqlserver", title: "SqlServer", description: "Connect your SqlServer data for instant AI analysis", icon: <Database className="w-6 h-6 text-blue-600" />, sourceType: "sqlserver" },
+      { id: "supabase", title: "Supabase", description: "Connect your Supabase data for instant AI analysis", icon: <Database className="w-6 h-6 text-green-500" />, sourceType: "supabase" },
+      { id: "vertica", title: "Vertica", description: "Connect your Vertica data for instant AI analysis", icon: <Database className="w-6 h-6 text-slate-600" />, sourceType: "vertica" },
     ],
-    live: [
+    warehouses: [
+      { id: "bigquery", title: "BigQuery", description: "Connect your BigQuery data for instant AI analysis", icon: <Warehouse className="w-6 h-6 text-blue-600" />, sourceType: "bigquery" },
+      { id: "snowflake", title: "Snowflake", description: "Connect your Snowflake data for instant AI analysis", icon: <Warehouse className="w-6 h-6 text-cyan-500" />, sourceType: "snowflake" },
+      { id: "databricks", title: "Databricks", description: "Connect your Databricks data for instant AI analysis", icon: <Warehouse className="w-6 h-6 text-red-500" />, sourceType: "databricks" },
+    ],
+    integrations: [
+      { id: "googledrive", title: "Google Drive", description: "Analyze your Google Drive files and folders", icon: <Cloud className="w-6 h-6 text-blue-500" />, sourceType: "googledrive" },
+      { id: "googlesheets", title: "Google Sheets", description: "Live connection to your Google Sheets", icon: <FileText className="w-6 h-6 text-green-500" />, sourceType: "googlesheets" },
+      { id: "onedrive", title: "Microsoft OneDrive", description: "Analyze your Personal OneDrive files and folders", icon: <Cloud className="w-6 h-6 text-blue-600" />, sourceType: "onedrive", badge: "New" },
+      { id: "sharepoint", title: "SharePoint", description: "Analyze your SharePoint or OneDrive for Business files", icon: <Cloud className="w-6 h-6 text-indigo-600" />, sourceType: "sharepoint", badge: "New" },
+      { id: "googleads", title: "Google Ads", description: "Analyze your data and manage your campaigns in Google Ads", icon: <TrendingUp className="w-6 h-6 text-yellow-600" />, sourceType: "googleads", badge: "New" },
+    ],
+    health: [
       { id: "apple", title: "Apple Health", description: "Vitals, activity, and clinical records via HealthKit", icon: <Activity className="w-6 h-6 text-red-500" />, sourceType: "applehealth" },
       { id: "fitbit", title: "Fitbit", description: "Sleep and activity data via OAuth sync", icon: <Activity className="w-6 h-6 text-teal-500" />, sourceType: "fitbit" },
       { id: "oura", title: "Oura Ring", description: "Advanced sleep and recovery biometric sync", icon: <Activity className="w-6 h-6 text-gray-500" />, sourceType: "oura" },
       { id: "dexcom", title: "Dexcom CGM", description: "Real-time glucose monitor streaming", icon: <Activity className="w-6 h-6 text-green-500" />, sourceType: "dexcom" },
-    ],
-    clinical: [
-      { id: "googledrive", title: "Google Drive", description: "Ingest datasets directly from shared drives", icon: <Cloud className="w-6 h-6 text-blue-500" />, sourceType: "googledrive" },
       { id: "epic", title: "Epic EHR", description: "SMART on FHIR clinical integration", icon: <Activity className="w-6 h-6 text-orange-600" />, sourceType: "epic" },
       { id: "cerner", title: "Oracle Cerner", description: "Enterprise medical record synchronization", icon: <Activity className="w-6 h-6 text-blue-600" />, sourceType: "cerner" },
-      { id: "fhir", title: "Generic FHIR", description: "Interoperable health data exchange API", icon: <Activity className="w-6 h-6 text-green-600" />, sourceType: "fhir" },
-      { id: "biobank", title: "UK Biobank", description: "Direct research database API access", icon: <Database className="w-6 h-6 text-purple-600" />, sourceType: "biobank" },
     ]
   };
 
   return (
     <div className="space-y-8">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4 h-auto p-1 bg-muted/50 rounded-xl">
-          <TabsTrigger value="files" className="py-2.5 rounded-lg text-xs font-semibold uppercase tracking-wider">Storage & Files</TabsTrigger>
-          <TabsTrigger value="databases" className="py-2.5 rounded-lg text-xs font-semibold uppercase tracking-wider">Enterprise Sources</TabsTrigger>
-          <TabsTrigger value="live" className="py-2.5 rounded-lg text-xs font-semibold uppercase tracking-wider">IoT & Device Streams</TabsTrigger>
-          <TabsTrigger value="clinical" className="py-2.5 rounded-lg text-xs font-semibold uppercase tracking-wider">Clinical Connect</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5 h-auto p-1 bg-muted/50 rounded-xl">
+          <TabsTrigger value="all" className="py-2.5 rounded-lg text-xs font-semibold uppercase tracking-wider">All</TabsTrigger>
+          <TabsTrigger value="databases" className="py-2.5 rounded-lg text-xs font-semibold uppercase tracking-wider">Databases</TabsTrigger>
+          <TabsTrigger value="warehouses" className="py-2.5 rounded-lg text-xs font-semibold uppercase tracking-wider">Data Warehouses</TabsTrigger>
+          <TabsTrigger value="integrations" className="py-2.5 rounded-lg text-xs font-semibold uppercase tracking-wider">Integrations</TabsTrigger>
+          <TabsTrigger value="health" className="py-2.5 rounded-lg text-xs font-semibold uppercase tracking-wider">Health</TabsTrigger>
         </TabsList>
 
         {Object.entries(connectionCards).map(([category, cards]) => (
           <TabsContent key={category} value={category} className="mt-8">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {cards.map((card) => (
+              {cards.map((card: any) => (
                 <Card
                   key={card.id}
                   className="group hover:border-primary/50 transition-all hover:shadow-md cursor-pointer overflow-hidden border-border/50 relative"
@@ -274,6 +305,13 @@ const ConnectDataSources = () => {
                   <div className="absolute top-0 right-0 p-3 opacity-0 group-hover:opacity-100 transition-opacity">
                     <ArrowRight className="w-4 h-4 text-primary" />
                   </div>
+                  {card.badge && (
+                    <div className="absolute top-3 left-3">
+                      <Badge variant="secondary" className="bg-primary/10 text-primary text-[10px] font-bold">
+                        {card.badge}
+                      </Badge>
+                    </div>
+                  )}
                   <div className="p-6">
                     <div className="flex items-start gap-4">
                       <div className="p-3 rounded-xl bg-muted/50 group-hover:bg-primary/10 transition-colors shrink-0">
@@ -286,6 +324,11 @@ const ConnectDataSources = () => {
                         <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
                           {card.description}
                         </p>
+                        {card.category && category === 'all' && (
+                          <Badge variant="outline" className="mt-2 text-[10px]">
+                            {card.category}
+                          </Badge>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -531,7 +574,7 @@ const ConnectDataSources = () => {
                       <Label htmlFor="host" className="text-xs font-bold uppercase tracking-widest text-slate-400">Host / Connection String</Label>
                       <Input id="host" className="h-12 rounded-xl bg-slate-50 border-slate-100 focus:ring-primary/20" placeholder={selectedSource && ['epic', 'cerner', 'fhir'].includes(selectedSource) ? "https://fhir.example.org/r4" : "production.db.internal"} value={connectionConfig.host} onChange={(e) => setConnectionConfig({ ...connectionConfig, host: e.target.value })} />
                     </div>
-                    {selectedSource && !['epic', 'cerner', 'fhir', 'googledrive', 'applehealth', 'fitbit'].includes(selectedSource) && (
+                    {selectedSource && !['epic', 'cerner', 'fhir', 'googledrive', 'googlesheets', 'onedrive', 'sharepoint', 'googleads', 'applehealth', 'fitbit'].includes(selectedSource) && (
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="port" className="text-xs font-bold uppercase tracking-widest text-slate-400">Port</Label>
