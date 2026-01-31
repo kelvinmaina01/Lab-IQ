@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import Navigation from "@/components/Navigation";
 import { ScrollToTop } from "@/components/ScrollToTop";
 import {
@@ -375,6 +375,59 @@ const Index = () => {
           <p className="text-center text-xs text-muted-foreground mt-6">
             For analysis purposes only. Always verify critical decisions.
           </p>
+        </div>
+      </section>
+
+
+      {/* Start Your Journey Banner */}
+      <section className="py-12 px-4">
+        <div className="container mx-auto max-w-6xl">
+          <Card className="relative overflow-hidden border-none shadow-2xl bg-gradient-to-br from-primary via-primary/90 to-secondary transition-all hover:scale-[1.01] duration-500">
+            {/* Background Decorative Elements */}
+            <div className="absolute inset-0 opacity-10 pointer-events-none">
+              <div className="absolute top-10 right-10 w-32 h-32 bg-white rounded-full blur-3xl animate-pulse" />
+              <div className="absolute bottom-10 left-10 w-40 h-40 bg-white rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+            </div>
+
+            {/* Decorative Icon */}
+            <div className="absolute top-8 right-8 md:top-1/2 md:right-12 md:-translate-y-1/2 opacity-20 pointer-events-none">
+              <div className="relative">
+                <div className="absolute inset-0 bg-white/30 rounded-3xl blur-xl animate-pulse" />
+                <div className="relative bg-white/20 backdrop-blur-sm p-8 rounded-3xl">
+                  <Activity className="w-20 h-20 md:w-24 md:h-24 text-white" />
+                </div>
+              </div>
+            </div>
+
+            <CardContent className="relative z-10 p-8 md:p-16 max-w-3xl">
+              {/* Badge */}
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-white/20 backdrop-blur-sm rounded-full mb-6">
+                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                <span className="text-xs font-bold text-white uppercase tracking-wider">Start Your Journey</span>
+              </div>
+
+              {/* Headline */}
+              <h2 className="text-3xl md:text-5xl font-bold text-white leading-tight mb-6">
+                Transform raw data into scientific breakthroughs.
+              </h2>
+
+              {/* Subheadline */}
+              <p className="text-xl text-white/90 leading-relaxed mb-10 max-w-2xl">
+                Upload your datasets and let our AI-powered engine handle the heavy lifting. From quality checks to insights discovery—all automated.
+              </p>
+
+              {/* CTA Button */}
+              <Link to="/insights">
+                <Button
+                  size="lg"
+                  className="bg-white text-primary hover:bg-white/90 font-semibold text-lg h-16 px-10 gap-3 shadow-xl hover:shadow-2xl transition-all hover:scale-105"
+                >
+                  Begin Analysis
+                  <ArrowRight className="w-6 h-6" />
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
         </div>
       </section>
 

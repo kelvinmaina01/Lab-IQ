@@ -532,79 +532,69 @@ export default function Upload() {
           <SampleDatasetCTA />
 
           {/* Analysis CTA */}
-          <Card className="relative overflow-hidden border-none shadow-lg bg-gradient-to-br from-primary via-primary/90 to-secondary">
-            {/* Background Decorative Elements */}
-            <div className="absolute inset-0 opacity-10 pointer-events-none">
-              <div className="absolute top-10 right-10 w-32 h-32 bg-white rounded-full blur-3xl animate-pulse" />
-              <div className="absolute bottom-10 left-10 w-40 h-40 bg-white rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-            </div>
-            
-            {/* Decorative Icon */}
-            <div className="absolute top-8 right-8 md:top-1/2 md:right-12 md:-translate-y-1/2 opacity-20 pointer-events-none">
-              <div className="relative">
-                <div className="absolute inset-0 bg-white/30 rounded-3xl blur-xl animate-pulse" />
-                <div className="relative bg-white/20 backdrop-blur-sm p-8 rounded-3xl">
-                  <Activity className="w-20 h-20 md:w-24 md:h-24 text-white" />
-                </div>
-              </div>
-            </div>
 
-            <CardContent className="relative z-10 p-8 md:p-12 max-w-2xl">
-              {/* Badge */}
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-white/20 backdrop-blur-sm rounded-full mb-6">
-                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                <span className="text-xs font-bold text-white uppercase tracking-wider">Start Your Journey</span>
-              </div>
 
-              {/* Headline */}
-              <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-tight mb-4">
-                Transform raw data into scientific breakthroughs.
-              </h2>
-
-              {/* Subheadline */}
-              <p className="text-lg md:text-xl text-white/90 leading-relaxed mb-8 max-w-xl">
-                Upload your datasets and let our AI-powered engine handle the heavy lifting. From quality checks to insights discovery—all automated.
-              </p>
-
-              {/* CTA Button */}
-              <Button 
-                size="lg"
-                className="bg-white text-primary hover:bg-white/90 font-semibold text-base h-14 px-8 gap-2 shadow-xl hover:shadow-2xl transition-all hover:scale-105"
-                onClick={() => {
-                  const uploadSection = document.querySelector('[data-tour="upload-zone"]');
-                  uploadSection?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }}
-              >
-                Begin Analysis
-                <ArrowRight className="w-5 h-5" />
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Tabs defaultValue="upload" className="w-full">
-            <TabsList className="grid w-full grid-cols-5">
-              <TabsTrigger value="upload">Health Data Upload</TabsTrigger>
-              <TabsTrigger value="legacy">Legacy Upload</TabsTrigger>
+          <Tabs defaultValue="manual" className="w-full">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="manual">Manual Upload</TabsTrigger>
               <TabsTrigger value="devices">IoT & Device Streams</TabsTrigger>
               <TabsTrigger value="connect">Cloud Sources</TabsTrigger>
               <TabsTrigger value="metadata">Dataset Registry</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="upload" className="space-y-6 mt-6">
-              {/* Upload Statistics */}
-              <UploadStatistics />
+            <TabsContent value="manual" className="space-y-6 mt-6">
+              <Tabs defaultValue="health" className="w-full">
+                <div className="flex justify-center mb-8">
+                  <TabsList className="w-full max-w-md grid grid-cols-2">
+                    <TabsTrigger value="health">Health Data Pipeline</TabsTrigger>
+                    <TabsTrigger value="standard">Standard Upload</TabsTrigger>
+                  </TabsList>
+                </div>
 
-              {/* Multi-File Upload with Health Data Detection */}
-              <MultiFileUpload />
+                <TabsContent value="health" className="space-y-6">
+                  {/* Beautiful Explanation for Health Data */}
+                  <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-100 shadow-sm">
+                    <CardContent className="pt-6 pb-6 px-6 md:px-8">
+                      <div className="flex flex-col md:flex-row gap-6 items-start md:items-center">
+                        <div className="p-4 bg-white rounded-2xl shadow-sm border border-blue-100 shrink-0">
+                          <Shield className="w-8 h-8 text-blue-600" />
+                        </div>
+                        <div className="space-y-2">
+                          <h3 className="text-lg font-bold text-blue-900 flex items-center gap-2">
+                            Optimized for Health Data
+                            <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-200">HIPAA Ready</Badge>
+                          </h3>
+                          <p className="text-blue-800/80 leading-relaxed max-w-2xl">
+                            This pipeline is specifically engineered for sensitive medical and research data.
+                            It automatically applies <span className="font-semibold">advanced PII detection</span> and <span className="font-semibold">anonymization algorithms</span> before processing, ensuring your data remains compliant and secure by design.
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
 
-              {/* Single File Upload (Alternative) */}
-              <EnhancedFileUpload />
+                  {/* Upload Statistics */}
+                  <UploadStatistics />
 
-              {/* Upload Job Monitor */}
-              <UploadJobMonitor />
+                  {/* Multi-File Upload with Health Data Detection */}
+                  <MultiFileUpload />
+
+                  {/* Single File Upload (Alternative) */}
+                  <EnhancedFileUpload />
+
+                  {/* Upload Job Monitor */}
+                  <UploadJobMonitor />
+                </TabsContent>
+
+                <TabsContent value="standard" className="space-y-6">
+                  {/* Legacy Content Wrapper */}
+
+                  {/* End Legacy Content Wrapper */}
+                </TabsContent>
+              </Tabs>
             </TabsContent>
 
-            <TabsContent value="legacy" className="space-y-6 mt-6">
+            <div className="hidden">
               {showSuccess ? (
                 <SuccessSummary data={successData} />
               ) : (
@@ -795,127 +785,117 @@ export default function Upload() {
                         </CardContent>
                       </Card>
 
-                      <Button
-                        className="w-full gap-2 h-12 text-lg"
-                        disabled={isProcessing || !parsedData || !projectName}
-                        onClick={handleProcess}
-                      >
-                        {isProcessing ? (
-                          <>
-                            <div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent" />
-                            Processing...
-                          </>
-                        ) : (
-                          <>
-                            <UploadIcon className="h-5 w-5" />
-                            Finish Ingestion
-                          </>
-                        )}
-                      </Button>
-
-                      <TemplateSuggestions
-                        recommendations={aiRecommendations}
-                        loading={recommendationsLoading}
-                        error={recommendationsError}
-                      />
-                    </div>
-                  )}
-
-                  <Card className="border-border/50 shadow-sm bg-muted/30">
-                    <CardHeader>
-                      <CardTitle className="text-base flex items-center gap-2">
-                        <AlertCircle className="h-5 w-5 text-primary" />
-                        Import Guidelines
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <ul className="space-y-2 text-sm text-muted-foreground">
-                        <li className="flex items-start gap-2">
-                          <Check className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                          <span>First row should contain column headers</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <Check className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                          <span>Use consistent units across measurements</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <Check className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                          <span>Remove any sensitive or identifying information</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <Check className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                          <span>Ensure data is clean and properly formatted</span>
-                        </li>
-                      </ul>
-                    </CardContent>
-                  </Card>
+                      disabled={isProcessing || !parsedData || !projectName}
+                      onClick={handleProcess}
+                    >
+                      {isProcessing ? "Processing..." : "Upload Dataset"}
+                    </Button>
+                  </div>
                 </div>
               )}
-            </TabsContent>
 
-            <TabsContent value="devices" className="space-y-6 mt-6">
-              <DeviceStreamsSection />
-            </TabsContent>
+            <TemplateSuggestions
+              recommendations={aiRecommendations}
+              loading={recommendationsLoading}
+              error={recommendationsError}
+            />
 
-            <TabsContent value="connect" className="space-y-6 mt-6">
-              <ConnectDataSources />
-            </TabsContent>
+            <Card className="border-border/50 shadow-sm bg-muted/30">
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <AlertCircle className="h-5 w-5 text-primary" />
+                  Import Guidelines
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  <li className="flex items-start gap-2">
+                    <Check className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                    <span>First row should contain column headers</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                    <span>Use consistent units across measurements</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                    <span>Remove any sensitive or identifying information</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                    <span>Ensure data is clean and properly formatted</span>
+                  </li>
+                </ul>
+              </CardContent>
+            </Card>
 
-            <TabsContent value="metadata" className="space-y-6 mt-6">
-              <div className="space-y-4">
-                <Card className="border-border/50">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Database className="h-5 w-5 text-primary" />
-                      Schema & Metadata Registry
-                    </CardTitle>
-                    <CardDescription>
-                      Auto-generated metadata, data quality scores, and PII classification for all datasets
-                    </CardDescription>
-                  </CardHeader>
+          </TabsContent>
+        </Tabs>
+      </TabsContent>
+
+      <TabsContent value="devices" className="space-y-6 mt-6">
+        <DeviceStreamsSection />
+      </TabsContent>
+
+      <TabsContent value="connect" className="space-y-6 mt-6">
+        <ConnectDataSources />
+      </TabsContent>
+
+      <TabsContent value="metadata" className="space-y-6 mt-6">
+        <div className="space-y-4">
+          <Card className="border-border/50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Database className="h-5 w-5 text-primary" />
+                Schema & Metadata Registry
+              </CardTitle>
+              <CardDescription>
+                Auto-generated metadata, data quality scores, and PII classification for all datasets
+              </CardDescription>
+            </CardHeader>
+          </Card>
+
+          {loadingMetadata ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[1, 2, 3].map((i) => (
+                <Card key={i} className="border-border/50">
+                  <CardContent className="p-6">
+                    <div className="animate-pulse space-y-3">
+                      <div className="h-4 bg-muted rounded w-2/3"></div>
+                      <div className="h-4 bg-muted rounded w-full"></div>
+                      <div className="h-4 bg-muted rounded w-1/2"></div>
+                    </div>
+                  </CardContent>
                 </Card>
-
-                {loadingMetadata ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {[1, 2, 3].map((i) => (
-                      <Card key={i} className="border-border/50">
-                        <CardContent className="p-6">
-                          <div className="animate-pulse space-y-3">
-                            <div className="h-4 bg-muted rounded w-2/3"></div>
-                            <div className="h-4 bg-muted rounded w-full"></div>
-                            <div className="h-4 bg-muted rounded w-1/2"></div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                ) : datasets.length === 0 ? (
-                  <Card className="border-border/50">
-                    <CardContent className="p-12 text-center">
-                      <Database className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-                      <p className="text-lg font-medium text-foreground mb-2">No datasets yet</p>
-                      <p className="text-sm text-muted-foreground">
-                        Upload your first dataset to see metadata and quality metrics
-                      </p>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {datasets.map((dataset) => (
-                      <DatasetMetadataCard
-                        key={dataset.id}
-                        datasetName={dataset.name}
-                        metadata={dataset.dataset_metadata?.[0] || {}}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-            </TabsContent>
-          </Tabs >
-        </main >
+              ))}
+            </div>
+          ) : datasets.length === 0 ? (
+            <Card className="border-border/50">
+              <CardContent className="p-12 text-center">
+                <Database className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                <p className="text-lg font-medium text-foreground mb-2">No datasets yet</p>
+                <p className="text-sm text-muted-foreground">
+                  Upload your first dataset to see metadata and quality metrics
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {datasets.map((dataset) => (
+                <DatasetMetadataCard
+                  key={dataset.id}
+                  datasetName={dataset.name}
+                  metadata={dataset.dataset_metadata?.[0] || {}}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </TabsContent>
+    </Tabs >
+    </main >
       </MainLayout >
-      <UpgradeDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} />
+    <UpgradeDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} />
     </AuthGuard >
   );
 }
