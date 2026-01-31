@@ -931,32 +931,38 @@ const Index = () => {
         <div className="container mx-auto max-w-7xl">
           <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-12 mb-12">
             {/* Brand Section */}
-            <div className="lg:col-span-2 space-y-6">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-lg">
-                  <HeartPulse className="w-6 h-6 text-white" />
-                </div>
-                <span className="text-2xl font-black bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                  LabIQ Health
-                </span>
+            <div className="lg:col-span-2 space-y-8">
+              <div className="flex flex-col gap-6">
+                <Link to="/" className="group flex items-center gap-4">
+                  <div className="relative w-16 h-16 transition-transform duration-500 ease-in-out group-hover:rotate-12 group-hover:scale-110">
+                    <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full animate-pulse" />
+                    <img
+                      src="/dataiq-logo.png"
+                      alt="DataIQ Logo"
+                      className="relative w-full h-full object-contain animate-float"
+                    />
+                  </div>
+                  <span className="text-7xl md:text-8xl font-black tracking-tighter text-foreground/90 hover:text-primary transition-colors duration-500 lowercase select-none">
+                    dataiq
+                  </span>
+                </Link>
+                <p className="text-lg text-muted-foreground leading-relaxed max-w-sm">
+                  Transforming raw data into scientific discoveries with AI-powered intelligence.
+                </p>
               </div>
-              <p className="text-muted-foreground leading-relaxed max-w-sm">
-                AI-powered health data intelligence platform transforming how researchers analyze data and make discoveries.
-              </p>
+
               {/* Social Links */}
-              <div className="flex gap-3">
-                <Button size="icon" variant="outline" className="rounded-lg hover:bg-primary/10 hover:border-primary transition-all">
-                  <Twitter className="w-4 h-4" />
-                </Button>
-                <Button size="icon" variant="outline" className="rounded-lg hover:bg-primary/10 hover:border-primary transition-all">
-                  <Github className="w-4 h-4" />
-                </Button>
-                <Button size="icon" variant="outline" className="rounded-lg hover:bg-primary/10 hover:border-primary transition-all">
-                  <Linkedin className="w-4 h-4" />
-                </Button>
-                <Button size="icon" variant="outline" className="rounded-lg hover:bg-primary/10 hover:border-primary transition-all">
-                  <Mail className="w-4 h-4" />
-                </Button>
+              <div className="flex gap-4">
+                {[Twitter, Github, Linkedin, Mail].map((Icon, i) => (
+                  <Button
+                    key={i}
+                    size="icon"
+                    variant="outline"
+                    className="w-10 h-10 rounded-full bg-background/50 hover:bg-primary hover:text-primary-foreground hover:border-primary hover:scale-110 transition-all duration-300"
+                  >
+                    <Icon className="w-5 h-5" />
+                  </Button>
+                ))}
               </div>
             </div>
 
@@ -1004,7 +1010,7 @@ const Index = () => {
           <div className="pt-8 border-t border-border">
             <div className="flex flex-col md:flex-row justify-between items-center gap-4">
               <p className="text-sm text-muted-foreground">
-                © 2025 <span className="font-bold text-foreground">LabIQ Health</span>. All rights reserved.
+                © 2025 <span className="font-bold text-foreground">DataIQ</span>. All rights reserved.
               </p>
               <div className="flex items-center gap-6 text-sm text-muted-foreground">
                 <a href="#" className="hover:text-foreground transition-colors font-medium">Privacy</a>
