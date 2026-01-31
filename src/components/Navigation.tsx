@@ -56,9 +56,13 @@ const Navigation = () => {
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo and Nav Links */}
         <div className="flex items-center gap-6">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-              <Activity className="w-5 h-5 text-white" />
+          <Link to="/" className="flex items-center gap-3 group">
+            <div className="w-10 h-10 flex items-center justify-center transition-transform duration-300 group-hover:scale-110">
+              <img
+                src="/dataiq-logo-transparent.png"
+                alt="DataIQ Logo"
+                className="w-full h-full object-contain"
+              />
             </div>
             <span className="text-xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
               DataIQ
