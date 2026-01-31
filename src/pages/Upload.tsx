@@ -592,310 +592,313 @@ export default function Upload() {
                   {/* End Legacy Content Wrapper */}
                 </TabsContent>
               </Tabs>
+
+              <div className="mt-8 space-y-6">
+                {showSuccess ? (
+                  <div className="space-y-6">
+                    <SuccessSummary data={successData} />
+
+                    <TemplateSuggestions
+                      recommendations={aiRecommendations}
+                      loading={recommendationsLoading}
+                      error={recommendationsError}
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    <Card className="border-border/50 shadow-sm">
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <FileText className="h-5 w-5 text-primary" />
+                          Project Information
+                        </CardTitle>
+                        <CardDescription>
+                          Name your dataset and track its lineage through your pipeline
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-2">
+                          <Label htmlFor="project-name">Dataset Name</Label>
+                          <Input
+                            id="project-name"
+                            placeholder="e.g., Q4-2024-Lab-Results-Analysis"
+                            value={projectName}
+                            onChange={(e) => setProjectName(e.target.value)}
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Use descriptive names for better data lineage tracking
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="border-border/50 shadow-sm">
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <UploadIcon className="h-5 w-5 text-primary" />
+                          Upload Dataset
+                        </CardTitle>
+                        <CardDescription>
+                          Drag and drop files • Auto schema detection • Quality scanning enabled
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div
+                          className={`border-2 border-dashed rounded-lg p-12 text-center transition-colors ${dragActive
+                            ? "border-primary bg-primary/5"
+                            : "border-border hover:border-primary/50"
+                            }`}
+                          onDragEnter={handleDrag}
+                          onDragLeave={handleDrag}
+                          onDragOver={handleDrag}
+                          onDrop={handleDrop}
+                          data-tour="upload-zone"
+                        >
+                          <input
+                            type="file"
+                            id="file-upload"
+                            className="hidden"
+                            onChange={handleChange}
+                            accept=".csv,.xlsx,.xls,.json,.zip"
+                          />
+                          <label htmlFor="file-upload" className="cursor-pointer">
+                            {uploadedFile ? (
+                              <div className="text-center space-y-3">
+                                <FileText className="h-12 w-12 mx-auto text-primary" />
+                                <div>
+                                  <p className="font-medium text-foreground">{uploadedFile.name}</p>
+                                  <p className="text-sm text-muted-foreground">
+                                    {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB
+                                  </p>
+                                </div>
+                                {parsedData && (
+                                  <div className="flex items-center justify-center gap-4 pt-2">
+                                    <Badge variant="secondary" className="gap-1">
+                                      <Database className="h-3 w-3" />
+                                      {parsedData.rowCount.toLocaleString()} Rows
+                                    </Badge>
+                                    <Badge variant="secondary" className="gap-1">
+                                      <Boxes className="h-3 w-3" />
+                                      {parsedData.columnCount} Columns
+                                    </Badge>
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="text-center">
+                                <UploadIcon className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                                <p className="font-medium text-foreground mb-2">
+                                  Drop your file here or click to browse
+                                </p>
+                                <p className="text-sm text-muted-foreground mb-3">
+                                  Supports CSV, Excel, JSON, ZIP • Max {subscription?.storage_limit_mb || 200}MB
+                                </p>
+                                <div className="flex items-center justify-center gap-3 text-xs text-muted-foreground flex-wrap">
+                                  <span className="flex items-center gap-1">
+                                    <Shield className="h-3 w-3" />
+                                    Auto PII Detection
+                                  </span>
+                                  <span>•</span>
+                                  <span className="flex items-center gap-1">
+                                    <Database className="h-3 w-3" />
+                                    Schema Registry
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+                          </label>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {uploadedFile && (
+                      <div className="space-y-4">
+                        <Card className="border-primary/20 bg-primary/5">
+                          <CardContent className="p-4">
+                            <h4 className="font-medium mb-3 flex items-center gap-2">
+                              <FileText className="h-4 w-4 text-primary" />
+                              File Preview & Processing
+                            </h4>
+
+                            {isProcessing && uploadProgress > 0 ? (
+                              <div className="space-y-2">
+                                <div className="flex justify-between text-sm">
+                                  <span>{progressMessage}</span>
+                                  <span>{Math.round(uploadProgress)}%</span>
+                                </div>
+                                <div className="h-2 bg-secondary/20 rounded-full overflow-hidden">
+                                  <div
+                                    className="h-full bg-primary transition-all duration-300"
+                                    style={{ width: `${uploadProgress}%` }}
+                                  />
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="text-sm space-y-2 text-muted-foreground">
+                                <div className="flex justify-between">
+                                  <span>Name:</span>
+                                  <span className="font-medium text-foreground">{uploadedFile.name}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>Size:</span>
+                                  <span className="font-medium text-foreground">
+                                    {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB
+                                  </span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>Type:</span>
+                                  <span className="font-medium text-foreground">
+                                    {uploadedFile.type || "Unknown"}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>Parse Status:</span>
+                                  <span className={`font-medium ${parsedData ? 'text-green-600' : 'text-orange-600'}`}>
+                                    {parsedData ? '✓ Parsed Successfully' : '⚠ Parsing...'}
+                                  </span>
+                                </div>
+                                {parsedData && (
+                                  <>
+                                    <div className="flex justify-between">
+                                      <span>Rows Found:</span>
+                                      <span className="font-medium text-foreground">
+                                        {parsedData.rowCount.toLocaleString()}
+                                      </span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                      <span>Columns Found:</span>
+                                      <span className="font-medium text-foreground">
+                                        {parsedData.columnCount}
+                                      </span>
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            )}
+
+                            <div className="mt-4 pt-4 border-t border-border/50 space-y-2">
+                              <p className="text-xs font-medium">Auto-processing will include:</p>
+                              <div className="grid grid-cols-2 gap-2 text-xs">
+                                <span className="flex items-center gap-1 text-muted-foreground">
+                                  <Shield className="h-3 w-3" /> PII Classification
+                                </span>
+                                <span className="flex items-center gap-1 text-muted-foreground">
+                                  <Database className="h-3 w-3" /> Schema Registry
+                                </span>
+                                <span className="text-muted-foreground">Data Quality Score</span>
+                                <span className="text-muted-foreground">Missingness Analysis</span>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+
+                        <Button
+                          className="w-full mt-4"
+                          size="lg"
+                          disabled={isProcessing || !parsedData || !projectName}
+                          onClick={handleProcess}
+                        >
+                          {isProcessing ? "Processing..." : "Upload Dataset"}
+                        </Button>
+                      </div>
+                    )}
+
+                    <Card className="border-border/50 shadow-sm bg-muted/30">
+                      <CardHeader>
+                        <CardTitle className="text-base flex items-center gap-2">
+                          <AlertCircle className="h-5 w-5 text-primary" />
+                          Import Guidelines
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <ul className="space-y-2 text-sm text-muted-foreground">
+                          <li className="flex items-start gap-2">
+                            <Check className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                            <span>First row should contain column headers</span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <Check className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                            <span>Use consistent units across measurements</span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <Check className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                            <span>Remove any sensitive or identifying information</span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <Check className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                            <span>Ensure data is clean and properly formatted</span>
+                          </li>
+                        </ul>
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
+              </div>
             </TabsContent>
 
-            <div className="hidden">
-              {showSuccess ? (
-                <SuccessSummary data={successData} />
-              ) : (
-                <div className="space-y-6">
-                  <Card className="border-border/50 shadow-sm">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <FileText className="h-5 w-5 text-primary" />
-                        Project Information
-                      </CardTitle>
-                      <CardDescription>
-                        Name your dataset and track its lineage through your pipeline
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        <Label htmlFor="project-name">Dataset Name</Label>
-                        <Input
-                          id="project-name"
-                          placeholder="e.g., Q4-2024-Lab-Results-Analysis"
-                          value={projectName}
-                          onChange={(e) => setProjectName(e.target.value)}
-                        />
-                        <p className="text-xs text-muted-foreground">
-                          Use descriptive names for better data lineage tracking
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
+            <TabsContent value="devices" className="space-y-6 mt-6">
+              <DeviceStreamsSection />
+            </TabsContent>
 
-                  <Card className="border-border/50 shadow-sm">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <UploadIcon className="h-5 w-5 text-primary" />
-                        Upload Dataset
-                      </CardTitle>
-                      <CardDescription>
-                        Drag and drop files • Auto schema detection • Quality scanning enabled
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div
-                        className={`border-2 border-dashed rounded-lg p-12 text-center transition-colors ${dragActive
-                          ? "border-primary bg-primary/5"
-                          : "border-border hover:border-primary/50"
-                          }`}
-                        onDragEnter={handleDrag}
-                        onDragLeave={handleDrag}
-                        onDragOver={handleDrag}
-                        onDrop={handleDrop}
-                        data-tour="upload-zone"
-                      >
-                        <input
-                          type="file"
-                          id="file-upload"
-                          className="hidden"
-                          onChange={handleChange}
-                          accept=".csv,.xlsx,.xls,.json,.zip"
-                        />
-                        <label htmlFor="file-upload" className="cursor-pointer">
-                          {uploadedFile ? (
-                            <div className="text-center space-y-3">
-                              <FileText className="h-12 w-12 mx-auto text-primary" />
-                              <div>
-                                <p className="font-medium text-foreground">{uploadedFile.name}</p>
-                                <p className="text-sm text-muted-foreground">
-                                  {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB
-                                </p>
-                              </div>
-                              {parsedData && (
-                                <div className="flex items-center justify-center gap-4 pt-2">
-                                  <Badge variant="secondary" className="gap-1">
-                                    <Database className="h-3 w-3" />
-                                    {parsedData.rowCount.toLocaleString()} Rows
-                                  </Badge>
-                                  <Badge variant="secondary" className="gap-1">
-                                    <Boxes className="h-3 w-3" />
-                                    {parsedData.columnCount} Columns
-                                  </Badge>
-                                </div>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="text-center">
-                              <UploadIcon className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                              <p className="font-medium text-foreground mb-2">
-                                Drop your file here or click to browse
-                              </p>
-                              <p className="text-sm text-muted-foreground mb-3">
-                                Supports CSV, Excel, JSON, ZIP • Max {subscription?.storage_limit_mb || 200}MB
-                              </p>
-                              <div className="flex items-center justify-center gap-3 text-xs text-muted-foreground flex-wrap">
-                                <span className="flex items-center gap-1">
-                                  <Shield className="h-3 w-3" />
-                                  Auto PII Detection
-                                </span>
-                                <span>•</span>
-                                <span className="flex items-center gap-1">
-                                  <Database className="h-3 w-3" />
-                                  Schema Registry
-                                </span>
-                              </div>
-                            </div>
-                          )}
-                        </label>
-                      </div>
-                    </CardContent>
-                  </Card>
+            <TabsContent value="connect" className="space-y-6 mt-6">
+              <ConnectDataSources />
+            </TabsContent>
 
-                  {uploadedFile && (
-                    <div className="space-y-4">
-                      <Card className="border-primary/20 bg-primary/5">
-                        <CardContent className="p-4">
-                          <h4 className="font-medium mb-3 flex items-center gap-2">
-                            <FileText className="h-4 w-4 text-primary" />
-                            File Preview & Processing
-                          </h4>
+            <TabsContent value="metadata" className="space-y-6 mt-6">
+              <div className="space-y-4">
+                <Card className="border-border/50">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Database className="h-5 w-5 text-primary" />
+                      Schema & Metadata Registry
+                    </CardTitle>
+                    <CardDescription>
+                      Auto-generated metadata, data quality scores, and PII classification for all datasets
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
 
-                          {isProcessing && uploadProgress > 0 ? (
-                            <div className="space-y-2">
-                              <div className="flex justify-between text-sm">
-                                <span>{progressMessage}</span>
-                                <span>{Math.round(uploadProgress)}%</span>
-                              </div>
-                              <div className="h-2 bg-secondary/20 rounded-full overflow-hidden">
-                                <div
-                                  className="h-full bg-primary transition-all duration-300"
-                                  style={{ width: `${uploadProgress}%` }}
-                                />
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="text-sm space-y-2 text-muted-foreground">
-                              <div className="flex justify-between">
-                                <span>Name:</span>
-                                <span className="font-medium text-foreground">{uploadedFile.name}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span>Size:</span>
-                                <span className="font-medium text-foreground">
-                                  {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB
-                                </span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span>Type:</span>
-                                <span className="font-medium text-foreground">
-                                  {uploadedFile.type || "Unknown"}
-                                </span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span>Parse Status:</span>
-                                <span className={`font-medium ${parsedData ? 'text-green-600' : 'text-orange-600'}`}>
-                                  {parsedData ? '✓ Parsed Successfully' : '⚠ Parsing...'}
-                                </span>
-                              </div>
-                              {parsedData && (
-                                <>
-                                  <div className="flex justify-between">
-                                    <span>Rows Found:</span>
-                                    <span className="font-medium text-foreground">
-                                      {parsedData.rowCount.toLocaleString()}
-                                    </span>
-                                  </div>
-                                  <div className="flex justify-between">
-                                    <span>Columns Found:</span>
-                                    <span className="font-medium text-foreground">
-                                      {parsedData.columnCount}
-                                    </span>
-                                  </div>
-                                </>
-                              )}
-                            </div>
-                          )}
-
-                          <div className="mt-4 pt-4 border-t border-border/50 space-y-2">
-                            <p className="text-xs font-medium">Auto-processing will include:</p>
-                            <div className="grid grid-cols-2 gap-2 text-xs">
-                              <span className="flex items-center gap-1 text-muted-foreground">
-                                <Shield className="h-3 w-3" /> PII Classification
-                              </span>
-                              <span className="flex items-center gap-1 text-muted-foreground">
-                                <Database className="h-3 w-3" /> Schema Registry
-                              </span>
-                              <span className="text-muted-foreground">Data Quality Score</span>
-                              <span className="text-muted-foreground">Missingness Analysis</span>
-                            </div>
+                {loadingMetadata ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {[1, 2, 3].map((i) => (
+                      <Card key={i} className="border-border/50">
+                        <CardContent className="p-6">
+                          <div className="animate-pulse space-y-3">
+                            <div className="h-4 bg-muted rounded w-2/3"></div>
+                            <div className="h-4 bg-muted rounded w-full"></div>
+                            <div className="h-4 bg-muted rounded w-1/2"></div>
                           </div>
                         </CardContent>
                       </Card>
-
-                      disabled={isProcessing || !parsedData || !projectName}
-                      onClick={handleProcess}
-                    >
-                      {isProcessing ? "Processing..." : "Upload Dataset"}
-                    </Button>
+                    ))}
                   </div>
-                </div>
-              )}
-
-            <TemplateSuggestions
-              recommendations={aiRecommendations}
-              loading={recommendationsLoading}
-              error={recommendationsError}
-            />
-
-            <Card className="border-border/50 shadow-sm bg-muted/30">
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <AlertCircle className="h-5 w-5 text-primary" />
-                  Import Guidelines
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li className="flex items-start gap-2">
-                    <Check className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                    <span>First row should contain column headers</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                    <span>Use consistent units across measurements</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                    <span>Remove any sensitive or identifying information</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                    <span>Ensure data is clean and properly formatted</span>
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
-
-          </TabsContent>
-        </Tabs>
-      </TabsContent>
-
-      <TabsContent value="devices" className="space-y-6 mt-6">
-        <DeviceStreamsSection />
-      </TabsContent>
-
-      <TabsContent value="connect" className="space-y-6 mt-6">
-        <ConnectDataSources />
-      </TabsContent>
-
-      <TabsContent value="metadata" className="space-y-6 mt-6">
-        <div className="space-y-4">
-          <Card className="border-border/50">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Database className="h-5 w-5 text-primary" />
-                Schema & Metadata Registry
-              </CardTitle>
-              <CardDescription>
-                Auto-generated metadata, data quality scores, and PII classification for all datasets
-              </CardDescription>
-            </CardHeader>
-          </Card>
-
-          {loadingMetadata ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[1, 2, 3].map((i) => (
-                <Card key={i} className="border-border/50">
-                  <CardContent className="p-6">
-                    <div className="animate-pulse space-y-3">
-                      <div className="h-4 bg-muted rounded w-2/3"></div>
-                      <div className="h-4 bg-muted rounded w-full"></div>
-                      <div className="h-4 bg-muted rounded w-1/2"></div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : datasets.length === 0 ? (
-            <Card className="border-border/50">
-              <CardContent className="p-12 text-center">
-                <Database className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-                <p className="text-lg font-medium text-foreground mb-2">No datasets yet</p>
-                <p className="text-sm text-muted-foreground">
-                  Upload your first dataset to see metadata and quality metrics
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {datasets.map((dataset) => (
-                <DatasetMetadataCard
-                  key={dataset.id}
-                  datasetName={dataset.name}
-                  metadata={dataset.dataset_metadata?.[0] || {}}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      </TabsContent>
-    </Tabs >
-    </main >
+                ) : datasets.length === 0 ? (
+                  <Card className="border-border/50">
+                    <CardContent className="p-12 text-center">
+                      <Database className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                      <p className="text-lg font-medium text-foreground mb-2">No datasets yet</p>
+                      <p className="text-sm text-muted-foreground">
+                        Upload your first dataset to see metadata and quality metrics
+                      </p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {datasets.map((dataset) => (
+                      <DatasetMetadataCard
+                        key={dataset.id}
+                        datasetName={dataset.name}
+                        metadata={dataset.dataset_metadata?.[0] || {}}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+          </Tabs >
+        </main >
       </MainLayout >
-    <UpgradeDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} />
+      <UpgradeDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} />
     </AuthGuard >
   );
 }
