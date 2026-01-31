@@ -942,7 +942,9 @@ const Index = () => {
                       className="relative w-full h-full object-contain animate-float"
                     />
                   </div>
-
+                  <span className="text-3xl font-bold tracking-tight text-foreground/90 group-hover:text-primary transition-colors duration-300">
+                    DataIQ
+                  </span>
                 </Link>
                 <p className="text-lg text-muted-foreground leading-relaxed max-w-sm">
                   Transforming raw data into scientific discoveries with AI-powered intelligence.
