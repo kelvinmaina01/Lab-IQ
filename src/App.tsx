@@ -72,7 +72,7 @@ const App = () => {
       // Check if we haven't welcomed them this session
       if (!sessionStorage.getItem('welcome_back_shown')) {
         toast({
-          title: "Welcome back to LabIQ! 👋",
+          title: "Welcome back to DataIQ! 👋",
           description: "Ready to continue your research?",
           duration: 4000,
         });
@@ -91,7 +91,7 @@ const App = () => {
               <Toaster />
               <BrowserRouter>
                 <ErrorBoundary FallbackComponent={GlobalErrorFallback} onReset={() => window.location.replace('/')}>
-                  <Suspense fallback={<LoadingSpinner fullScreen text="Loading LabIQ Health..." />}>
+                  <Suspense fallback={<LoadingSpinner fullScreen text="Loading DataIQ..." />}>
                     <Routes>
                       <Route path="/" element={<Index />} />
                       <Route path="/login" element={<AuthPage />} />

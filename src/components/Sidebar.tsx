@@ -37,7 +37,7 @@ const Sidebar = () => {
                 <HeartPulse className="w-5 h-5 text-white" />
               </div>
               <div className="transition-opacity duration-300">
-                <div className="text-lg font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">LabIQ Health</div>
+                <div className="text-lg font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">DataIQ</div>
               </div>
             </Link>
           )}
