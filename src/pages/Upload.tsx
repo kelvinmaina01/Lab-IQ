@@ -531,6 +531,56 @@ export default function Upload() {
           {/* Sample Dataset CTA */}
           <SampleDatasetCTA />
 
+          {/* Analysis CTA */}
+          <Card className="relative overflow-hidden border-none shadow-lg bg-gradient-to-br from-primary via-primary/90 to-secondary">
+            {/* Background Decorative Elements */}
+            <div className="absolute inset-0 opacity-10 pointer-events-none">
+              <div className="absolute top-10 right-10 w-32 h-32 bg-white rounded-full blur-3xl animate-pulse" />
+              <div className="absolute bottom-10 left-10 w-40 h-40 bg-white rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+            </div>
+            
+            {/* Decorative Icon */}
+            <div className="absolute top-8 right-8 md:top-1/2 md:right-12 md:-translate-y-1/2 opacity-20 pointer-events-none">
+              <div className="relative">
+                <div className="absolute inset-0 bg-white/30 rounded-3xl blur-xl animate-pulse" />
+                <div className="relative bg-white/20 backdrop-blur-sm p-8 rounded-3xl">
+                  <Activity className="w-20 h-20 md:w-24 md:h-24 text-white" />
+                </div>
+              </div>
+            </div>
+
+            <CardContent className="relative z-10 p-8 md:p-12 max-w-2xl">
+              {/* Badge */}
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-white/20 backdrop-blur-sm rounded-full mb-6">
+                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                <span className="text-xs font-bold text-white uppercase tracking-wider">Start Your Journey</span>
+              </div>
+
+              {/* Headline */}
+              <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-tight mb-4">
+                Transform raw data into scientific breakthroughs.
+              </h2>
+
+              {/* Subheadline */}
+              <p className="text-lg md:text-xl text-white/90 leading-relaxed mb-8 max-w-xl">
+                Upload your datasets and let our AI-powered engine handle the heavy lifting. From quality checks to insights discovery—all automated.
+              </p>
+
+              {/* CTA Button */}
+              <Button 
+                size="lg"
+                className="bg-white text-primary hover:bg-white/90 font-semibold text-base h-14 px-8 gap-2 shadow-xl hover:shadow-2xl transition-all hover:scale-105"
+                onClick={() => {
+                  const uploadSection = document.querySelector('[data-tour="upload-zone"]');
+                  uploadSection?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }}
+              >
+                Begin Analysis
+                <ArrowRight className="w-5 h-5" />
+              </Button>
+            </CardContent>
+          </Card>
+
           <Tabs defaultValue="upload" className="w-full">
             <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="upload">Health Data Upload</TabsTrigger>
