@@ -221,11 +221,11 @@ export function DeviceStreamsSection() {
           <div>
             <CardTitle className="flex items-center gap-2">
               <Activity className="h-5 w-5 text-primary" />
-              Medical Device Streams
+              IoT & Device Streams
               {!isPro && <Badge variant="secondary" className="ml-2">Pro Feature</Badge>}
             </CardTitle>
             <CardDescription>
-              Connect medical devices for real-time data ingestion
+              Connect IoT devices for real-time data ingestion
             </CardDescription>
           </div>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

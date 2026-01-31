@@ -15,7 +15,7 @@ const solutions = [
   {
     title: "AI Assistant",
     href: "/lab-assistant",
-    description: "Intelligent health data analysis powered by advanced AI",
+    description: "Intelligent data analysis powered by advanced AI",
     icon: Brain,
   },
   {
@@ -33,13 +33,13 @@ const solutions = [
   {
     title: "Reports",
     href: "/reports",
-    description: "Generate comprehensive health analysis reports",
+    description: "Generate comprehensive analysis reports",
     icon: FileText,
   },
   {
-    title: "Medical Devices",
+    title: "IoT & Device Streams",
     href: "/device-streams",
-    description: "Connect and stream data from medical devices",
+    description: "Connect and stream data from IoT devices",
     icon: Stethoscope,
   },
   {
@@ -61,7 +61,7 @@ const Navigation = () => {
               <HeartPulse className="w-5 h-5 text-white" />
             </div>
             <span className="text-xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              LabIQ Health
+              DataIQ
             </span>
           </Link>
 

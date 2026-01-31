@@ -535,7 +535,7 @@ export default function Upload() {
             <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="upload">Health Data Upload</TabsTrigger>
               <TabsTrigger value="legacy">Legacy Upload</TabsTrigger>
-              <TabsTrigger value="devices">Medical Devices</TabsTrigger>
+              <TabsTrigger value="devices">IoT & Device Streams</TabsTrigger>
               <TabsTrigger value="connect">Cloud Sources</TabsTrigger>
               <TabsTrigger value="metadata">Dataset Registry</TabsTrigger>
             </TabsList>

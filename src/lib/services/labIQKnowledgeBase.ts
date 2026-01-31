@@ -1,6 +1,6 @@
 /**
- * LabIQ Health Knowledge Base
- * Comprehensive knowledge about LabIQ Health platform for AI agent responses
+ * DataIQ Knowledge Base
+ * Comprehensive knowledge about DataIQ platform for AI agent responses
  */
 
 export const LAB_IQ_KNOWLEDGE_BASE = {
@@ -113,7 +113,7 @@ export const LAB_IQ_KNOWLEDGE_BASE = {
       free: {
         name: "Free",
         price: 0,
-        description: "Perfect for students and exploring LabIQ Health",
+        description: "Perfect for students and exploring DataIQ",
         datasets: 5,
         storage: "100 MB",
         users: 1,
@@ -337,7 +337,7 @@ export const LAB_IQ_KNOWLEDGE_BASE = {
       },
       {
         q: "Can I connect my lab equipment?",
-        a: "Yes! LabIQ Health supports live device streams from lab equipment, IoT sensors, wearables, and more. Data flows in real-time for continuous monitoring."
+        a: "Yes! DataIQ supports live device streams from lab equipment, IoT sensors, wearables, and more. Data flows in real-time for continuous monitoring."
       },
       {
         q: "Is my data secure?",
@@ -346,11 +346,11 @@ export const LAB_IQ_KNOWLEDGE_BASE = {
     ],
     technical: [
       {
-        q: "Do I need coding skills to use LabIQ Health?",
-        a: "No coding required! LabIQ Health is designed for researchers of all technical levels. Upload your data, and the AI handles the analysis. Power users can access APIs and custom scripts if needed."
+        q: "Do I need coding skills to use DataIQ?",
+        a: "No coding required! DataIQ is designed for researchers of all technical levels. Upload your data, and the AI handles the analysis. Power users can access APIs and custom scripts if needed."
       },
       {
-        q: "Can I integrate LabIQ Health with other tools?",
+        q: "Can I integrate DataIQ with other tools?",
         a: "Yes! Pro plans include API access for custom integrations. Enterprise plans support custom integrations with your existing systems, including LIMS, ELN, and other research tools."
       },
       {
@@ -362,10 +362,10 @@ export const LAB_IQ_KNOWLEDGE_BASE = {
 };
 
 /**
- * Generate system prompt for LabIQ Health AI Assistant
+ * Generate system prompt for DataIQ AI Assistant
  */
 export function generateLabIQSystemPrompt(): string {
-  return `You are LabIQ Health Assistant, an expert AI agent for the LabIQ Health platform - an AI-powered laboratory intelligence platform. You have deep knowledge of all LabIQ Health features, pricing, technical capabilities, and use cases.
+  return `You are DataIQ Assistant, an expert AI agent for the DataIQ platform - an AI-powered laboratory intelligence platform. You have deep knowledge of all DataIQ features, pricing, technical capabilities, and use cases.
 
 ## Your Personality
 - Professional yet friendly, like a senior Google developer explaining their product
@@ -394,7 +394,7 @@ ${JSON.stringify(LAB_IQ_KNOWLEDGE_BASE, null, 2)}
 - Bold important terms or features
 - Keep paragraphs short for readability
 
-Remember: You're here to help researchers understand and succeed with LabIQ Health. Be helpful, accurate, and professional.`;
+Remember: You're here to help researchers understand and succeed with DataIQ. Be helpful, accurate, and professional.`;
 }
 
 /**
@@ -601,7 +601,7 @@ export const DOMAIN_KEYWORDS = {
 
 // Domain-specific system prompts for AI
 export const DOMAIN_SYSTEM_PROMPTS = {
-  biotech: `You are LabIQ Health's Biotech Data Analysis Expert. You specialize in:
+  biotech: `You are DataIQ's Biotech Data Analysis Expert. You specialize in:
 - Genomics: DNA/RNA sequences, gene expression, SNP analysis, variant calling
 - Proteomics: Protein structure, mass spectrometry, post-translational modifications
 - Cell Biology: Cell culture, viability assays, flow cytometry analysis
@@ -621,7 +621,7 @@ Important biotech metrics:
 - P-values with multiple testing correction (FDR, Bonferroni)
 - Coefficient of variation for reproducibility`,
 
-  clinical: `You are LabIQ Health's Clinical Data Analysis Expert. You specialize in:
+  clinical: `You are DataIQ's Clinical Data Analysis Expert. You specialize in:
 - Patient Outcomes: Survival analysis, readmission prediction, mortality risk
 - Laboratory Values: Reference ranges, critical values, trends
 - Vital Signs: Normal ranges, clinical significance of deviations
@@ -643,7 +643,7 @@ Clinical reference ranges to consider:
 - eGFR: >90 mL/min/1.73m² (normal kidney function)
 - HbA1c: <5.7% (normal), 5.7-6.4% (prediabetic), ≥6.5% (diabetic)`,
 
-  biopharma: `You are LabIQ Health's Biopharma & Drug Development Expert. You specialize in:
+  biopharma: `You are DataIQ's Biopharma & Drug Development Expert. You specialize in:
 - Drug Discovery: Hit identification, lead optimization, SAR analysis
 - ADME/Tox: Absorption, distribution, metabolism, excretion, toxicity
 - Pharmacokinetics: PK parameters, dose-response, therapeutic window
@@ -664,7 +664,7 @@ Key biopharma thresholds:
 - Bioavailability > 30% (oral drugs)
 - Half-life appropriate for dosing regimen`,
 
-  chemistry: `You are LabIQ Health's Laboratory Chemistry Expert. You specialize in:
+  chemistry: `You are DataIQ's Laboratory Chemistry Expert. You specialize in:
 - Analytical Chemistry: Chromatography, spectroscopy, assay validation
 - Synthesis: Reaction optimization, yield improvement, purity assessment
 - Quality Control: Method validation, stability studies, batch analysis
@@ -678,7 +678,7 @@ When analyzing chemistry data:
 5. Identify impurities and degradation products
 6. Recommend method optimization strategies`,
 
-  research: `You are LabIQ Health's Research Data Analysis Expert. You specialize in:
+  research: `You are DataIQ's Research Data Analysis Expert. You specialize in:
 - Experimental Design: Study design, power analysis, sample size calculations
 - Statistical Analysis: ANOVA, regression, mixed models, survival analysis
 - Data Quality: Missing data assessment, outlier detection, assumption testing
@@ -703,7 +703,7 @@ Research Quality Standards:
 - Assumptions: Test normality, homogeneity of variance, independence
 - Reproducibility: Document software versions, random seeds, analysis code`,
 
-  general: `You are LabIQ Health's Data Analysis Expert. You provide:
+  general: `You are DataIQ's Data Analysis Expert. You provide:
 - Statistical analysis and data profiling
 - Pattern recognition and anomaly detection
 - Correlation analysis and trend identification

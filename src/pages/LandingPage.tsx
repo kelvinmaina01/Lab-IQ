@@ -16,7 +16,7 @@ const solutions = [
     {
         title: "AI Assistant",
         href: "/lab-assistant",
-        description: "Intelligent health data analysis powered by advanced AI",
+        description: "Intelligent data analysis powered by advanced AI",
         icon: Brain,
     },
     {
@@ -34,13 +34,13 @@ const solutions = [
     {
         title: "Reports",
         href: "/reports",
-        description: "Generate comprehensive health analysis reports",
+        description: "Generate comprehensive analysis reports",
         icon: FileText,
     },
     {
-        title: "Medical Devices",
+        title: "IoT & Device Streams",
         href: "/device-streams",
-        description: "Connect and stream data from medical devices",
+        description: "Connect and stream data from IoT devices",
         icon: Stethoscope,
     },
     {
@@ -62,7 +62,7 @@ export const LandingPage = () => {
                             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-400 to-blue-500 flex items-center justify-center">
                                 <Activity className="w-5 h-5 text-white" />
                             </div>
-                            LabIQ Health
+                            DataIQ
                         </div>
 
                         {/* Solutions Dropdown */}
@@ -131,14 +131,14 @@ export const LandingPage = () => {
                     </div>
 
                     <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight leading-tight">
-                        Turn Raw Health Data into <br />
+                        Turn Raw Data into <br />
                         <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-400 via-blue-500 to-purple-500">
-                            Scientific Discoveries
+                            Actionable Insights
                         </span>
                     </h1>
 
                     <p className="text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed">
-                        The world's first automated data intelligence platform for healthcare.
+                        The world's first automated data intelligence platform for your data.
                         Upload CSVs, get insights. No coding required.
                     </p>
 
@@ -172,7 +172,7 @@ export const LandingPage = () => {
                         {
                             icon: Activity,
                             title: "Explainable Insights",
-                            desc: "Don't just get a prediction. Understand the 'Why' behind every health metric."
+                            desc: "Don't just get a prediction. Understand the 'Why' behind every trend."
                         }
                     ].map((feature, i) => (
                         <motion.div

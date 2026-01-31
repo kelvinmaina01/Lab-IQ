@@ -74,7 +74,7 @@ const Index = () => {
     {
       icon: Watch,
       title: "Wearables & Monitoring",
-      description: "Smartwatches, fitness trackers, home health monitors",
+      description: "IoT sensors, smart devices, real-time monitors",
       color: "from-blue-500 to-cyan-500"
     },
     {
@@ -86,7 +86,7 @@ const Index = () => {
     {
       icon: Activity,
       title: "Surveys & Programs",
-      description: "Household surveys, cohort studies, NGO datasets",
+      description: "Customer surveys, market research, operational logs",
       color: "from-green-500 to-emerald-500"
     },
     {
@@ -104,7 +104,7 @@ const Index = () => {
     {
       icon: Wifi,
       title: "Public Data APIs",
-      description: "WHO, DHS, World Bank public datasets",
+      description: "Financial markets, census data, weather APIs",
       color: "from-teal-500 to-cyan-500"
     }
   ];
@@ -140,12 +140,12 @@ const Index = () => {
   ];
 
   const useCases = [
-    "Public Health & Epidemiology",
-    "Population Health Surveys",
-    "NGO & Program Monitoring",
-    "Environmental Health Data",
-    "Health Informatics Education",
-    "Digital Health Research"
+    "Business Intelligence",
+    "Market Research",
+    "Financial Analysis",
+    "IoT Monitoring",
+    "Operations Optimization",
+    "Scientific Research"
   ];
 
   return (
@@ -170,7 +170,7 @@ const Index = () => {
             {/* Badge */}
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-background border border-border shadow-sm animate-fade-in" style={{ animationDelay: '0.1s' }}>
               <Sparkles className="w-4 h-4 text-primary animate-pulse" />
-              <span className="text-sm font-medium">AI-Powered Health Data Analysis Platform</span>
+              <span className="text-sm font-medium">AI-Powered Data Intelligence Platform</span>
             </div>
 
             {/* Main Headline - Compact 2 Lines with Typing Effect */}
@@ -179,13 +179,13 @@ const Index = () => {
                 Launch better decisions
               </span>
               <br />
-              <span className="text-muted-foreground">with intelligent health data</span>
+              <span className="text-muted-foreground">with intelligent data</span>
             </h1>
 
             {/* Subheadline */}
             <p className="text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto leading-relaxed animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
-              Turn messy health and public health data into insights, dashboards, and reports—no coding required.
-              Upload CSVs from surveys, programs, and monitoring tools.
+              Turn messy data into insights, dashboards, and reports—no coding required.
+              Upload CSVs from business ops, surveys, and monitoring tools.
             </p>
 
             {/* CTA Buttons */}
@@ -198,7 +198,7 @@ const Index = () => {
               </Link>
               <Link to="/upload">
                 <Button size="lg" variant="outline" className="gap-2 text-base h-12 px-8 rounded-full hover:scale-105 transition-all">
-                  Explore Health Use Cases
+                  Explore Use Cases
                   <ArrowRight className="w-5 h-5" />
                 </Button>
               </Link>
@@ -216,7 +216,7 @@ const Index = () => {
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-green-500" />
-                <span>Built for public health & research</span>
+                <span>Built for business & research</span>
               </div>
             </div>
           </div>
@@ -255,7 +255,7 @@ const Index = () => {
             {/* Main headline - Clean & Professional */}
             <div className="text-center space-y-6">
               <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight text-foreground">
-                What if every health dataset<br />revealed insights you didn't see before?
+                What if every dataset<br />revealed insights you didn't see before?
               </h2>
             </div>
 
@@ -274,7 +274,7 @@ const Index = () => {
                 },
                 {
                   icon: Database,
-                  question: "What if health data from different sources",
+                  question: "What if data from different sources",
                   answer: "just... worked together?"
                 }
               ].map((item, idx) => {
@@ -318,11 +318,11 @@ const Index = () => {
         <div className="container mx-auto max-w-7xl">
           <div className="text-center space-y-4 mb-16 animate-fade-in-up">
             <h2 className="text-4xl md:text-5xl font-bold">
-              Connect Your Health Data
+              Connect Your Data
             </h2>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              Upload surveys, program data, and exports from monitoring tools.
-              LabIQ Health supports multiple formats for comprehensive analysis.
+              Upload spreadsheets, database exports, and logs from your tools.
+              DataIQ supports multiple formats for comprehensive analysis.
             </p>
           </div>
 
@@ -373,7 +373,7 @@ const Index = () => {
 
           {/* Disclaimer */}
           <p className="text-center text-xs text-muted-foreground mt-6">
-            For research and analysis purposes only. Not for real-time clinical decision-making.
+            For analysis purposes only. Always verify critical decisions.
           </p>
         </div>
       </section>
@@ -392,13 +392,13 @@ const Index = () => {
                 <span className="text-muted-foreground">It drives the entire system.</span>
               </h2>
               <p className="text-lg text-muted-foreground leading-relaxed">
-                When you connect a cloud source or upload a dataset, LabIQ Health doesn't wait for you to click buttons.
+                When you connect a cloud source or upload a dataset, DataIQ doesn't wait for you to click buttons.
                 The system <strong>automatically:</strong>
               </p>
               <ul className="space-y-3">
                 {[
                   { icon: Database, text: "Validates & profiles your data" },
-                  { icon: Brain, text: "Classifies the health domain" },
+                  { icon: Brain, text: "Classifies the data domain" },
                   { icon: Workflow, text: "Triggers relevant analysis workflows" },
                   { icon: HeartPulse, text: "Detects anomalies & quality issues" },
                   { icon: TrendingUp, text: "Generates AI insights you didn't ask for" },
@@ -454,7 +454,7 @@ const Index = () => {
                         <Activity className="w-5 h-5 text-primary" />
                       </div>
                       <div className="text-left">
-                        <div className="font-semibold">Medical Device Streams</div>
+                        <div className="font-semibold">IoT & Device Streams</div>
                         <div className="text-xs text-muted-foreground">Wearables, IoT, real-time APIs</div>
                       </div>
                     </Button>
@@ -478,10 +478,10 @@ const Index = () => {
         <div className="container mx-auto max-w-7xl">
           <div className="text-center space-y-4 mb-16 animate-fade-in-up">
             <h2 className="text-4xl md:text-5xl font-bold">
-              What is LabIQ Health?
+              What is DataIQ?
             </h2>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              An AI-powered workspace that helps researchers, analysts, and program teams
+              An AI-powered workspace that helps teams
               clean data, uncover insights, collaborate, and generate reports—all in one place
             </p>
           </div>
@@ -512,10 +512,10 @@ const Index = () => {
             <div className="grid md:grid-cols-2 gap-12 items-center">
               <div className="space-y-6">
                 <h3 className="text-3xl font-bold">
-                  Complete Health Data Analysis Workspace
+                  Complete Data Analysis Workspace
                 </h3>
                 <p className="text-lg text-muted-foreground leading-relaxed">
-                  From data upload to insights and reporting, LabIQ Health gives health and public health
+                  From data upload to insights and reporting, DataIQ gives modern
                   teams everything they need to analyze data, collaborate, and communicate results.
                 </p>
                 <div className="flex flex-wrap gap-3 pt-4">
@@ -583,7 +583,7 @@ const Index = () => {
                 Every second counts.<br />Every insight matters.
               </h2>
               <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-                LabIQ Health delivers real-time intelligence for modern research teams.
+                DataIQ delivers real-time intelligence for modern teams.
               </p>
             </div>
 
@@ -623,7 +623,7 @@ const Index = () => {
               Powerful Features
             </h2>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              Everything you need to accelerate research and make data-driven discoveries
+              Everything you need to accelerate insights and make data-driven decisions
             </p>
           </div>
 
@@ -667,11 +667,11 @@ const Index = () => {
             <div className="space-y-8 animate-fade-in-up">
               <div className="space-y-4">
                 <h2 className="text-4xl md:text-5xl font-bold">
-                  Built for Modern Research
+                  Built for Modern Teams
                 </h2>
                 <p className="text-xl text-muted-foreground leading-relaxed">
-                  LabIQ Health adapts to your field of study and research focus,
-                  providing specialized analysis across multiple health domains
+                  DataIQ adapts to your industry and business focus,
+                  providing specialized analysis across multiple data domains
                 </p>
               </div>
 
@@ -703,7 +703,7 @@ const Index = () => {
                 <div className="space-y-5">
                   {[
                     { step: "1", text: "Create your project workspace", icon: Rocket },
-                    { step: "2", text: "Upload your health dataset (CSV, Excel, JSON)", icon: Upload },
+                    { step: "2", text: "Upload your dataset (CSV, Excel, JSON)", icon: Upload },
                     { step: "3", text: "Let AI analyze patterns", icon: Brain },
                     { step: "4", text: "Review insights & predictions", icon: TrendingUp },
                     { step: "5", text: "Generate & share reports", icon: FileText }
@@ -746,10 +746,10 @@ const Index = () => {
         <div className="container mx-auto max-w-7xl">
           <div className="text-center space-y-6 mb-16 animate-fade-in-up">
             <h2 className="text-4xl md:text-5xl font-bold">
-              Experience LabIQ Health in Action
+              Experience DataIQ in Action
             </h2>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              See how leading research teams are transforming their data analysis workflow.
+              See how leading teams are transforming their data analysis workflow.
               Choose the best way to get started.
             </p>
           </div>
@@ -764,7 +764,7 @@ const Index = () => {
                 <div>
                   <h3 className="text-2xl font-bold mb-2">Book a Demo</h3>
                   <p className="text-muted-foreground">
-                    See LabIQ Health's full capabilities in a personalized walkthrough with our team.
+                    See DataIQ's full capabilities in a personalized walkthrough with our team.
                   </p>
                 </div>
                 <ul className="space-y-3 text-sm">
@@ -797,7 +797,7 @@ const Index = () => {
                 <div>
                   <h3 className="text-2xl font-bold mb-2">Watch Demo</h3>
                   <p className="text-muted-foreground">
-                    See a quick walkthrough of how LabIQ Health transforms research data into insights.
+                    See a quick walkthrough of how DataIQ transforms data into insights.
                   </p>
                 </div>
                 <ul className="space-y-3 text-sm">
