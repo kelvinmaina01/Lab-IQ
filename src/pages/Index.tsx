@@ -942,9 +942,7 @@ const Index = () => {
                       className="relative w-full h-full object-contain animate-float"
                     />
                   </div>
-                  <span className="text-7xl md:text-8xl font-black tracking-tighter text-foreground/90 hover:text-primary transition-colors duration-500 lowercase select-none">
-                    dataiq
-                  </span>
+
                 </Link>
                 <p className="text-lg text-muted-foreground leading-relaxed max-w-sm">
                   Transforming raw data into scientific discoveries with AI-powered intelligence.
@@ -1020,6 +1018,13 @@ const Index = () => {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Large Brand Text Below Footer Content */}
+        <div className="w-full flex justify-center opacity-10 pointer-events-none select-none overflow-hidden pb-4">
+          <span className="text-[15vw] font-black tracking-tighter text-foreground leading-none">
+            dataiq
+          </span>
         </div>
       </footer>
 
