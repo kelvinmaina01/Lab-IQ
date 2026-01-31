@@ -106,8 +106,8 @@ export const AuthCard = () => {
 
                 <TabsContent value="login" className="space-y-8 animate-fade-in-up">
                     <div className="space-y-2 text-center">
-                        <h1 className="text-3xl font-bold tracking-tight text-white">Welcome back</h1>
-                        <p className="text-slate-400">Sign in to continue your journey</p>
+                        <h1 className="text-3xl font-bold tracking-tight text-slate-900">Welcome back</h1>
+                        <p className="text-muted-foreground">Sign in to continue your journey</p>
                     </div>
 
                     <form onSubmit={handleLogin} className="space-y-5">
@@ -121,7 +121,7 @@ export const AuthCard = () => {
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     disabled={loading}
-                                    className="h-12 bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus:bg-white/10 focus:border-blue-500 focus:ring-blue-500/20 rounded-xl transition-all"
+                                    className="h-12 bg-muted/30 border-border text-foreground placeholder:text-muted-foreground focus:bg-white focus:border-primary transition-all rounded-xl"
                                 />
                             </div>
                             <div className="space-y-2">
@@ -133,38 +133,38 @@ export const AuthCard = () => {
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     disabled={loading}
-                                    className="h-12 bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus:bg-white/10 focus:border-blue-500 focus:ring-blue-500/20 rounded-xl transition-all"
+                                    className="h-12 bg-muted/30 border-border text-foreground placeholder:text-muted-foreground focus:bg-white focus:border-primary transition-all rounded-xl"
                                 />
                                 <div className="flex justify-end">
-                                    <Button variant="link" className="px-0 h-auto text-sm text-blue-400 hover:text-blue-300 font-normal">
+                                    <Button variant="link" className="px-0 h-auto text-sm text-primary hover:text-primary/80 font-normal">
                                         Forgot password?
                                     </Button>
                                 </div>
                             </div>
                         </div>
 
-                        <Button type="submit" className="w-full h-12 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold rounded-xl shadow-lg shadow-blue-500/20 transition-all text-base hover:scale-[1.02]" disabled={loading}>
+                        <Button type="submit" className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-xl transition-all text-base" disabled={loading}>
                             {loading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
                             Sign In
                         </Button>
 
                         <div className="relative my-6">
                             <div className="absolute inset-0 flex items-center">
-                                <span className="w-full border-t border-white/10" />
+                                <span className="w-full border-t border-border" />
                             </div>
                             <div className="relative flex justify-center text-xs uppercase">
-                                <span className="bg-[#030712] px-2 text-slate-500 font-medium">
+                                <span className="bg-white px-2 text-muted-foreground font-medium">
                                     Or
                                 </span>
                             </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
-                            <Button variant="outline" type="button" disabled={loading} onClick={signInWithGithub} className="h-11 bg-white/5 border-white/10 hover:bg-white/10 text-white transition-all">
+                            <Button variant="outline" type="button" disabled={loading} onClick={signInWithGithub} className="h-11 border-border hover:bg-muted text-foreground transition-all">
                                 <Github className="mr-2 h-4 w-4" />
                                 GitHub
                             </Button>
-                            <Button variant="outline" type="button" disabled={loading} onClick={signInWithGoogle} className="h-11 bg-white/5 border-white/10 hover:bg-white/10 text-white transition-all">
+                            <Button variant="outline" type="button" disabled={loading} onClick={signInWithGoogle} className="h-11 border-border hover:bg-muted text-foreground transition-all">
                                 <GoogleIcon />
                                 Google
                             </Button>
@@ -174,8 +174,8 @@ export const AuthCard = () => {
 
                 <TabsContent value="signup" className="space-y-8 animate-fade-in-up">
                     <div className="space-y-2 text-center">
-                        <h1 className="text-3xl font-bold tracking-tight text-white">Get Started</h1>
-                        <p className="text-slate-400">Create your free account today</p>
+                        <h1 className="text-3xl font-bold tracking-tight text-slate-900">Get Started</h1>
+                        <p className="text-muted-foreground">Create your free account today</p>
                     </div>
 
                     <form onSubmit={handleSignup} className="space-y-5">
@@ -189,7 +189,7 @@ export const AuthCard = () => {
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     disabled={loading}
-                                    className="h-12 bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus:bg-white/10 focus:border-blue-500 focus:ring-blue-500/20 rounded-xl transition-all"
+                                    className="h-12 bg-muted/30 border-border text-foreground placeholder:text-muted-foreground focus:bg-white focus:border-primary transition-all rounded-xl"
                                 />
                             </div>
                             <div className="space-y-2">
@@ -201,34 +201,34 @@ export const AuthCard = () => {
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     disabled={loading}
-                                    className="h-12 bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus:bg-white/10 focus:border-blue-500 focus:ring-blue-500/20 rounded-xl transition-all"
+                                    className="h-12 bg-muted/30 border-border text-foreground placeholder:text-muted-foreground focus:bg-white focus:border-primary transition-all rounded-xl"
                                 />
-                                <p className="text-xs text-slate-400 px-1">At least 8 characters</p>
+                                <p className="text-xs text-muted-foreground px-1">At least 8 characters</p>
                             </div>
                         </div>
 
-                        <Button type="submit" className="w-full h-12 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold rounded-xl shadow-lg shadow-blue-500/20 transition-all text-base hover:scale-[1.02]" disabled={loading}>
+                        <Button type="submit" className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-xl transition-all text-base" disabled={loading}>
                             {loading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
                             Create Account
                         </Button>
 
                         <div className="relative my-6">
                             <div className="absolute inset-0 flex items-center">
-                                <span className="w-full border-t border-white/10" />
+                                <span className="w-full border-t border-border" />
                             </div>
                             <div className="relative flex justify-center text-xs uppercase">
-                                <span className="bg-[#030712] px-2 text-slate-500 font-medium">
+                                <span className="bg-white px-2 text-muted-foreground font-medium">
                                     Or
                                 </span>
                             </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
-                            <Button variant="outline" type="button" disabled={loading} onClick={signInWithGithub} className="h-11 bg-white/5 border-white/10 hover:bg-white/10 text-white transition-all">
+                            <Button variant="outline" type="button" disabled={loading} onClick={signInWithGithub} className="h-11 border-border hover:bg-muted text-foreground transition-all">
                                 <Github className="mr-2 h-4 w-4" />
                                 GitHub
                             </Button>
-                            <Button variant="outline" type="button" disabled={loading} onClick={signInWithGoogle} className="h-11 bg-white/5 border-white/10 hover:bg-white/10 text-white transition-all">
+                            <Button variant="outline" type="button" disabled={loading} onClick={signInWithGoogle} className="h-11 border-border hover:bg-muted text-foreground transition-all">
                                 <GoogleIcon />
                                 Google
                             </Button>
