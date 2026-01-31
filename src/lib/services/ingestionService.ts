@@ -398,91 +398,45 @@ class IngestionService {
         userId: string,
         onProgress?: (progress: number, message: string) => void
     ): Promise<string> {
-        const startTime = Date.now();
         onProgress?.(5, `Initializing secure connection to ${provider}...`);
 
-        // Simulate network latency for realism
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        try {
+            // 1. Find the active data source for this provider
+            const { data: source, error: sourceError } = await supabase
+                .from('data_sources')
+                .select('id')
+                .eq('user_id', userId)
+                .eq('provider', provider)
+                .eq('status', 'active')
+                .maybeSingle();
 
-        onProgress?.(20, 'Authenticating and fetching schema...');
+            if (sourceError || !source) {
+                throw new Error(`No active ${provider} connection found. Please authorize first.`);
+            }
 
-        // Mock data based on provider
-        let mockRows: any[] = [];
-        let fileName = "";
-        let domain = 'general';
+            onProgress?.(20, 'Triggering remote synchronization...');
 
-        if (['applehealth', 'fitbit', 'oura', 'dexcom'].includes(provider)) {
-            domain = 'vitals';
-            fileName = `${provider}_vitals_export.json`;
-            mockRows = [
-                { timestamp: new Date().toISOString(), type: 'heart_rate', value: 72, unit: 'bpm' },
-                { timestamp: new Date().toISOString(), type: 'steps', value: 1240, unit: 'count' },
-                { timestamp: new Date().toISOString(), type: 'sleep_hours', value: 7.5, unit: 'hours' }
-            ];
-        } else if (['epic', 'cerner', 'fhir'].includes(provider)) {
-            domain = 'clinical';
-            fileName = `${provider}_clinical_records.json`;
-            mockRows = [
-                { patient_id: 'P123', encounter_date: new Date().toISOString(), diagnosis: 'Essential Hypertension', code: 'I10' },
-                { patient_id: 'P123', medication: 'Lisinopril 10mg', status: 'active' }
-            ];
-        } else {
-            fileName = `${provider}_imported_data.json`;
-            mockRows = [
-                { imported_at: new Date().toISOString(), status: 'active', provider }
-            ];
+            // 2. Call the cloud-sync edge function
+            const { data, error } = await supabase.functions.invoke('cloud-sync', {
+                body: { sourceId: source.id, userId }
+            });
+
+            if (error) {
+                console.error('Cloud Internal Sync Error:', error);
+                throw new Error(error.message || 'Remote sync failed');
+            }
+
+            if (!data.success) {
+                throw new Error(data.error || 'Ingestion failed on the security gateway');
+            }
+
+            onProgress?.(100, 'Cloud import successful!');
+            return data.datasetId;
+
+        } catch (error: any) {
+            console.error("Cloud Ingestion Error:", error);
+            throw error;
         }
-
-        const headers = Object.keys(mockRows[0]);
-        const parsedData: ParsedData = {
-            fileName,
-            fileSize: 1024 * 5, // 5KB mock
-            fileType: 'json',
-            headers,
-            rows: mockRows,
-            rowCount: mockRows.length,
-            columnCount: headers.length,
-            columns: headers.map((h, i) => ({
-                name: h,
-                index: i,
-                dataType: 'string' as const,
-                nullable: true,
-                uniqueValues: 0,
-                sampleValues: [],
-                nullCount: 0
-            })),
-            dataTypes: {},
-            errors: [],
-            warnings: [],
-            parseTime: 100
-        };
-
-        onProgress?.(50, 'Analyzing data structure & PHI detection...');
-        const phiResult = anonymizationService.detectPHI(headers, mockRows);
-
-        onProgress?.(70, 'Syncing to LabIQ Research Vault...');
-        const datasetId = await datasetService.saveDataset(userId, parsedData, undefined, (p, m) => {
-            onProgress?.(70 + p * 0.2, m);
-        }, { provider, method: 'cloud_sync', domain });
-
-        // Update with preview and schema
-        await (supabase
-            .from('datasets')
-            .update({
-                schema: parsedData.columns,
-                preview_data: parsedData.rows.slice(0, 5),
-                metadata: {
-                    provider,
-                    ingestion_method: 'cloud_sync',
-                    domain,
-                    phiFieldsDetected: phiResult.phiFields,
-                    processingTimeMs: Date.now() - startTime
-                }
-            } as any) as any)
-            .eq('id', datasetId);
-
-        onProgress?.(100, 'Cloud import successful!');
-        return datasetId;
     }
 
     private normalizeData(rows: Record<string, any>[], columns: ColumnInfo[]): Record<string, any>[] {

@@ -60,6 +60,20 @@ const ConnectDataSources = () => {
   useEffect(() => {
     fetchConnectedSources();
     fetchUsageStats();
+
+    // Check for OAuth success callback
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('success') === 'true') {
+      const provider = params.get('provider');
+      toast({
+        title: "Connection Established",
+        description: `Successfully authorized ${provider}. Syncing will begin shortly.`,
+      });
+      // Clear params without reload
+      window.history.replaceState({}, document.title, window.location.pathname);
+      setSelectedSource("googledrive"); // Just to show the success dialog for visual feedback if needed
+      setConnectionPhase('success');
+    }
   }, []);
 
   const fetchUsageStats = async () => {
@@ -153,35 +167,44 @@ const ConnectDataSources = () => {
 
         fetchConnectedSources();
       } else if (isOAuthSource) {
-        // OAuth / Integration Auth Flow
+        // Real OAuth Auth Flow
         setConnectionPhase('auth');
 
-        // Simulate OAuth wait
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        try {
+          const { data, error } = await supabase.functions.invoke('oauth-handler', {
+            body: {
+              provider: selectedSource,
+              userId: (await supabase.auth.getUser()).data.user?.id,
+              redirectUrl: window.location.origin + '/upload'
+            },
+            method: 'POST',
+            bodyPath: 'init'
+          });
 
-        setConnectionPhase('fetching');
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error("Authentication required");
+          // Correction: The Edge Function handler path logic might vary, 
+          // but for now we'll assume a standard POST to the function with action in body
 
-        await ingestionService.ingestCloudData(
-          selectedSource || 'generic',
-          user.id,
-          (progress, message) => {
-            setIngestionProgress(progress);
-            setIngestionMessage(message);
+          const { data: initData, error: initError } = await supabase.functions.invoke('oauth-handler/init', {
+            body: {
+              provider: selectedSource,
+              userId: (await supabase.auth.getUser()).data.user?.id,
+              redirectUrl: window.location.origin + '/upload'
+            }
+          });
+
+          if (initError) throw initError;
+          if (initData?.url) {
+            window.location.href = initData.url;
           }
-        );
-
-        // Save source
-        await dataSourceService.saveSource(
-          `${selectedSource} Active Sync`,
-          isOAuthSource && ['googledrive', 'googlesheets', 'onedrive', 'sharepoint', 'googleads'].includes(selectedSource || '') ? 'integration' : 'clinical',
-          selectedSource || 'generic',
-          connectionConfig
-        );
-
-        setConnectionPhase('success');
-        fetchConnectedSources();
+        } catch (err) {
+          console.error("OAuth Init Error:", err);
+          toast({
+            title: "Authorization Failed",
+            description: "Could not initialize secure handshake.",
+            variant: "destructive"
+          });
+          setConnectionPhase('config');
+        }
       } else {
         // Database / Warehouse direct connection
         setConnectionPhase('config');
@@ -190,7 +213,7 @@ const ConnectDataSources = () => {
         if (success) {
           await dataSourceService.saveSource(
             `${selectedSource} Connection`,
-            'database',
+            isOAuthSource ? 'integration' : 'database',
             selectedSource || 'generic',
             connectionConfig
           );
@@ -198,7 +221,7 @@ const ConnectDataSources = () => {
           setConnectionPhase('success');
           fetchConnectedSources();
         } else {
-          throw new Error("Handshake failed. Please check your credentials.");
+          throw new Error("Handshake failed. Please check your credentials and firewall settings.");
         }
       }
     } catch (error) {

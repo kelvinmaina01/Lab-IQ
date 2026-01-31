@@ -79,20 +79,39 @@ class DataSourceService {
     }
 
     async testConnection(provider: string, config: DataSourceConfig): Promise<boolean> {
-        // In a real production app, this would call a backend edge function 
-        // to perform an actual TCP/HTTP handshake.
-        return new Promise((resolve) => {
-            setTimeout(() => {
-                // List of OAuth/Integration sources that don't need host
-                const oauthSources = ['csv', 'hl7', 'googledrive', 'googlesheets', 'onedrive', 'sharepoint', 'googleads', 'applehealth', 'fitbit', 'oura', 'dexcom', 'epic', 'cerner', 'fhir', 'biobank'];
+        console.log(`Testing real connection for ${provider}...`);
 
-                // Logic: Require host for database and warehouse connections
-                if (!config.host && !oauthSources.includes(provider)) {
-                    resolve(false);
+        // List of OAuth/Integration sources that use the oauth-handler
+        const oauthSources = ['googledrive', 'googlesheets', 'onedrive', 'sharepoint', 'googleads', 'applehealth', 'fitbit', 'oura', 'dexcom', 'epic', 'cerner', 'fhir', 'biobank'];
+
+        // If it's a database, call the connect-db edge function
+        const dbProviders = ['postgresql', 'mysql', 'sqlserver', 'snowflake', 'bigquery'];
+
+        if (dbProviders.includes(provider)) {
+            try {
+                const { data, error } = await supabase.functions.invoke('connect-db', {
+                    body: { provider, config }
+                });
+
+                if (error) {
+                    console.error('Edge Function Error:', error);
+                    return false;
                 }
-                resolve(true);
-            }, 2000);
-        });
+
+                return data.success === true;
+            } catch (err) {
+                console.error('Connection test failed:', err);
+                return false;
+            }
+        }
+
+        // For OAuth sources, we just return true here as the "connection" happens via the popup
+        if (oauthSources.includes(provider)) {
+            return true;
+        }
+
+        // Fallback for files or unknown
+        return true;
     }
 
     /**
