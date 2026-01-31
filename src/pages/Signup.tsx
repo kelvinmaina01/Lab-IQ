@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import {
   Loader2,
-  HeartPulse,
+  Activity,
   Brain,
   Database,
   LineChart,
@@ -102,7 +102,7 @@ const Signup = () => {
 
   if (checkingAuth) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-screen flex items-center justify-center bg-white">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
@@ -131,12 +131,12 @@ const Signup = () => {
   return (
     <div className="min-h-screen flex">
       {/* Left Side - Sign Up Form */}
-      <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 md:px-16 lg:px-20 xl:px-24 py-12 bg-background">
+      <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 md:px-16 lg:px-20 xl:px-24 py-12 bg-white text-slate-900">
         {/* Mobile Logo */}
         <div className="lg:hidden mb-8">
           <Link to="/" className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-lg">
-              <HeartPulse className="w-6 h-6 text-white" />
+              <Activity className="w-6 h-6 text-white" />
             </div>
             <span className="text-2xl font-black bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
               DataIQ
@@ -273,7 +273,7 @@ const Signup = () => {
               <div className="w-full border-t border-border" />
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-background text-muted-foreground">
+              <span className="px-4 bg-white text-muted-foreground">
                 Already have an account?
               </span>
             </div>
@@ -309,7 +309,7 @@ const Signup = () => {
       </div>
 
       {/* Right Side - Brand Showcase */}
-      <div className="hidden lg:flex lg:w-1/2 relative bg-gradient-to-br from-secondary/10 via-background to-primary/10 overflow-hidden">
+      <div className="hidden lg:flex lg:w-1/2 relative bg-gradient-to-br from-secondary/10 via-white to-primary/10 overflow-hidden border-l border-slate-100">
         {/* Animated background elements */}
         <div className="absolute inset-0">
           <div className="absolute top-20 right-10 w-72 h-72 bg-secondary/5 rounded-full blur-3xl animate-pulse" />
@@ -329,7 +329,7 @@ const Signup = () => {
           {/* Logo */}
           <Link to="/" className="flex items-center gap-3 mb-12 group">
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-              <HeartPulse className="w-7 h-7 text-white" />
+              <Activity className="w-7 h-7 text-white" />
             </div>
             <span className="text-3xl font-black bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
               DataIQ
@@ -356,7 +356,7 @@ const Signup = () => {
               return (
                 <div
                   key={idx}
-                  className="p-4 rounded-xl bg-background/50 backdrop-blur-sm border border-border/50 hover:border-primary/30 transition-all duration-300 group"
+                  className="p-4 rounded-xl bg-white/60 backdrop-blur-sm border border-slate-200/50 hover:border-primary/30 transition-all duration-300 group"
                 >
                   <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary/10 to-secondary/10 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
                     <Icon className="w-5 h-5 text-primary" />
@@ -369,7 +369,7 @@ const Signup = () => {
           </div>
 
           {/* Testimonial or Quote */}
-          <div className="mt-12 p-6 rounded-xl bg-background/50 backdrop-blur-sm border border-border/50">
+          <div className="mt-12 p-6 rounded-xl bg-white/60 backdrop-blur-sm border border-slate-200/50">
             <div className="flex items-start gap-4">
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center flex-shrink-0">
                 <Sparkles className="w-5 h-5 text-white" />
