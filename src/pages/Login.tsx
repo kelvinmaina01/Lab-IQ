@@ -138,8 +138,6 @@ const Login = () => {
               return (
                 <div
                   key={idx}
-                  <div
-                  key={idx}
                   className="flex items-center gap-4 p-4 rounded-xl bg-white/60 backdrop-blur-sm border border-slate-200/50 hover:border-primary/30 transition-all duration-300"
                 >
                   <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary/10 to-secondary/10 flex items-center justify-center flex-shrink-0">
