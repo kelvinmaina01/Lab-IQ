@@ -59,12 +59,12 @@ const Navigation = () => {
           <Link to="/" className="flex items-center gap-3 group">
             <div className="w-10 h-10 flex items-center justify-center transition-transform duration-300 group-hover:scale-110">
               <img
-                src="/dataiq-logo-transparent.png"
+                src="/dataiq-logo.svg"
                 alt="DataIQ Logo"
                 className="w-full h-full object-contain"
               />
             </div>
-            <span className="text-xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+            <span className="text-xl font-bold text-primary">
               DataIQ
             </span>
           </Link>

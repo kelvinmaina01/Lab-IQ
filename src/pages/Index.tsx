@@ -937,7 +937,7 @@ const Index = () => {
                   <div className="relative w-16 h-16 transition-transform duration-500 ease-in-out group-hover:rotate-12 group-hover:scale-110">
                     <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full animate-pulse" />
                     <img
-                      src="/dataiq-logo.png"
+                      src="/dataiq-logo.svg"
                       alt="DataIQ Logo"
                       className="relative w-full h-full object-contain animate-float"
                     />
