@@ -38,14 +38,24 @@ const ConnectDataSources = () => {
     role: "",
     clientId: "",
     scopes: "",
+    sshHost: "",
+    sshPort: "22",
+    sshUser: "",
+    useSsh: false,
+    serviceAccountJson: "",
+    location: "US",
+    mfaType: "none",
+    permissionLevel: "read_write",
+    requireReview: true,
   });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [connectionPhase, setConnectionPhase] = useState<'config' | 'auth' | 'fetching' | 'success'>('config');
+  const [connectionPhase, setConnectionPhase] = useState<'select' | 'guide' | 'config' | 'auth' | 'fetching' | 'success'>('select');
   const [ingestionProgress, setIngestionProgress] = useState(0);
   const [ingestionMessage, setIngestionMessage] = useState("");
   const [requestDialogOpen, setRequestDialogOpen] = useState(false);
   const [requestDetails, setRequestDetails] = useState({ name: "", description: "" });
   const [usageStats, setUsageStats] = useState({ storage: 0, datasets: 0, plan: "Student" });
+  const [showWhitelisting, setShowWhitelisting] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -81,10 +91,8 @@ const ConnectDataSources = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // 1. Fetch storage and dataset usage
       const stats = await datasetService.getUsageStats(user.id);
 
-      // 2. Fetch subscription tier from the new table
       const { data: sub } = await supabase
         .from('subscriptions')
         .select('tier')
@@ -94,14 +102,25 @@ const ConnectDataSources = () => {
       setUsageStats({
         storage: stats.storage_used_mb || 0,
         datasets: stats.datasets_count || 0,
-        plan: sub?.tier || "Student" // Fallback to Student as per request vibe
+        plan: sub?.tier || "Student"
       });
     } catch (error) {
       console.warn("Failed to fetch usage stats:", error);
     }
   };
 
-  const handleConnect = async () => {
+  const handleSourceSelect = (sourceId: string) => {
+    setSelectedSource(sourceId);
+    // Databases and complex cloud integrations go to guide first
+    const needsGuide = ['postgresql', 'mysql', 'sqlserver', 'snowflake', 'bigquery', 'googledrive', 'googlesheets', 'onedrive', 'sharepoint', 'epic', 'cerner', 'fhir'];
+    if (needsGuide.includes(sourceId)) {
+      setConnectionPhase('guide');
+    } else {
+      setConnectionPhase('config');
+    }
+  };
+
+  const establishConnection = async () => {
     // Validation: Require host only for DBs and Warehouses
     const isFileSource = ["csv", "hl7"].includes(selectedSource || "");
     const isOAuthSource = ["googledrive", "googlesheets", "onedrive", "sharepoint", "googleads", "applehealth", "fitbit", "oura", "dexcom", "epic", "cerner", "fhir", "biobank"].includes(selectedSource || "");
@@ -325,7 +344,7 @@ const ConnectDataSources = () => {
                 <Card
                   key={card.id}
                   className="group hover:border-primary/50 transition-all hover:shadow-md cursor-pointer overflow-hidden border-border/50 relative"
-                  onClick={() => setSelectedSource(card.sourceType)}
+                  onClick={() => handleSourceSelect(card.sourceType)}
                 >
                   <div className="absolute top-0 right-0 p-3 opacity-0 group-hover:opacity-100 transition-opacity">
                     <ArrowRight className="w-4 h-4 text-primary" />
@@ -573,81 +592,294 @@ const ConnectDataSources = () => {
           </DialogHeader>
 
           <div className="space-y-6">
-            {connectionPhase === 'config' ? (
+            {connectionPhase === 'guide' ? (
+              <div className="space-y-6 animate-in fade-in zoom-in-95 duration-500">
+                <div className="flex items-center gap-4 p-4 bg-primary/5 rounded-2xl border border-primary/10 mb-6">
+                  <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center shadow-sm">
+                    <Database className="w-6 h-6 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900 capitalize">{selectedSource}</h3>
+                    <p className="text-sm text-slate-500">Professional Data Connector</p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <p className="text-slate-600 leading-relaxed">
+                    Configure a connector to analyze your <strong>{selectedSource}</strong> data with DataIQ.
+                    You'll need accessibility details and credentials. All data is encrypted and never stored in plain text.
+                  </p>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="p-4 rounded-xl border border-slate-100 bg-slate-50/50 flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center shadow-sm flex-shrink-0">
+                        <FileText className="w-4 h-4 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-slate-900">Read Documentation</p>
+                        <p className="text-xs text-slate-500">Detailed setup guides</p>
+                      </div>
+                    </div>
+                    <div className="p-4 rounded-xl border border-slate-100 bg-slate-50/50 flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center shadow-sm flex-shrink-0">
+                        <Shield className="w-4 h-4 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-slate-900">Security & Trust</p>
+                        <p className="text-xs text-slate-500">Compliance & Privacy</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-5 rounded-2xl bg-amber-50 border border-amber-100">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Activity className="w-4 h-4 text-amber-600" />
+                      <p className="text-sm font-bold text-amber-900 uppercase tracking-wider">Pro Tip</p>
+                    </div>
+                    <p className="text-sm text-amber-800">
+                      If you need help setting up your connector, watch our <span className="underline font-bold cursor-pointer">video walkthrough</span> or send setup info to your IT department.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-3 pt-4">
+                  <Button onClick={() => setConnectionPhase('config')} className="h-14 rounded-xl text-lg font-bold shadow-lg hover:shadow-xl transition-all">
+                    Set up {selectedSource === 'postgresql' ? 'Postgres' : selectedSource}
+                  </Button>
+                  <Button variant="ghost" onClick={() => setSelectedSource(null)} className="h-12 rounded-xl text-slate-500">
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            ) : connectionPhase === 'config' ? (
               <div className="space-y-6 animate-in slide-in-from-bottom-2 duration-300">
-                {selectedSource && ["csv", "hl7"].includes(selectedSource) ? (
-                  <div className="space-y-4">
-                    <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-3xl cursor-pointer bg-slate-50 hover:bg-slate-100 transition-all border-slate-200 hover:border-primary/50 group/upload">
-                      <div className="flex flex-col items-center justify-center p-8">
-                        <Upload className="w-12 h-12 mb-4 text-slate-400 group-hover:text-primary transition-colors" />
-                        <p className="mb-2 text-lg font-bold text-slate-900">Drop clinical data here</p>
-                        <p className="text-sm text-slate-500 font-medium">MAX. 50MB per ingestion batch</p>
-                      </div>
-                      <input type="file" className="hidden" accept={selectedSource === 'csv' ? ".csv,.xlsx,.xls" : ".hl7,.txt"} onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} />
-                    </label>
-                    {selectedFile && (
-                      <div className="flex items-center gap-4 p-4 bg-primary/5 rounded-2xl border border-primary/10 animate-in zoom-in-95 duration-300">
-                        <FileText className="w-6 h-6 text-primary" />
-                        <span className="text-sm font-bold text-slate-700 truncate flex-1">{selectedFile.name}</span>
-                        <Badge variant="secondary" className="bg-white text-primary px-3 py-1">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</Badge>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {/* Only show Host for Clinical providers (Epic, Cerner, FHIR) */}
-                    {selectedSource && ['epic', 'cerner', 'fhir'].includes(selectedSource) && (
-                      <div className="space-y-2 animate-in fade-in duration-300">
-                        <Label htmlFor="host" className="text-xs font-bold uppercase tracking-widest text-slate-400">FHIR Base URL (Audience)</Label>
-                        <Input
-                          id="host"
-                          className="h-12 rounded-xl bg-slate-50 border-slate-100 focus:ring-primary/20"
-                          placeholder="https://fhir.example.org/r4"
-                          value={connectionConfig.host}
-                          onChange={(e) => setConnectionConfig({ ...connectionConfig, host: e.target.value })}
-                        />
-                      </div>
-                    )}
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-lg font-bold text-slate-900">Configure Connection</h3>
+                  <button onClick={() => setConnectionPhase('guide')} className="text-xs font-bold text-primary uppercase tracking-widest hover:underline">
+                    View Setup Guide
+                  </button>
+                </div>
 
-                    {/* Show DB Config for actual databases (Not for standard cloud integrations) */}
-                    {selectedSource && !['epic', 'cerner', 'fhir', 'googledrive', 'googlesheets', 'onedrive', 'sharepoint', 'googleads', 'applehealth', 'fitbit', 'oura', 'dexcom'].includes(selectedSource) && (
-                      <div className="space-y-4 animate-in fade-in duration-300">
-                        <div className="space-y-2">
-                          <Label htmlFor="host" className="text-xs font-bold uppercase tracking-widest text-slate-400">Host / Connection String</Label>
-                          <Input id="host" className="h-12 rounded-xl bg-slate-50 border-slate-100 focus:ring-primary/20" placeholder="production.db.internal" value={connectionConfig.host} onChange={(e) => setConnectionConfig({ ...connectionConfig, host: e.target.value })} />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="port" className="text-xs font-bold uppercase tracking-widest text-slate-400">Port</Label>
-                            <Input id="port" className="h-12 rounded-xl bg-slate-50 border-slate-100" placeholder="5432" value={connectionConfig.port} onChange={(e) => setConnectionConfig({ ...connectionConfig, port: e.target.value })} />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="db" className="text-xs font-bold uppercase tracking-widest text-slate-400">Database</Label>
-                            <Input id="db" className="h-12 rounded-xl bg-slate-50 border-slate-100" placeholder="research_vault" value={connectionConfig.database} onChange={(e) => setConnectionConfig({ ...connectionConfig, database: e.target.value })} />
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="user" className="text-xs font-bold uppercase tracking-widest text-slate-400">Authentication Token / User</Label>
-                          <Input id="user" type="password" className="h-12 rounded-xl bg-slate-50 border-slate-100" placeholder="••••••••••••••••" value={connectionConfig.username} onChange={(e) => setConnectionConfig({ ...connectionConfig, username: e.target.value })} />
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Informational text for standard OAuth */}
-                    {selectedSource && ['googledrive', 'googlesheets', 'onedrive', 'sharepoint', 'googleads', 'applehealth', 'fitbit', 'oura', 'dexcom'].includes(selectedSource) && (
-                      <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10 text-center animate-in zoom-in-95 duration-300">
-                        <Cloud className="w-8 h-8 text-primary mx-auto mb-2 opacity-60" />
-                        <p className="text-sm font-medium text-slate-600">
-                          You will be redirected to the secure {selectedSource} authorization portal to grant access.
-                        </p>
-                      </div>
-                    )}
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-lg font-bold text-slate-900">Configure Connection</h3>
+                    <button onClick={() => setConnectionPhase('guide')} className="text-xs font-bold text-primary uppercase tracking-widest hover:underline">
+                      View Setup Guide
+                    </button>
                   </div>
-                )}
-                <DialogFooter className="pt-4">
-                  <Button variant="ghost" className="h-14 flex-1 rounded-2xl font-bold uppercase tracking-widest" onClick={() => setSelectedSource(null)}>Cancel</Button>
-                  <Button className="h-14 flex-1 rounded-2xl bg-primary hover:bg-primary/90 text-white font-bold uppercase tracking-widest shadow-glow" onClick={handleConnect} disabled={loading}>{loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <ChevronRight className="w-5 h-5" />} ESTABLISH HANDSHAKE</Button>
-                </DialogFooter>
+
+                  {selectedSource && ["csv", "hl7"].includes(selectedSource) ? (
+                    <div className="space-y-4">
+                      <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-3xl cursor-pointer bg-slate-50 hover:bg-slate-100 transition-all border-slate-200 hover:border-primary/50 group/upload">
+                        <div className="flex flex-col items-center justify-center p-8">
+                          <Upload className="w-12 h-12 mb-4 text-slate-400 group-hover:text-primary transition-colors" />
+                          <p className="mb-2 text-lg font-bold text-slate-900">Drop clinical data here</p>
+                          <p className="text-sm text-slate-500 font-medium">MAX. 50MB per ingestion batch</p>
+                        </div>
+                        <input type="file" className="hidden" accept={selectedSource === 'csv' ? ".csv,.xlsx,.xls" : ".hl7,.txt"} onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} />
+                      </label>
+                      {selectedFile && (
+                        <div className="flex items-center gap-4 p-4 bg-primary/5 rounded-2xl border border-primary/10 animate-in zoom-in-95 duration-300">
+                          <FileText className="w-6 h-6 text-primary" />
+                          <span className="text-sm font-bold text-slate-700 truncate flex-1">{selectedFile.name}</span>
+                          <Badge variant="secondary" className="bg-white text-primary px-3 py-1">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</Badge>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {/* Postgres / SQL Advanced Config */}
+                      {selectedSource && ['postgresql', 'mysql', 'sqlserver'].includes(selectedSource) && (
+                        <div className="space-y-6">
+                          <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                            <div className="flex items-center gap-3">
+                              <Workflow className="w-5 h-5 text-primary" />
+                              <div>
+                                <p className="text-sm font-bold text-slate-900">SSH Tunnel</p>
+                                <p className="text-xs text-slate-500">Connect to private database</p>
+                              </div>
+                            </div>
+                            <Button
+                              variant={connectionConfig.useSsh ? "default" : "outline"}
+                              size="sm"
+                              className="rounded-lg h-9"
+                              onClick={() => setConnectionConfig({ ...connectionConfig, useSsh: !connectionConfig.useSsh })}
+                            >
+                              {connectionConfig.useSsh ? "Enabled" : "Disabled"}
+                            </Button>
+                          </div>
+
+                          <div className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label htmlFor="host" className="text-xs font-bold uppercase tracking-widest text-slate-400">Host*</Label>
+                                <Input id="host" className="h-12 rounded-xl bg-slate-50 border-slate-100" placeholder="production.db.internal" value={connectionConfig.host} onChange={(e) => setConnectionConfig({ ...connectionConfig, host: e.target.value })} />
+                              </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="port" className="text-xs font-bold uppercase tracking-widest text-slate-400">Port*</Label>
+                                <Input id="port" className="h-12 rounded-xl bg-slate-50 border-slate-100" placeholder="5432" value={connectionConfig.port} onChange={(e) => setConnectionConfig({ ...connectionConfig, port: e.target.value })} />
+                              </div>
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label htmlFor="db" className="text-xs font-bold uppercase tracking-widest text-slate-400">Database Name*</Label>
+                              <Input id="db" className="h-12 rounded-xl bg-slate-50 border-slate-100" placeholder="research_vault" value={connectionConfig.database} onChange={(e) => setConnectionConfig({ ...connectionConfig, database: e.target.value })} />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label htmlFor="user" className="text-xs font-bold uppercase tracking-widest text-slate-400">Username*</Label>
+                                <Input id="user" className="h-12 rounded-xl bg-slate-50 border-slate-100" placeholder="admin_user" value={connectionConfig.username} onChange={(e) => setConnectionConfig({ ...connectionConfig, username: e.target.value })} />
+                              </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="pw" className="text-xs font-bold uppercase tracking-widest text-slate-400">Password*</Label>
+                                <Input id="pw" type="password" className="h-12 rounded-xl bg-slate-50 border-slate-100" placeholder="••••••••" value={connectionConfig.password} onChange={(e) => setConnectionConfig({ ...connectionConfig, password: e.target.value })} />
+                              </div>
+                            </div>
+                          </div>
+
+                          {connectionConfig.useSsh && (
+                            <div className="space-y-4 p-5 bg-primary/5 rounded-2xl border border-primary/10 animate-in fade-in duration-300">
+                              <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                  <Label className="text-xs font-bold uppercase tracking-widest text-primary">SSH Host</Label>
+                                  <Input className="h-10 bg-white border-primary/20" value={connectionConfig.sshHost} onChange={(e) => setConnectionConfig({ ...connectionConfig, sshHost: e.target.value })} />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label className="text-xs font-bold uppercase tracking-widest text-primary">SSH User</Label>
+                                  <Input className="h-10 bg-white border-primary/20" value={connectionConfig.sshUser} onChange={(e) => setConnectionConfig({ ...connectionConfig, sshUser: e.target.value })} />
+                                </div>
+                              </div>
+                              <div className="space-y-2">
+                                <Label className="text-xs font-bold uppercase tracking-widest text-primary">Public Key (Copy to server)</Label>
+                                <div className="p-3 bg-slate-900 text-slate-300 text-[10px] font-mono rounded-lg break-all select-all">
+                                  ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKnT/D3vadRvtpytizk2yOGsHqhY9T3rSaZVl8z3JCdB dataiq-connector
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* BigQuery specific */}
+                      {selectedSource === 'bigquery' && (
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <Label className="text-xs font-bold uppercase tracking-widest text-slate-400">Service Account JSON*</Label>
+                            <textarea
+                              className="w-full h-32 p-3 rounded-xl bg-slate-50 border-slate-100 text-[10px] font-mono focus:ring-primary/20 focus:border-primary/50"
+                              placeholder='{"type": "service_account", ...}'
+                              value={connectionConfig.serviceAccountJson}
+                              onChange={(e) => setConnectionConfig({ ...connectionConfig, serviceAccountJson: e.target.value })}
+                            />
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label className="text-xs font-bold uppercase tracking-widest text-slate-400">Location</Label>
+                              <Input className="h-12 rounded-xl bg-slate-50 border-slate-100" placeholder="US" value={connectionConfig.location} onChange={(e) => setConnectionConfig({ ...connectionConfig, location: e.target.value })} />
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-xs font-bold uppercase tracking-widest text-slate-400">MFA Type</Label>
+                              <Input className="h-12 rounded-xl bg-slate-50 border-slate-100" placeholder="None" value={connectionConfig.mfaType} onChange={(e) => setConnectionConfig({ ...connectionConfig, mfaType: e.target.value })} />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Google Sheets specific */}
+                      {selectedSource === 'googlesheets' && (
+                        <div className="space-y-6">
+                          <div className="space-y-2">
+                            <Label className="text-xs font-bold uppercase tracking-widest text-slate-400">Permission Level</Label>
+                            <div className="grid grid-cols-2 gap-2">
+                              <Button
+                                variant={connectionConfig.permissionLevel === 'read_only' ? "default" : "outline"}
+                                onClick={() => setConnectionConfig({ ...connectionConfig, permissionLevel: 'read_only' })}
+                                className="rounded-xl h-12"
+                              >
+                                Read Only
+                              </Button>
+                              <Button
+                                variant={connectionConfig.permissionLevel === 'read_write' ? "default" : "outline"}
+                                onClick={() => setConnectionConfig({ ...connectionConfig, permissionLevel: 'read_write' })}
+                                className="rounded-xl h-12"
+                              >
+                                Read + Write
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                            <div>
+                              <p className="text-sm font-bold text-slate-900">Require Review</p>
+                              <p className="text-xs text-slate-500">Manually approve new data</p>
+                            </div>
+                            <Button
+                              variant={connectionConfig.requireReview ? "default" : "outline"}
+                              size="sm"
+                              className="rounded-lg h-9"
+                              onClick={() => setConnectionConfig({ ...connectionConfig, requireReview: !connectionConfig.requireReview })}
+                            >
+                              {connectionConfig.requireReview ? "Enabled" : "Disabled"}
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Standard Cloud Informational */}
+                      {selectedSource && ['googledrive', 'onedrive', 'sharepoint', 'googleads', 'applehealth', 'fitbit', 'oura', 'dexcom', 'epic', 'cerner', 'fhir'].includes(selectedSource) && (
+                        <div className="p-8 bg-primary/5 rounded-3xl border border-primary/10 text-center space-y-4 animate-in zoom-in-95 duration-300">
+                          <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center shadow-sm mx-auto">
+                            <Cloud className="w-8 h-8 text-primary opacity-60" />
+                          </div>
+                          <p className="text-slate-600 font-medium max-w-[280px] mx-auto">
+                            Securely authorizing <strong>{selectedSource}</strong> via OIDC Handshake.
+                          </p>
+                          <p className="text-xs text-slate-400">Redirecting to project-specific login portal...</p>
+                        </div>
+                      )}
+
+                      {/* Show Whitelisting Accordion */}
+                      {selectedSource && ['postgresql', 'mysql', 'sqlserver', 'snowflake', 'bigquery'].includes(selectedSource) && (
+                        <div className="pt-2">
+                          <button
+                            onClick={() => setShowWhitelisting(!showWhitelisting)}
+                            className="w-full flex items-center justify-between p-3 text-xs font-bold uppercase tracking-widest text-slate-400 hover:text-primary transition-colors border-t border-slate-100 mt-4"
+                          >
+                            <span>Show IPs to whitelist</span>
+                            <ChevronDown className={`w-4 h-4 transition-transform ${showWhitelisting ? 'rotate-180' : ''}`} />
+                          </button>
+                          {showWhitelisting && (
+                            <div className="p-3 bg-slate-50 rounded-xl mt-2 space-y-2 animate-in slide-in-from-top-2 duration-300">
+                              <p className="text-[10px] text-slate-500 mb-2">If your database requires IP whitelisting, add these addresses:</p>
+                              <div className="grid grid-cols-1 gap-1">
+                                {['35.184.2.148', '35.184.144.11', '35.184.16.202'].map(ip => (
+                                  <div key={ip} className="flex items-center justify-between p-2 bg-white rounded border border-slate-100">
+                                    <span className="font-mono text-xs">{ip}</span>
+                                    <Badge className="text-[9px] h-4">US-EAST</Badge>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <DialogFooter className="pt-8">
+                    <Button variant="ghost" onClick={() => setConnectionPhase('guide')} className="h-12 rounded-xl min-w-[100px]">
+                      Back
+                    </Button>
+                    <Button onClick={establishConnection} disabled={connectionPhase === 'verifying'} className="h-12 px-8 rounded-xl font-bold shadow-lg flex-1 md:flex-none">
+                      {connectionPhase === 'verifying' ? (
+                        <>
+                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-solid border-white border-r-transparent mr-2"></div>
+                          Connecting...
+                        </>
+                      ) : 'Connect Source'}
+                    </Button>
+                  </DialogFooter>
+                </div>
               </div>
             ) : connectionPhase === 'auth' ? (
               <div className="py-12 flex flex-col items-center justify-center text-center space-y-8 animate-in fade-in duration-500">

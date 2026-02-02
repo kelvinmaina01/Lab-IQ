@@ -286,6 +286,34 @@ const TopBar = () => {
           <Search className="w-5 h-5" />
         </Button>
 
+        <div className="hidden xl:flex items-center gap-1 mr-2">
+          <a href="/#product">
+            <Button variant="ghost" size="sm" className="text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-primary">
+              Product
+            </Button>
+          </a>
+          <a href="/#use-cases">
+            <Button variant="ghost" size="sm" className="text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-primary">
+              Use Cases
+            </Button>
+          </a>
+          <a href="/#resources">
+            <Button variant="ghost" size="sm" className="hidden 2xl:flex text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-primary">
+              Resources
+            </Button>
+          </a>
+          <a href="/#security">
+            <Button variant="ghost" size="sm" className="hidden 2xl:flex text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-primary">
+              Security
+            </Button>
+          </a>
+          <a href="/#connectors">
+            <Button variant="ghost" size="sm" className="text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-primary">
+              Connectors
+            </Button>
+          </a>
+        </div>
+
         {/* Solutions Menu */}
         <div className="hidden md:block">
           <NavigationMenu>

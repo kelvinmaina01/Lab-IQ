@@ -116,23 +116,51 @@ const Navigation = () => {
         </div>
 
         {/* Navigation Actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 xl:gap-2">
+          <a href="/#product">
+            <Button variant="ghost" size="sm" className="hidden lg:flex text-sm font-medium">
+              Product
+            </Button>
+          </a>
+          <a href="/#use-cases">
+            <Button variant="ghost" size="sm" className="hidden lg:flex text-sm font-medium">
+              Use Cases
+            </Button>
+          </a>
+          <a href="/#resources">
+            <Button variant="ghost" size="sm" className="hidden xl:flex text-sm font-medium">
+              Resources
+            </Button>
+          </a>
+          <a href="/#security">
+            <Button variant="ghost" size="sm" className="hidden xl:flex text-sm font-medium">
+              Security
+            </Button>
+          </a>
+          <a href="/#connectors">
+            <Button variant="ghost" size="sm" className="hidden lg:flex text-sm font-medium">
+              Connectors
+            </Button>
+          </a>
+
+          <div className="h-4 w-px bg-border mx-2 hidden lg:block" />
+
           <Link to="/dashboard">
             <Button variant="ghost" size="sm" className="gap-2">
               <Activity className="w-4 h-4" />
-              Dashboard
+              <span className="hidden sm:inline">Dashboard</span>
             </Button>
           </Link>
 
           <Link to="/pricing">
             <Button variant="ghost" size="sm" className="gap-2">
               <TrendingUp className="w-4 h-4" />
-              Pricing
+              <span className="hidden sm:inline">Pricing</span>
             </Button>
           </Link>
 
           <Link to="/dashboard">
-            <Button size="sm" className="gap-2">
+            <Button size="sm" className="gap-2 rounded-full px-5">
               Get Started
             </Button>
           </Link>

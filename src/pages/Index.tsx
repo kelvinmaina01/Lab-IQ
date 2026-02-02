@@ -153,7 +153,7 @@ const Index = () => {
       <Navigation />
 
       {/* Hero Section - Antigravity Inspired with Animations */}
-      <section className="relative pt-32 pb-24 px-4 overflow-hidden">
+      <section id="product" className="relative pt-32 pb-24 px-4 overflow-hidden">
         {/* Animated background pattern */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(120,119,198,0.05),transparent_50%),radial-gradient(circle_at_70%_60%,rgba(74,222,128,0.05),transparent_50%)]" />
 
@@ -527,7 +527,7 @@ const Index = () => {
       </section>
 
       {/* What We Do Section - Clear Value Proposition */}
-      <section className="py-24 px-4 bg-muted/30">
+      <section id="connectors" className="py-24 px-4 bg-muted/30">
         <div className="container mx-auto max-w-7xl">
           <div className="text-center space-y-4 mb-16 animate-fade-in-up">
             <h2 className="text-4xl md:text-5xl font-bold">
@@ -714,7 +714,7 @@ const Index = () => {
       </section>
 
       {/* Use Cases Section */}
-      <section className="py-24 px-4 bg-muted/30">
+      <section id="use-cases" className="py-24 px-4 bg-muted/30">
         <div className="container mx-auto max-w-7xl">
           <div className="grid md:grid-cols-2 gap-16 items-center">
             <div className="space-y-8 animate-fade-in-up">
