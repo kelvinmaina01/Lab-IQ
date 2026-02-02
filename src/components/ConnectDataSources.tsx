@@ -171,6 +171,7 @@ const ConnectDataSources = () => {
         setConnectionPhase('auth');
 
         try {
+          console.log("Initializing OAuth for:", selectedSource);
           // Initialize OAuth Handshake via Edge Function
           const { data: initData, error: initError } = await supabase.functions.invoke('oauth-handler', {
             body: {
@@ -185,15 +186,23 @@ const ConnectDataSources = () => {
             }
           });
 
-          if (initError) throw initError;
+          if (initError) {
+            console.error("Supabase function error:", initError);
+            throw new Error(initError.message || "Failed to call oauth-handler");
+          }
+
           if (initData?.url) {
+            console.log("Redirecting to:", initData.url);
             window.location.href = initData.url;
+          } else {
+            console.error("No URL returned from oauth-handler", initData);
+            throw new Error("No authorization URL received from server.");
           }
         } catch (err) {
-          console.error("OAuth Init Error:", err);
+          console.error("OAuth Init Catch:", err);
           toast({
             title: "Authorization Failed",
-            description: "Could not initialize secure handshake.",
+            description: err instanceof Error ? err.message : "Could not initialize secure handshake.",
             variant: "destructive"
           });
           setConnectionPhase('config');
@@ -586,26 +595,53 @@ const ConnectDataSources = () => {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="host" className="text-xs font-bold uppercase tracking-widest text-slate-400">Host / Connection String</Label>
-                      <Input id="host" className="h-12 rounded-xl bg-slate-50 border-slate-100 focus:ring-primary/20" placeholder={selectedSource && ['epic', 'cerner', 'fhir'].includes(selectedSource) ? "https://fhir.example.org/r4" : "production.db.internal"} value={connectionConfig.host} onChange={(e) => setConnectionConfig({ ...connectionConfig, host: e.target.value })} />
-                    </div>
-                    {selectedSource && !['epic', 'cerner', 'fhir', 'googledrive', 'googlesheets', 'onedrive', 'sharepoint', 'googleads', 'applehealth', 'fitbit'].includes(selectedSource) && (
-                      <div className="grid grid-cols-2 gap-4">
+                    {/* Only show Host for Clinical providers (Epic, Cerner, FHIR) */}
+                    {selectedSource && ['epic', 'cerner', 'fhir'].includes(selectedSource) && (
+                      <div className="space-y-2 animate-in fade-in duration-300">
+                        <Label htmlFor="host" className="text-xs font-bold uppercase tracking-widest text-slate-400">FHIR Base URL (Audience)</Label>
+                        <Input
+                          id="host"
+                          className="h-12 rounded-xl bg-slate-50 border-slate-100 focus:ring-primary/20"
+                          placeholder="https://fhir.example.org/r4"
+                          value={connectionConfig.host}
+                          onChange={(e) => setConnectionConfig({ ...connectionConfig, host: e.target.value })}
+                        />
+                      </div>
+                    )}
+
+                    {/* Show DB Config for actual databases (Not for standard cloud integrations) */}
+                    {selectedSource && !['epic', 'cerner', 'fhir', 'googledrive', 'googlesheets', 'onedrive', 'sharepoint', 'googleads', 'applehealth', 'fitbit', 'oura', 'dexcom'].includes(selectedSource) && (
+                      <div className="space-y-4 animate-in fade-in duration-300">
                         <div className="space-y-2">
-                          <Label htmlFor="port" className="text-xs font-bold uppercase tracking-widest text-slate-400">Port</Label>
-                          <Input id="port" className="h-12 rounded-xl bg-slate-50 border-slate-100" placeholder="5432" value={connectionConfig.port} onChange={(e) => setConnectionConfig({ ...connectionConfig, port: e.target.value })} />
+                          <Label htmlFor="host" className="text-xs font-bold uppercase tracking-widest text-slate-400">Host / Connection String</Label>
+                          <Input id="host" className="h-12 rounded-xl bg-slate-50 border-slate-100 focus:ring-primary/20" placeholder="production.db.internal" value={connectionConfig.host} onChange={(e) => setConnectionConfig({ ...connectionConfig, host: e.target.value })} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="port" className="text-xs font-bold uppercase tracking-widest text-slate-400">Port</Label>
+                            <Input id="port" className="h-12 rounded-xl bg-slate-50 border-slate-100" placeholder="5432" value={connectionConfig.port} onChange={(e) => setConnectionConfig({ ...connectionConfig, port: e.target.value })} />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="db" className="text-xs font-bold uppercase tracking-widest text-slate-400">Database</Label>
+                            <Input id="db" className="h-12 rounded-xl bg-slate-50 border-slate-100" placeholder="research_vault" value={connectionConfig.database} onChange={(e) => setConnectionConfig({ ...connectionConfig, database: e.target.value })} />
+                          </div>
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="db" className="text-xs font-bold uppercase tracking-widest text-slate-400">Database</Label>
-                          <Input id="db" className="h-12 rounded-xl bg-slate-50 border-slate-100" placeholder="research_vault" value={connectionConfig.database} onChange={(e) => setConnectionConfig({ ...connectionConfig, database: e.target.value })} />
+                          <Label htmlFor="user" className="text-xs font-bold uppercase tracking-widest text-slate-400">Authentication Token / User</Label>
+                          <Input id="user" type="password" className="h-12 rounded-xl bg-slate-50 border-slate-100" placeholder="••••••••••••••••" value={connectionConfig.username} onChange={(e) => setConnectionConfig({ ...connectionConfig, username: e.target.value })} />
                         </div>
                       </div>
                     )}
-                    <div className="space-y-2">
-                      <Label htmlFor="user" className="text-xs font-bold uppercase tracking-widest text-slate-400">Authentication Token</Label>
-                      <Input id="user" type="password" className="h-12 rounded-xl bg-slate-50 border-slate-100" placeholder="••••••••••••••••" value={connectionConfig.username} onChange={(e) => setConnectionConfig({ ...connectionConfig, username: e.target.value })} />
-                    </div>
+
+                    {/* Informational text for standard OAuth */}
+                    {selectedSource && ['googledrive', 'googlesheets', 'onedrive', 'sharepoint', 'googleads', 'applehealth', 'fitbit', 'oura', 'dexcom'].includes(selectedSource) && (
+                      <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10 text-center animate-in zoom-in-95 duration-300">
+                        <Cloud className="w-8 h-8 text-primary mx-auto mb-2 opacity-60" />
+                        <p className="text-sm font-medium text-slate-600">
+                          You will be redirected to the secure {selectedSource} authorization portal to grant access.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
                 <DialogFooter className="pt-4">
