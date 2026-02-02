@@ -171,24 +171,17 @@ const ConnectDataSources = () => {
         setConnectionPhase('auth');
 
         try {
-          const { data, error } = await supabase.functions.invoke('oauth-handler', {
+          // Initialize OAuth Handshake via Edge Function
+          const { data: initData, error: initError } = await supabase.functions.invoke('oauth-handler', {
             body: {
               provider: selectedSource,
               userId: (await supabase.auth.getUser()).data.user?.id,
-              redirectUrl: window.location.origin + '/upload'
+              redirectUrl: window.location.origin + '/upload',
+              host: connectionConfig.host // Crucial for clinical FHIR audience (aud)
             },
             method: 'POST',
-            bodyPath: 'init'
-          });
-
-          // Correction: The Edge Function handler path logic might vary, 
-          // but for now we'll assume a standard POST to the function with action in body
-
-          const { data: initData, error: initError } = await supabase.functions.invoke('oauth-handler/init', {
-            body: {
-              provider: selectedSource,
-              userId: (await supabase.auth.getUser()).data.user?.id,
-              redirectUrl: window.location.origin + '/upload'
+            headers: {
+              'x-action': 'init' // Explicit action signaling
             }
           });
 

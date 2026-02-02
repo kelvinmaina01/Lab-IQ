@@ -10,16 +10,26 @@ const PROVIDERS: Record<string, any> = {
     google: {
         auth_url: "https://accounts.google.com/o/oauth2/v2/auth",
         token_url: "https://oauth2.googleapis.com/token",
-        scopes: "https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/spreadsheets.readonly",
+        scopes: "https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/spreadsheets.readonly https://www.googleapis.com/auth/adwords",
     },
+    googledrive: { provider: 'google' },
+    googlesheets: { provider: 'google' },
+    googleads: { provider: 'google' },
     microsoft: {
         auth_url: "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
         token_url: "https://login.microsoftonline.com/common/oauth2/v2.0/token",
-        scopes: "https://graph.microsoft.com/Files.Read.All",
+        scopes: "https://graph.microsoft.com/Files.Read.All https://graph.microsoft.com/Sites.Read.All",
     },
+    onedrive: { provider: 'microsoft' },
+    sharepoint: { provider: 'microsoft' },
     epic: {
         auth_url: "https://fhir.epic.com/interconnect-fhir-oauth/oauth2/authorize",
         token_url: "https://fhir.epic.com/interconnect-fhir-oauth/oauth2/token",
+        scopes: "patient/*.read",
+    },
+    cerner: {
+        auth_url: "https://authorization.cerner.com/tenants/ec2458f2-1e24-41c8-b71b-0e701af7583d/protocols/oauth2/profiles/smart-v1/personas/patient/authorize",
+        token_url: "https://authorization.cerner.com/tenants/ec2458f2-1e24-41c8-b71b-0e701af7583d/protocols/oauth2/profiles/smart-v1/personas/patient/token",
         scopes: "patient/*.read",
     }
 };
@@ -31,25 +41,39 @@ serve(async (req) => {
 
     const url = new URL(req.url);
     const path = url.pathname.split("/").pop();
+    const actionHeader = req.headers.get('x-action');
+
+    // Helper to get robust redirect URI for the provider
+    const getProviderRedirectUri = () => {
+        const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+        return `${supabaseUrl}/functions/v1/oauth-handler/callback`;
+    };
 
     // 1. Initial Redirect
-    if (path === "init") {
-        const { provider, userId, redirectUrl } = await req.json();
-        const config = PROVIDERS[provider];
+    if (path === "init" || actionHeader === "init") {
+        const { provider: rawProvider, userId, host } = await req.json();
+        const providerConfig = PROVIDERS[rawProvider];
 
-        if (!config) return new Response("Provider not supported", { status: 400 });
+        if (!providerConfig) return new Response("Provider not supported", { status: 400 });
+
+        const provider = providerConfig.provider || rawProvider;
+        const config = providerConfig.provider ? PROVIDERS[provider] : providerConfig;
 
         const state = crypto.randomUUID();
-        // In production, store state in DB to verify on callback
-
         const authUrl = new URL(config.auth_url);
+
         authUrl.searchParams.set("client_id", Deno.env.get(`${provider.toUpperCase()}_CLIENT_ID`) || "");
-        authUrl.searchParams.set("redirect_uri", redirectUrl || Deno.env.get("OAUTH_CALLBACK_URL") || "");
+        authUrl.searchParams.set("redirect_uri", getProviderRedirectUri());
         authUrl.searchParams.set("response_type", "code");
         authUrl.searchParams.set("scope", config.scopes);
-        authUrl.searchParams.set("state", `${provider}:${userId}:${state}`);
+        authUrl.searchParams.set("state", `${rawProvider}:${userId}:${state}`);
         authUrl.searchParams.set("access_type", "offline");
         authUrl.searchParams.set("prompt", "consent");
+
+        // Clinical systems (SMART on FHIR) require an 'aud' (audience) parameter
+        if ((provider === 'epic' || provider === 'cerner') && host) {
+            authUrl.searchParams.set("aud", host);
+        }
 
         return new Response(JSON.stringify({ url: authUrl.toString() }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -59,12 +83,14 @@ serve(async (req) => {
     // 2. Callback Handler
     if (path === "callback") {
         const code = url.searchParams.get("code");
-        const state = url.searchParams.get("state"); // format: provider:userId:uuid
+        const state = url.searchParams.get("state"); // format: rawProvider:userId:uuid
 
         if (!code || !state) return new Response("Missing code or state", { status: 400 });
 
-        const [provider, userId] = state.split(":");
-        const config = PROVIDERS[provider];
+        const [rawProvider, userId] = state.split(":");
+        const providerConfig = PROVIDERS[rawProvider];
+        const provider = providerConfig.provider || rawProvider;
+        const config = providerConfig.provider ? PROVIDERS[provider] : providerConfig;
 
         // Exchange code for tokens
         const resp = await fetch(config.token_url, {
@@ -75,7 +101,7 @@ serve(async (req) => {
                 client_secret: Deno.env.get(`${provider.toUpperCase()}_CLIENT_SECRET`) || "",
                 code,
                 grant_type: "authorization_code",
-                redirect_uri: Deno.env.get("OAUTH_CALLBACK_URL") || "",
+                redirect_uri: getProviderRedirectUri(),
             }),
         });
 
@@ -83,7 +109,7 @@ serve(async (req) => {
 
         if (tokens.error) {
             console.error("Token exchange error:", tokens);
-            return new Response(`Token exchange failed: ${tokens.error_description}`, { status: 500 });
+            return new Response(`Token exchange failed: ${tokens.error_description || tokens.error}`, { status: 500 });
         }
 
         // Save tokens to DB
@@ -96,13 +122,13 @@ serve(async (req) => {
             .from("data_sources")
             .upsert({
                 user_id: userId,
-                provider,
+                provider: rawProvider,
                 type: "cloud",
-                name: `${provider.charAt(0).toUpperCase() + provider.slice(1)} Connection`,
+                name: `${rawProvider.charAt(0).toUpperCase() + rawProvider.slice(1)} Connection`,
                 config: {
                     access_token: tokens.access_token,
                     refresh_token: tokens.refresh_token,
-                    expires_at: Date.now() + (tokens.expires_in * 1000),
+                    expires_at: tokens.expires_in ? Date.now() + (tokens.expires_in * 1000) : null,
                 },
                 status: "active",
             }, { onConflict: "user_id,provider" });
@@ -113,8 +139,8 @@ serve(async (req) => {
         }
 
         // Redirect back to app
-        const appUrl = Deno.env.get("APP_URL") || "http://localhost:5173";
-        return Response.redirect(`${appUrl}/upload?success=true&provider=${provider}`);
+        const appUrl = Deno.env.get("APP_URL") || Deno.env.get("OAUTH_CALLBACK_URL")?.replace('/upload', '') || "http://localhost:5173";
+        return Response.redirect(`${appUrl}/upload?success=true&provider=${rawProvider}`);
     }
 
     return new Response("Not Found", { status: 404 });
