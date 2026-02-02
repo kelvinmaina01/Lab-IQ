@@ -18,47 +18,47 @@ export const ResourceUsageRow = () => {
     }
 
     return (
-        <div className="flex items-center gap-10 px-6 py-4 bg-gradient-to-r from-slate-50/50 to-transparent border-b border-slate-100">
+        <div className="flex items-center gap-6 px-4 py-2.5 bg-background/40 backdrop-blur-md border border-slate-200/50 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300">
             {/* Storage - Red */}
-            <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center">
-                    <HardDrive className="w-4 h-4 text-red-500" />
+            <div className="flex items-center gap-2.5 group">
+                <div className="w-7 h-7 rounded-lg bg-red-500/10 flex items-center justify-center group-hover:bg-red-500/20 transition-colors">
+                    <HardDrive className="w-3.5 h-3.5 text-red-600" />
                 </div>
                 <div className="flex flex-col">
-                    <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Storage</span>
-                    <div className="flex items-baseline gap-1.5">
-                        <span className="text-sm font-bold text-slate-900">{Math.round(usage?.storage_used_mb || 0)}</span>
-                        <span className="text-[10px] font-semibold text-slate-400">/ {subscription?.storage_limit_mb === -1 ? '∞' : subscription?.storage_limit_mb} MB</span>
+                    <span className="text-[8px] font-bold text-slate-400 uppercase tracking-[0.15em] mb-0">Storage</span>
+                    <div className="flex items-baseline gap-1">
+                        <span className="text-[11px] font-black text-slate-900 leading-none">{Math.round(usage?.storage_used_mb || 0)}</span>
+                        <span className="text-[9px] font-bold text-slate-400 opacity-60">/ {subscription?.storage_limit_mb === -1 ? '∞' : subscription?.storage_limit_mb} MB</span>
                     </div>
                 </div>
             </div>
 
-            <div className="w-px h-8 bg-slate-200" />
+            <div className="w-px h-6 bg-slate-200/60" />
 
             {/* Datasets - Green */}
-            <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center">
-                    <LayoutGrid className="w-4 h-4 text-green-500" />
+            <div className="flex items-center gap-2.5 group">
+                <div className="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center group-hover:bg-emerald-500/20 transition-colors">
+                    <LayoutGrid className="w-3.5 h-3.5 text-emerald-600" />
                 </div>
                 <div className="flex flex-col">
-                    <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Datasets</span>
-                    <div className="flex items-baseline gap-1.5">
-                        <span className="text-sm font-bold text-slate-900">{usage?.datasets_count || 0}</span>
-                        <span className="text-[10px] font-semibold text-slate-400">/ {subscription?.max_datasets === -1 ? '∞' : subscription?.max_datasets}</span>
+                    <span className="text-[8px] font-bold text-slate-400 uppercase tracking-[0.15em] mb-0">Datasets</span>
+                    <div className="flex items-baseline gap-1">
+                        <span className="text-[11px] font-black text-slate-900 leading-none">{usage?.datasets_count || 0}</span>
+                        <span className="text-[9px] font-bold text-slate-400 opacity-60">/ {subscription?.max_datasets === -1 ? '∞' : subscription?.max_datasets}</span>
                     </div>
                 </div>
             </div>
 
-            <div className="w-px h-8 bg-slate-200" />
+            <div className="w-px h-6 bg-slate-200/60" />
 
             {/* Plan - Blue */}
-            <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
-                    <CreditCard className="w-4 h-4 text-blue-500" />
+            <div className="flex items-center gap-2.5 group">
+                <div className="w-7 h-7 rounded-lg bg-indigo-500/10 flex items-center justify-center group-hover:bg-indigo-500/20 transition-colors">
+                    <CreditCard className="w-3.5 h-3.5 text-indigo-600" />
                 </div>
                 <div className="flex flex-col">
-                    <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Plan</span>
-                    <span className="text-sm font-bold text-blue-600 uppercase tracking-wide">{subscription?.tier || 'Free'}</span>
+                    <span className="text-[8px] font-bold text-slate-400 uppercase tracking-[0.15em] mb-0">Plan</span>
+                    <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">{subscription?.tier || 'Free'}</span>
                 </div>
             </div>
         </div>

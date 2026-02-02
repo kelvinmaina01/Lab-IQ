@@ -1,4 +1,4 @@
-import { Search, Bell, Settings, Sun, Moon, Menu, User, LogOut, TrendingUp, Database, FlaskConical as Flask, Cpu, X, Brain, BarChart3, Zap, FileText, Stethoscope, Workflow, ChevronDown } from "lucide-react";
+import { Search, Bell, Settings, Sun, Moon, Menu, User, LogOut, TrendingUp, Database, FlaskConical as Flask, Cpu, X, Brain, BarChart3, Zap, FileText, Stethoscope, Workflow, ChevronDown, Shield, Lock, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -27,43 +27,66 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 
+const productItems = [
+  { title: "AI Data Ingestion", href: "/upload", description: "Pipeline with PII scrubbing", icon: Database },
+  { title: "Intelligent Assistant", href: "/lab-assistant", description: "AI for complex queries", icon: Brain },
+  { title: "Predictive Analytics", href: "/insights", description: "Pattern detection", icon: TrendingUp },
+  { title: "Automated Reporting", href: "/reports", description: "PDF/HTML exports", icon: FileText },
+];
+
+const securityItems = [
+  { title: "HIPAA Readiness", href: "/#security", description: "Health data compliance", icon: Shield },
+  { title: "SOC 2 Type II", href: "/#security", description: "Process security", icon: Lock },
+  { title: "PII Shield", href: "/#security", description: "Auto-anonymization", icon: EyeOff },
+  { title: "E2E Encryption", href: "/#security", description: "AES-256 safe-state", icon: Zap },
+];
+
+const useCaseItems = [
+  { title: "Clinical Research", href: "/#use-cases", description: "Scientific analysis", icon: Stethoscope },
+  { title: "Business Intelligence", href: "/#use-cases", description: "Operations tracking", icon: BarChart3 },
+  { title: "IoT Monitoring", href: "/#use-cases", description: "Device streams", icon: Activity },
+  { title: "Workflows", href: "/#use-cases", description: "Process optimization", icon: Workflow },
+];
+
+const connectorItems = [
+  { title: "Database Gateway", href: "/#connectors", description: "Secure SQL tunnels", icon: Database },
+  { title: "Cloud Sync", href: "/#connectors", description: "GDrive/OneDrive", icon: Zap },
+  { title: "Mobile IoT", href: "/#connectors", description: "FHIR APIs", icon: Stethoscope },
+  { title: "API Hub", href: "/#connectors", description: "REST endpoints", icon: Zap },
+];
+
 const solutions = [
   {
     title: "AI Assistant",
     href: "/lab-assistant",
-    description: "Intelligent data analysis powered by advanced AI",
+    description: "Intelligent AI analysis",
     icon: Brain,
   },
   {
     title: "Analytics Dashboard",
     href: "/dashboard",
-    description: "Real-time insights and visualizations for your data",
+    description: "Real-time visualizations",
     icon: BarChart3,
   },
   {
     title: "ML Models",
     href: "/models",
-    description: "Train and deploy custom machine learning models",
+    description: "Custom ML models",
     icon: Zap,
   },
   {
     title: "Reports",
     href: "/reports",
-    description: "Generate comprehensive analysis reports",
+    description: "Analysis exports",
     icon: FileText,
   },
-  {
-    title: "IoT & Device Streams",
-    href: "/device-streams",
-    description: "Connect and stream data from IoT devices",
-    icon: Stethoscope,
-  },
-  {
-    title: "Automation",
-    href: "/automation",
-    description: "Create automated workflows for data processing",
-    icon: Workflow,
-  },
+];
+
+const dashboardItems = [
+  { title: "Datasets", href: "/dashboard", description: "Manage data", icon: Database },
+  { title: "Insights", href: "/insights", description: "Analysis results", icon: Brain },
+  { title: "Experiments", href: "/experiments", description: "Track models", icon: Flask },
+  { title: "Reports", href: "/reports", description: "PDF/HTML exports", icon: FileText },
 ];
 
 const TopBar = () => {
@@ -214,12 +237,12 @@ const TopBar = () => {
   return (
     <div className="h-16 border-b border-border bg-background/80 backdrop-blur-lg flex items-center justify-between px-4 md:px-6 sticky top-0 z-30">
       {/* Search Bar (Desktop) */}
-      <div className="hidden md:flex flex-1 max-w-xl mx-6" ref={searchRef}>
+      <div className="hidden md:flex flex-1 max-w-sm lg:max-w-md" ref={searchRef}>
         <div className="relative w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground z-10" />
           <Input
-            placeholder="Search datasets, experiments, models..."
-            className="pl-10 pr-10 bg-card border-border"
+            placeholder="Search..."
+            className="pl-10 pr-10 bg-card border-border h-9 text-sm"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onFocus={() => searchQuery && setShowResults(true)}
@@ -237,11 +260,10 @@ const TopBar = () => {
 
           {/* Search Results Dropdown */}
           {showResults && (
-            <Card className="absolute top-full mt-2 w-full max-h-96 overflow-y-auto shadow-lg border">
+            <Card className="absolute top-full mt-2 w-full max-h-96 overflow-y-auto shadow-lg border z-50">
               {searching ? (
                 <div className="p-4 text-center">
                   <div className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-primary border-r-transparent"></div>
-                  <p className="text-sm text-muted-foreground mt-2">Searching...</p>
                 </div>
               ) : searchResults.length > 0 ? (
                 <div className="py-2">
@@ -260,18 +282,9 @@ const TopBar = () => {
                           <p className="font-medium text-sm truncate">{result.name}</p>
                           <p className="text-xs text-muted-foreground capitalize">{result.type}</p>
                         </div>
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(result.created_at).toLocaleDateString()}
-                        </span>
                       </button>
                     );
                   })}
-                </div>
-              ) : searchQuery.length >= 2 ? (
-                <div className="p-8 text-center">
-                  <Search className="h-8 w-8 mx-auto mb-2 text-muted-foreground opacity-50" />
-                  <p className="text-sm text-muted-foreground">No results found for "{searchQuery}"</p>
-                  <p className="text-xs text-muted-foreground mt-1">Try a different search term</p>
                 </div>
               ) : null}
             </Card>
@@ -279,95 +292,185 @@ const TopBar = () => {
         </div>
       </div>
 
-      {/* Actions */}
+      {/* Refined Navigation Group */}
+      <div className="hidden md:flex flex-1 justify-center max-w-2xl px-4">
+        <NavigationMenu>
+          <NavigationMenuList className="gap-1 px-2 py-1 bg-muted/20 backdrop-blur-sm rounded-full border border-border/40">
+
+            {/* Product Dropdown */}
+            <NavigationMenuItem>
+              <NavigationMenuTrigger className="bg-transparent h-8 px-3 rounded-full hover:bg-background/80 text-[11px] font-bold uppercase tracking-wider">
+                Product
+              </NavigationMenuTrigger>
+              <NavigationMenuContent>
+                <div className="w-[280px] p-2 bg-background/95 backdrop-blur-md rounded-xl border border-border shadow-xl">
+                  <ul className="flex flex-col gap-0.5">
+                    {productItems.map((item) => (
+                      <li key={item.title}>
+                        <NavigationMenuLink asChild>
+                          <Link
+                            to={item.href}
+                            className="flex select-none gap-2.5 rounded-lg p-2 leading-none no-underline outline-none transition-all hover:bg-primary/5 group"
+                          >
+                            <div className="p-1.5 rounded-md bg-primary/5 text-primary group-hover:bg-primary group-hover:text-white transition-colors">
+                              <item.icon className="h-3.5 w-3.5" />
+                            </div>
+                            <div className="space-y-0.5">
+                              <div className="text-[11px] font-bold leading-none">{item.title}</div>
+                              <p className="text-[9px] text-muted-foreground line-clamp-1">{item.description}</p>
+                            </div>
+                          </Link>
+                        </NavigationMenuLink>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </NavigationMenuContent>
+            </NavigationMenuItem>
+
+            {/* Use Cases Dropdown */}
+            <NavigationMenuItem>
+              <NavigationMenuTrigger className="bg-transparent h-8 px-3 rounded-full hover:bg-background/80 text-[11px] font-bold uppercase tracking-wider">
+                Use Cases
+              </NavigationMenuTrigger>
+              <NavigationMenuContent>
+                <div className="w-[280px] p-2 bg-background/95 backdrop-blur-md rounded-xl border border-border shadow-xl">
+                  <ul className="flex flex-col gap-0.5">
+                    {useCaseItems.map((item) => (
+                      <li key={item.title}>
+                        <NavigationMenuLink asChild>
+                          <Link
+                            to={item.href}
+                            className="flex select-none gap-2.5 rounded-lg p-2 leading-none no-underline outline-none transition-all hover:bg-primary/5 group"
+                          >
+                            <div className="p-1.5 rounded-md bg-primary/5 text-primary group-hover:bg-primary group-hover:text-white transition-colors">
+                              <item.icon className="h-3.5 w-3.5" />
+                            </div>
+                            <div className="space-y-0.5">
+                              <div className="text-[11px] font-bold leading-none">{item.title}</div>
+                              <p className="text-[9px] text-muted-foreground line-clamp-1">{item.description}</p>
+                            </div>
+                          </Link>
+                        </NavigationMenuLink>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </NavigationMenuContent>
+            </NavigationMenuItem>
+
+            {/* Connectors Dropdown */}
+            <NavigationMenuItem>
+              <NavigationMenuTrigger className="bg-transparent h-8 px-3 rounded-full hover:bg-background/80 text-[11px] font-bold uppercase tracking-wider">
+                Connectors
+              </NavigationMenuTrigger>
+              <NavigationMenuContent>
+                <div className="w-[280px] p-2 bg-background/95 backdrop-blur-md rounded-xl border border-border shadow-xl">
+                  <ul className="flex flex-col gap-0.5">
+                    {connectorItems.map((item) => (
+                      <li key={item.title}>
+                        <NavigationMenuLink asChild>
+                          <Link
+                            to={item.href}
+                            className="flex select-none gap-2.5 rounded-lg p-2 leading-none no-underline outline-none transition-all hover:bg-primary/5 group"
+                          >
+                            <div className="p-1.5 rounded-md bg-primary/5 text-primary group-hover:bg-primary group-hover:text-white transition-colors">
+                              <item.icon className="h-3.5 w-3.5" />
+                            </div>
+                            <div className="space-y-0.5">
+                              <div className="text-[11px] font-bold leading-none">{item.title}</div>
+                              <p className="text-[9px] text-muted-foreground line-clamp-1">{item.description}</p>
+                            </div>
+                          </Link>
+                        </NavigationMenuLink>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </NavigationMenuContent>
+            </NavigationMenuItem>
+
+            {/* Security Dropdown */}
+            <NavigationMenuItem>
+              <NavigationMenuTrigger className="bg-transparent h-8 px-3 rounded-full hover:bg-background/80 text-[11px] font-bold uppercase tracking-wider">
+                Security
+              </NavigationMenuTrigger>
+              <NavigationMenuContent>
+                <div className="w-[280px] p-2 bg-background/95 backdrop-blur-md rounded-xl border border-border shadow-xl">
+                  <ul className="flex flex-col gap-0.5">
+                    {securityItems.map((item) => (
+                      <li key={item.title}>
+                        <NavigationMenuLink asChild>
+                          <Link
+                            to={item.href}
+                            className="flex select-none gap-2.5 rounded-lg p-2 leading-none no-underline outline-none transition-all hover:bg-primary/5 group"
+                          >
+                            <div className="p-1.5 rounded-md bg-primary/5 text-primary group-hover:bg-primary group-hover:text-white transition-colors">
+                              <item.icon className="h-3.5 w-3.5" />
+                            </div>
+                            <div className="space-y-0.5">
+                              <div className="text-[11px] font-bold leading-none">{item.title}</div>
+                              <p className="text-[9px] text-muted-foreground line-clamp-1">{item.description}</p>
+                            </div>
+                          </Link>
+                        </NavigationMenuLink>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </NavigationMenuContent>
+            </NavigationMenuItem>
+
+            {/* Solutions Dropdown */}
+            <NavigationMenuItem>
+              <NavigationMenuTrigger className="bg-transparent h-8 px-3 rounded-full hover:bg-background/80 text-[11px] font-bold uppercase tracking-wider">
+                Solutions
+              </NavigationMenuTrigger>
+              <NavigationMenuContent>
+                <div className="w-[280px] p-2 bg-background/95 backdrop-blur-md rounded-xl border border-border shadow-xl">
+                  <ul className="flex flex-col gap-0.5">
+                    {solutions.map((item) => (
+                      <li key={item.title}>
+                        <NavigationMenuLink asChild>
+                          <Link
+                            to={item.href}
+                            className="flex select-none gap-2.5 rounded-lg p-2 leading-none no-underline outline-none transition-all hover:bg-primary/5 group"
+                          >
+                            <div className="p-1.5 rounded-md bg-primary/5 text-primary group-hover:bg-primary group-hover:text-white transition-colors">
+                              <item.icon className="h-3.5 w-3.5" />
+                            </div>
+                            <div className="space-y-0.5">
+                              <div className="text-[11px] font-bold leading-none">{item.title}</div>
+                              <p className="text-[9px] text-muted-foreground line-clamp-1">{item.description}</p>
+                            </div>
+                          </Link>
+                        </NavigationMenuLink>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </NavigationMenuContent>
+            </NavigationMenuItem>
+
+            {/* Pricing (Direct Link) */}
+            <NavigationMenuItem>
+              <Link to="/pricing">
+                <NavigationMenuLink className="flex items-center bg-transparent h-8 px-3 rounded-full hover:bg-background/80 text-[11px] font-bold uppercase tracking-wider">
+                  Pricing
+                </NavigationMenuLink>
+              </Link>
+            </NavigationMenuItem>
+
+          </NavigationMenuList>
+        </NavigationMenu>
+      </div>
+
+      {/* Actions Area */}
       <div className="flex items-center gap-2">
         {/* Mobile Search */}
         <Button variant="ghost" size="icon" className="md:hidden">
           <Search className="w-5 h-5" />
         </Button>
-
-        <div className="hidden xl:flex items-center gap-1 mr-2">
-          <a href="/#product">
-            <Button variant="ghost" size="sm" className="text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-primary">
-              Product
-            </Button>
-          </a>
-          <a href="/#use-cases">
-            <Button variant="ghost" size="sm" className="text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-primary">
-              Use Cases
-            </Button>
-          </a>
-          <a href="/#resources">
-            <Button variant="ghost" size="sm" className="hidden 2xl:flex text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-primary">
-              Resources
-            </Button>
-          </a>
-          <a href="/#security">
-            <Button variant="ghost" size="sm" className="hidden 2xl:flex text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-primary">
-              Security
-            </Button>
-          </a>
-          <a href="/#connectors">
-            <Button variant="ghost" size="sm" className="text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-primary">
-              Connectors
-            </Button>
-          </a>
-        </div>
-
-        {/* Solutions Menu */}
-        <div className="hidden md:block">
-          <NavigationMenu>
-            <NavigationMenuList>
-              <NavigationMenuItem>
-                <NavigationMenuTrigger className="bg-transparent hover:bg-accent data-[state=open]:bg-accent">
-                  Solutions
-                </NavigationMenuTrigger>
-                <NavigationMenuContent>
-                  <div className="w-[340px] p-4">
-                    <div className="mb-3 px-2 text-xs font-bold text-muted-foreground tracking-wider">
-                      PLATFORM SOLUTIONS
-                    </div>
-                    <ul className="flex flex-col gap-2">
-                      {solutions.map((solution) => (
-                        <li key={solution.title}>
-                          <NavigationMenuLink asChild>
-                            <Link
-                              to={solution.href}
-                              className={cn(
-                                "flex select-none gap-3 rounded-md p-3 leading-none no-underline outline-none transition-colors",
-                                "hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
-                              )}
-                            >
-                              <div className="mt-0.5 p-1 rounded-md bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                                <solution.icon className="h-5 w-5" />
-                              </div>
-                              <div className="space-y-1.5">
-                                <div className="text-sm font-semibold leading-none">
-                                  {solution.title}
-                                </div>
-                                <p className="text-xs leading-snug text-muted-foreground line-clamp-2">
-                                  {solution.description}
-                                </p>
-                              </div>
-                            </Link>
-                          </NavigationMenuLink>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </NavigationMenuContent>
-              </NavigationMenuItem>
-            </NavigationMenuList>
-          </NavigationMenu>
-        </div>
-
-        {/* Pricing Link (Desktop) */}
-        <Link to="/pricing" className="hidden md:block">
-          <Button variant="ghost" className="gap-2">
-            <TrendingUp className="w-4 h-4" />
-            <span className="font-medium">Pricing</span>
-          </Button>
-        </Link>
 
         {/* Dark Mode Toggle */}
         <Button variant="ghost" size="icon" onClick={toggleDarkMode}>

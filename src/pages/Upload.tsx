@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Upload as UploadIcon, FileText, HardDrive, Clock, AlertCircle, Shield, Database, Boxes, Check, X, CheckCircle2, ArrowRight, Activity, TrendingUp, Search, Info } from "lucide-react";
+import { Upload as UploadIcon, FileText, HardDrive, Clock, AlertCircle, Shield, Database, Boxes, Check, X, CheckCircle2, ArrowRight, Activity, TrendingUp, Search, Info, Link2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import ConnectDataSources from "@/components/ConnectDataSources";
 import { AuthGuard } from "@/components/auth/AuthGuard";
@@ -501,15 +501,15 @@ export default function Upload() {
           {/* Unified Header */}
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-primary/10 rounded-xl shadow-sm">
-                <Database className="h-7 w-7 text-primary" />
+              <div className="p-3 bg-gradient-to-br from-primary to-primary/60 rounded-xl shadow-lg shadow-primary/20 transform -rotate-3 hover:rotate-0 transition-transform duration-300">
+                <Link2 className="h-6 w-6 text-white" />
               </div>
               <div className="text-left">
-                <h1 className="text-2xl md:text-3xl font-bold text-foreground leading-tight">
-                  Data Ingestion Hub
+                <h1 className="text-2xl md:text-3xl font-bold text-foreground leading-tight tracking-tight">
+                  data <span className="text-primary/80">connection</span>
                 </h1>
-                <p className="text-sm text-muted-foreground font-medium">
-                  Enterprise-grade data pipeline • Secure • Compliant • Scalable
+                <p className="text-[10px] md:text-xs text-muted-foreground font-bold uppercase tracking-[0.2em] opacity-70">
+                  Secure Data Gateway • Enterprise Pipeline
                 </p>
               </div>
             </div>
@@ -528,8 +528,6 @@ export default function Upload() {
             </div>
           </div>
 
-          {/* Sample Dataset CTA */}
-          <SampleDatasetCTA />
 
           {/* Analysis CTA */}
 
