@@ -48,10 +48,7 @@ export default function Upload() {
 
       const { data, error } = await supabase
         .from('datasets')
-        .select(`
-          *,
-          dataset_metadata (*)
-        `)
+        .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(5);
@@ -886,7 +883,9 @@ export default function Upload() {
                       <DatasetMetadataCard
                         key={dataset.id}
                         datasetName={dataset.name}
-                        metadata={dataset.dataset_metadata?.[0] || {}}
+                        quality_score={dataset.quality_score}
+                        metadata={dataset.metadata}
+                        schema={dataset.schema}
                       />
                     ))}
                   </div>

@@ -287,10 +287,18 @@ export async function createDatasetFromStream(
       description: `Dataset created from device stream: ${stream.name}`,
       file_name: fileName,
       file_path: filePath,
+      file_type: 'csv',
+      file_size: blob.size,
       row_count: streamData.length,
       column_count: Object.keys(columns_info).length,
-      columns_info,
-      file_size_mb: (blob.size / 1024 / 1024).toFixed(2),
+      schema: columns_info,
+      quality_score: 95.0,
+      metadata: {
+        streamId,
+        sourceType: 'device_stream',
+        completeness_score: 100.0,
+        consistency_score: 98.0
+      },
       status: 'ready',
       source_type: 'device_stream',
       source_id: streamId
@@ -299,16 +307,6 @@ export async function createDatasetFromStream(
     .single();
 
   if (insertError) throw insertError;
-
-  // Create metadata
-  await supabase
-    .from('dataset_metadata')
-    .insert({
-      dataset_id: dataset.id,
-      quality_score: 95.0,
-      completeness_score: 100.0,
-      consistency_score: 98.0
-    });
 
   // Emit DATASET_UPLOADED event for automation
   eventBus.emit<DatasetUploadedPayload>(
