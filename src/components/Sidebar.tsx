@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { HeartPulse, Home, Upload, Brain, BarChart3, FlaskConicalIcon, Boxes, Users, FileText, Cpu, Database, ChevronLeft, ChevronRight, Settings, LayoutDashboard, Sparkles, Microscope } from "lucide-react";
+import { HeartPulse, Home, Upload, Brain, BarChart3, FlaskConical, Boxes, Users, FileText, Cpu, Database, ChevronLeft, ChevronRight, Settings, LayoutDashboard, Sparkles, Microscope } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "@/components/layout/SidebarContext";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,7 @@ const Sidebar = () => {
     { path: "/dashboard", label: "Command Center", icon: Home },
     { path: "/analytics", label: "Analytics", icon: BarChart3 },
     { path: "/models", label: "Models", icon: Cpu },
-    { path: "/experiments", label: "Experiments", icon: FlaskConicalIcon },
+    { path: "/experiments", label: "Experiments", icon: FlaskConical },
     { path: "/automation", label: "Automation", icon: Boxes },
     { path: "/reports", label: "Reports", icon: FileText },
   ];

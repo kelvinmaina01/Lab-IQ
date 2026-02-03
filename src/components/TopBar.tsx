@@ -1,4 +1,4 @@
-import { Search, Bell, Settings, Sun, Moon, Menu, User, LogOut, TrendingUp, Database, FlaskConical as Flask, Cpu, X, Brain, BarChart3, Zap, FileText, Stethoscope, Workflow, ChevronDown, Shield, Lock, EyeOff } from "lucide-react";
+import { Search, Bell, Settings, Sun, Moon, Menu, User, LogOut, TrendingUp, Database, FlaskConical as Flask, Cpu, X, Brain, BarChart3, Zap, FileText, Stethoscope, Workflow, ChevronDown, Shield, Lock, EyeOff, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";

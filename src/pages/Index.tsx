@@ -900,7 +900,7 @@ const Index = () => {
                     <span>Upgrade anytime</span>
                   </li>
                 </ul>
-                <Link to="/dashboard">
+                <Link to="/signup">
                   <Button size="lg" className="w-full gap-2 group-hover:scale-105 transition-all">
                     <Rocket className="w-5 h-5" />
                     Get Started
@@ -944,7 +944,7 @@ const Index = () => {
             Start free today—no credit card required.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
-            <Link to="/dashboard">
+            <Link to="/signup">
               <Button size="lg" className="gap-2 text-base h-12 px-8 rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-105">
                 <Rocket className="w-5 h-5" />
                 Get Started Free

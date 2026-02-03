@@ -35,8 +35,7 @@ export const AuthCard = () => {
         try {
             const { error } = await signIn(email, password);
             if (error) throw error;
-            toast({ title: "Welcome back!", description: "Successfully logged in." });
-            navigate("/dashboard");
+            navigate("/upload");
         } catch (error: any) {
             toast({ title: "Login failed", description: error.message, variant: "destructive" });
         } finally {
@@ -77,9 +76,7 @@ export const AuthCard = () => {
     const handleOnboardingComplete = (mode: string) => {
         toast({ title: "Workspace Ready", description: `Setting up ${mode} mode environment...` });
         // In real app: Update user profile here
-        setTimeout(() => {
-            navigate("/dashboard");
-        }, 1000);
+        navigate("/upload");
     };
 
     if (showOnboarding) {

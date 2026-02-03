@@ -85,7 +85,7 @@ const Navigation = () => {
         {/* Logo and Nav Links */}
         <div className="flex items-center gap-2">
           <Link to="/" className="flex items-center gap-3 group mr-6">
-            <div className="w-10 h-10 flex items-center justify-center transition-transform duration-300 group-hover:rotate-12">
+            <div className="w-10 h-10 flex items-center justify-center transition-transform duration-300 group-hover:rotate-12 bg-transparent">
               <img
                 src="/dataiq-logo-transparent.png"
                 alt="DataIQ Logo"
@@ -308,7 +308,7 @@ const Navigation = () => {
 
         {/* Action Buttons */}
         <div className="flex items-center gap-3">
-          <Link to="/dashboard" className="hidden sm:block">
+          <Link to="/login" className="hidden sm:block">
             <Button variant="ghost" className="text-sm font-bold">Log In</Button>
           </Link>
           <Link to="/signup">

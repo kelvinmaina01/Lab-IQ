@@ -17,7 +17,7 @@ export const AuthCallback = () => {
         supabase.auth.getSession().then(({ data: { session } }) => {
             if (session) {
                 // Successful login
-                navigate("/dashboard", { replace: true });
+                navigate("/upload", { replace: true });
             } else {
                 // If no session found immediately, wait a shorter bit or
                 // let the auth listener handle it.
