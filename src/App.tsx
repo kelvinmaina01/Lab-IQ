@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ErrorBoundary } from "react-error-boundary";
+import { Analytics } from "@vercel/analytics/react";
 
 // Core Services & Layout
 import { SidebarProvider } from "@/components/layout/SidebarContext";
@@ -89,6 +90,7 @@ const App = () => {
           <TooltipProvider>
             <SidebarProvider>
               <Toaster />
+              <Analytics />
               <BrowserRouter>
                 <ErrorBoundary FallbackComponent={GlobalErrorFallback} onReset={() => window.location.replace('/')}>
                   <Suspense fallback={<LoadingSpinner fullScreen text="Loading DataIQ..." />}>
